@@ -182,3 +182,4 @@ export function SettingsSection({open, setOpen}: SettingsSectionProps) {
     </Dialog>
   );
 }
+
