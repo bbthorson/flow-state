@@ -17,6 +17,12 @@ export function StatusSection({charging, faceDown}: StatusSectionProps) {
           <CardTitle>Device Status</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          <p>
+            This application uses phone status indicators to send a webhook to the
+            URL of your choice. The intention is that you can use that webhook to
+            programmatically update your other services to pause or unpause
+            notifications.
+          </p>
           <div className="flex items-center justify-between">
             <span>Charging Status:</span>
             {charging === null ? (
