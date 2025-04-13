@@ -2,7 +2,7 @@
 
 import {BatteryCharging, Battery, Phone} from 'lucide-react';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 
 type StatusSectionProps = {
   charging: boolean | null;
@@ -16,7 +16,7 @@ export function StatusSection({charging, faceDown}: StatusSectionProps) {
     <section className="mb-8 w-full max-w-md">
       <Card>
         <CardHeader>
-          <CardTitle>About Do Not Disturb</CardTitle>
+          <CardTitle>About Flow State</CardTitle>
         </CardHeader>
         <CardContent>
           <p>
@@ -76,4 +76,3 @@ export function StatusSection({charging, faceDown}: StatusSectionProps) {
     </section>
   );
 }
-

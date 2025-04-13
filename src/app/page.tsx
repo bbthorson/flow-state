@@ -4,14 +4,16 @@ import {useEffect, useState} from 'react';
 import {AppBar} from '@/components/app-bar';
 import {StatusSection} from '@/components/status-section';
 import {SettingsSection} from '@/components/settings-section';
-import {Settings, Plus} from 'lucide-react';
+import {Home, Settings} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 
 export default function HomePage() {
   const [charging, setCharging] = useState<boolean | null>(null);
   const [faceDown, setFaceDown] = useState<boolean | null>(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [activeScreen, setActiveScreen] = useState<'status' | 'settings'>(
+    'status'
+  );
 
   useEffect(() => {
     // Battery Status API
@@ -48,45 +50,36 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-secondary">
-      <AppBar>
-        <Button
-          variant="ghost"
-          onClick={() => setIsSettingsOpen(true)}
-          className="absolute right-4 top-1/2 -translate-y-1/2"
-        >
-          <Settings className="mr-2 h-4 w-4" />
-          Settings
-        </Button>
-      </AppBar>
+    <div className="flex min-h-screen flex-col bg-secondary">
+      <AppBar />
       <main className="flex w-full flex-1 flex-col items-center p-4 md:p-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>About Flow State</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>
-              This application uses phone status indicators to send a webhook to
-              the URL of your choice. The intention is that you can use that
-              webhook to programmatically update your other services to pause or
-              unpause notifications.
-            </p>
-          </CardContent>
-        </Card>
-
-        <StatusSection charging={charging} faceDown={faceDown} />
-
-        <Button variant="outline" className="mt-4">
-          Add Webhook Trigger
-          <Plus className="ml-2 h-4 w-4" />
-        </Button>
+        {activeScreen === 'status' ? (
+          <StatusSection charging={charging} faceDown={faceDown} />
+        ) : (
+          <SettingsSection />
+        )}
       </main>
 
-      <SettingsSection
-        open={isSettingsOpen}
-        setOpen={setIsSettingsOpen}
-      />
+      <footer className="sticky bottom-0 w-full bg-muted p-4 text-foreground shadow-md">
+        <div className="container mx-auto flex justify-around">
+          <Button
+            variant="ghost"
+            onClick={() => setActiveScreen('status')}
+            className={activeScreen === 'status' ? 'font-semibold' : ''}
+          >
+            <Home className="mr-2 h-4 w-4" />
+            Device Status
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => setActiveScreen('settings')}
+            className={activeScreen === 'settings' ? 'font-semibold' : ''}
+          >
+            <Settings className="mr-2 h-4 w-4" />
+            Settings
+          </Button>
+        </div>
+      </footer>
     </div>
   );
 }
-
