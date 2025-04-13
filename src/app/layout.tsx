@@ -1,4 +1,4 @@
-import type {Metadata} from 'next';
+import type {Metadata} from 'next/server';
 import {Geist, Geist_Mono} from 'next/font/google';
 import './globals.css';
 
@@ -13,10 +13,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  description: 'PWA State Tracker',
+  description: 'Do Not Disturb App',
   manifest: '/manifest.json',
-  themeColor: '#008080',
-  title: 'PWA State Tracker App',
+  themeColor: '#000000',
+  title: 'Do Not Disturb',
 };
 
 export default function RootLayout({

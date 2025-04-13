@@ -11,13 +11,13 @@ export default function Manifest(): MetadataRoute {
     ],
     manifest: {
       background_color: '#F0F0F0',
-      description: 'PWA State Tracker',
+      description: 'Do Not Disturb App',
       display: 'standalone',
-      name: 'PWA State Tracker',
+      name: 'Do Not Disturb',
       scope: '/',
-      short_name: 'PWA Tracker',
+      short_name: 'Do Not Disturb',
       start_url: '/',
-      theme_color: '#008080',
+      theme_color: '#000000',
     },
   };
 }

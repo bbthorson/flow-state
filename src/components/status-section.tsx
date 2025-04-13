@@ -51,4 +51,3 @@ export function StatusSection({charging, faceDown}: StatusSectionProps) {
     </section>
   );
 }
-
