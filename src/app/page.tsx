@@ -65,7 +65,7 @@ export default function HomePage() {
           <Button
             variant="ghost"
             onClick={() => setActiveScreen('status')}
-            className={activeScreen === 'status' ? 'font-semibold text-green-500' : ''}
+            data-active={activeScreen === 'status'}
           >
             <Home className="mr-2 h-4 w-4" />
             Device Status
@@ -73,7 +73,7 @@ export default function HomePage() {
           <Button
             variant="ghost"
             onClick={() => setActiveScreen('settings')}
-            className={activeScreen === 'settings' ? 'font-semibold text-green-500' : ''}
+            data-active={activeScreen === 'settings'}
           >
             <Settings className="mr-2 h-4 w-4" />
             Settings

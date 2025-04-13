@@ -88,3 +88,9 @@ body {
   }
 }
 
+/* Add this to your globals.css */
+[data-active='true'] {
+  font-weight: bold;
+  color: green;
+}
+
