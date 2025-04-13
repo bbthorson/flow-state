@@ -1,3 +1,5 @@
+'use client';
+
 import {BatteryCharging, Battery, Phone} from 'lucide-react';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {useState} from 'react';
@@ -14,15 +16,23 @@ export function StatusSection({charging, faceDown}: StatusSectionProps) {
     <section className="mb-8 w-full max-w-md">
       <Card>
         <CardHeader>
-          <CardTitle>Device Status</CardTitle>
+          <CardTitle>About Do Not Disturb</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+        <CardContent>
           <p>
             This application uses phone status indicators to send a webhook to the
             URL of your choice. The intention is that you can use that webhook to
             programmatically update your other services to pause or unpause
             notifications.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Device Status</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <span>Charging Status:</span>
             {charging === null ? (
