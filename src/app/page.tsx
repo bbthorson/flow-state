@@ -47,6 +47,57 @@ export default function HomePage() {
     } else {
       console.log('Device Orientation API not supported.');
     }
+
+    // PWA Install Prompt
+    if (typeof window !== 'undefined') {
+      // Check if the app is not running in standalone mode
+      if (
+        window.matchMedia('(display-mode: standalone)').matches ||
+        // @ts-ignore
+        window.navigator.standalone === true
+      ) {
+        console.log('Running as standalone');
+        return;
+      }
+
+      let deferredPrompt: any;
+
+      window.addEventListener('beforeinstallprompt', event => {
+        event.preventDefault();
+        deferredPrompt = event;
+      });
+
+      const installApp = async () => {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          const {outcome} = await deferredPrompt.userChoice;
+          if (outcome === 'accepted') {
+            console.log('User accepted the install prompt');
+          } else {
+            console.log('User dismissed the install prompt');
+          }
+          deferredPrompt = null;
+        }
+      };
+
+      const installButton = document.createElement('button');
+      installButton.innerText = 'Install App';
+      installButton.style.position = 'fixed';
+      installButton.style.bottom = '60px';
+      installButton.style.left = '50%';
+      installButton.style.transform = 'translateX(-50%)';
+      installButton.style.backgroundColor = '#008080';
+      installButton.style.color = 'white';
+      installButton.style.padding = '10px 20px';
+      installButton.style.borderRadius = '5px';
+      installButton.addEventListener('click', installApp);
+
+      document.body.appendChild(installButton);
+
+      return () => {
+        document.body.removeChild(installButton);
+      };
+    }
   }, []);
 
   return (
@@ -65,7 +116,7 @@ export default function HomePage() {
           <Button
             variant="ghost"
             onClick={() => setActiveScreen('status')}
-            data-active={activeScreen === 'status'}
+            className={activeScreen === 'status' ? 'text-[#78A0A8]' : ''}
           >
             <Home className="mr-2 h-4 w-4" />
             Device Status
@@ -73,7 +124,7 @@ export default function HomePage() {
           <Button
             variant="ghost"
             onClick={() => setActiveScreen('settings')}
-            data-active={activeScreen === 'settings'}
+            className={activeScreen === 'settings' ? 'text-[#78A0A8]' : ''}
           >
             <Settings className="mr-2 h-4 w-4" />
             Settings
