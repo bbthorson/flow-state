@@ -1,22 +1,23 @@
 import type {Metadata} from 'next/server';
-import {Geist, Geist_Mono} from 'next/font/google';
+import {Nunito_Sans, Geist_Mono} from 'next/font/google';
 import './globals.css';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const nunitoSans = Nunito_Sans({
+  variable: '--font-nunito-sans',
   subsets: ['latin'],
 });
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
+  weight: ['400'],
 });
 
 export const metadata: Metadata = {
-  description: 'Do Not Disturb App',
+  description: 'Flow State App',
   manifest: '/manifest.json',
-  themeColor: '#000000',
-  title: 'Do Not Disturb',
+  themeColor: '#F8F6F2',
+  title: 'Flow State',
 };
 
 export default function RootLayout({
@@ -26,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${nunitoSans.variable} ${geistMono.variable} antialiased`}>
         {children}
         <Toaster />
       </body>
