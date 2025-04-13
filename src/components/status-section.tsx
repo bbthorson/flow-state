@@ -1,5 +1,6 @@
 import {BatteryCharging, Battery, Phone} from 'lucide-react';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
+import {useState} from 'react';
 
 type StatusSectionProps = {
   charging: boolean | null;
@@ -7,6 +8,8 @@ type StatusSectionProps = {
 };
 
 export function StatusSection({charging, faceDown}: StatusSectionProps) {
+  const [lastWebhookSent, setLastWebhookSent] = useState<string | null>(null);
+
   return (
     <section className="mb-8 w-full max-w-md">
       <Card>
@@ -46,6 +49,12 @@ export function StatusSection({charging, faceDown}: StatusSectionProps) {
               </div>
             )}
           </div>
+          {lastWebhookSent && (
+            <div>
+              <span>Last Webhook Sent:</span>
+              <span>{lastWebhookSent}</span>
+            </div>
+          )}
         </CardContent>
       </Card>
     </section>

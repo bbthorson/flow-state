@@ -115,6 +115,13 @@ export function SettingsSection({
             APIs are enabled in your browser settings.
           </p>
         </CardContent>
+        <CardContent>
+          <h3 className="text-lg font-semibold mb-2">Potential Triggers</h3>
+          <ul>
+            <li>Charging Status</li>
+            <li>Screen Orientation</li>
+          </ul>
+        </CardContent>
       </Card>
 
       <Card>
@@ -167,14 +174,6 @@ export function SettingsSection({
           <Button variant="outline" onClick={handleAddWebhook}>
             Add Webhook Trigger
           </Button>
-
-          <div>
-            <h3 className="text-lg font-semibold mb-2">Potential Triggers</h3>
-            <ul>
-              <li>Charging Status</li>
-              <li>Screen Orientation</li>
-            </ul>
-          </div>
         </CardContent>
       </Card>
     </section>
