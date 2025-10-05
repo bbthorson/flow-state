@@ -20,6 +20,19 @@ import { Settings } from 'lucide-react';
 
 export default function HomePage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowOnboarding(true);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
@@ -39,7 +52,12 @@ export default function HomePage() {
 
   return (
     <div className={styles.container}>
-      {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} />}
+      {showOnboarding && (
+        <Onboarding
+          deferredPrompt={deferredPrompt}
+          onComplete={handleOnboardingComplete}
+        />
+      )}
       <AppBar>
         <Sheet>
           <SheetTrigger asChild>

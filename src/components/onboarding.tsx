@@ -1,20 +1,18 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export function Onboarding({ onComplete }: { onComplete: () => void }) {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+interface OnboardingProps {
+  deferredPrompt: any;
+  onComplete: () => void;
+}
 
-  useEffect(() => {
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    });
-  }, []);
-
+export function Onboarding({
+  deferredPrompt,
+  onComplete,
+}: OnboardingProps) {
   const handleInstallClick = async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
