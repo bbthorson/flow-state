@@ -1,5 +1,3 @@
-Of course. I can help with that. Here is a more comprehensive README for your repository based on the files you've provided.
-
 # Flow State
 
 Flow State is a simple Progressive Web Application (PWA) that tracks the charging and orientation status of your device and sends webhook notifications when these states change.
