@@ -21,6 +21,20 @@ This PWA tracks two device states and sends webhook notifications when they chan
 2.  **Face Down Status**: Uses the Device Orientation API to detect if the device is face down.
 3.  **Webhook Configuration**: Allows users to set a webhook URL that's stored in `localStorage`.
 
+## File Structure
+
+- **src/app/page.tsx**: Main component that manages state and initializes device sensors.
+- **src/app/manifest.ts**: PWA manifest configuration for installability.
+- **src/app/layout.tsx**: Root layout with PWA meta tags.
+- **src/components/app-bar.tsx**: Simple app bar with title and icons.
+- **src/components/status-section.tsx**: Displays current device states.
+- **src/components/webhook-section.tsx**: Form for configuring the webhook URL.
+- **src/components/onboarding.tsx**: Onboarding component for new users.
+- **src/components/permissions.tsx**: Component to handle device API permissions.
+- **src/components/settings-section.tsx**: Contains settings-related components.
+- **src/components/webhook-helper.tsx**: A helper component for webhook functionality.
+- **public/sw.js**: Service worker for offline functionality.
+
 ## Getting Started
 
 To get a local copy up and running, follow these simple steps.

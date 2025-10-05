@@ -1,4 +1,4 @@
-# **App Name**: PWA State Tracker
+# **App Name**: Flow State
 
 ## Core Features:
 
@@ -37,13 +37,17 @@ This PWA tracks two device states and sends webhook notifications when they chan
 
 ### File Structure
 
-- **app/page.tsx**: Main component that manages state and initializes device sensors
-- **app/manifest.ts**: PWA manifest configuration for installability 
-- **app/layout.tsx**: Root layout with PWA meta tags
-- **components/app-bar.tsx**: Simple app bar with title and icons
-- **components/status-section.tsx**: Displays current device states
-- **components/webhook-section.tsx**: Form for configuring the webhook URL
-- **public/sw.js**: Service worker for offline functionality
+- **src/app/page.tsx**: Main component that manages state and initializes device sensors.
+- **src/app/manifest.ts**: PWA manifest configuration for installability.
+- **src/app/layout.tsx**: Root layout with PWA meta tags.
+- **src/components/app-bar.tsx**: Simple app bar with title and icons.
+- **src/components/status-section.tsx**: Displays current device states.
+- **src/components/webhook-section.tsx**: Form for configuring the webhook URL.
+- **src/components/onboarding.tsx**: Onboarding component for new users.
+- **src/components/permissions.tsx**: Component to handle device API permissions.
+- **src/components/settings-section.tsx**: Contains settings-related components.
+- **src/components/webhook-helper.tsx**: A helper component for webhook functionality.
+- **public/sw.js**: Service worker for offline functionality.
 
 
 ### Key Features
