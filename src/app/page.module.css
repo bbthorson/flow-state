@@ -1,0 +1,19 @@
+/* src/app/page.module.css */
+.container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: var(--secondary); /* Assuming you have CSS variables defined */
+  }
+  
+  .main {
+    display: flex;
+    width: 100%;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+  }
+  
+  /* ... add more styles as needed ... */
+  

@@ -1,9 +1,11 @@
 export function AppBar() {
   return (
-    <header className="w-full bg-muted p-4 text-foreground shadow-md">
-      <div className="container mx-auto flex items-center justify-center">
-        <h1 className="text-2xl font-semibold">Flow State</h1>
-      </div>
+    <header
+      className="sticky top-0 z-50 w-full border-b border-border bg-background/95 p-4 backdrop-blur-[4px] transition-all duration-700"
+    >
+      <div className="mx-auto flex items-center justify-center">
+        <h1 className="text-2xl font-bold">Flow State</h1>
+      </div>    
     </header>
   );
 }

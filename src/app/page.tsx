@@ -1,113 +1,57 @@
 'use client';
-
-import {useEffect, useState} from 'react';
-import {AppBar} from '@/components/app-bar';
-import {StatusSection} from '@/components/status-section';
-import {SettingsSection} from '@/components/settings-section';
-import {Home, Settings} from 'lucide-react';
-import {Button} from '@/components/ui/button';
-import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
+// src/app/page.tsx
+import { useEffect, useState } from 'react';
+import { AppBar } from '@/components/app-bar';
+import { StatusSection } from '@/components/status-section';
+import { SettingsSection } from '@/components/settings-section';
+import { Onboarding } from '@/components/onboarding';
+import { Home, Settings } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useAppStore } from '@/store/useAppStore'; // Import the store
+import styles from './page.module.css'; // Import the CSS module
 
 export default function HomePage() {
-  const [charging, setCharging] = useState<boolean | null>(null);
-  const [faceDown, setFaceDown] = useState<boolean | null>(null);
-  const [activeScreen, setActiveScreen] = useState<'status' | 'settings'>(
-    'status'
-  );
-
-  useEffect(() => {
-    // Battery Status API
-    if ('getBattery' in navigator) {
-      navigator.getBattery().then(battery => {
-        setCharging(battery.charging);
-
-        battery.addEventListener('chargingchange', () => {
-          setCharging(battery.charging);
-        });
-      });
-    } else {
-      console.log('Battery Status API not supported.');
-    }
-
-    // Device Orientation API
-    if ('DeviceOrientationEvent' in window) {
-      const handleOrientation = (event: DeviceOrientationEvent) => {
-        if (event.beta && event.gamma) {
-          const isFaceDown =
-            Math.abs(event.beta) >= 90 || Math.abs(event.gamma) >= 90;
-          setFaceDown(isFaceDown);
-        }
-      };
-
-      window.addEventListener('deviceorientation', handleOrientation);
-
-      return () => {
-        window.removeEventListener('deviceorientation', handleOrientation);
-      };
-    } else {
-      console.log('Device Orientation API not supported.');
-    }
-
-    // PWA Install Prompt
-    if (typeof window !== 'undefined') {
-      // Check if the app is not running in standalone mode
-      if (
-        window.matchMedia('(display-mode: standalone)').matches ||
-        // @ts-ignore
-        window.navigator.standalone === true
-      ) {
-        console.log('Running as standalone');
-        return;
-      }
-
-      let deferredPrompt: any;
-
-      window.addEventListener('beforeinstallprompt', event => {
-        event.preventDefault();
-        deferredPrompt = event;
-      });
-
-      const installApp = async () => {
-        if (deferredPrompt) {
-          deferredPrompt.prompt();
-          const {outcome} = await deferredPrompt.userChoice;
-          if (outcome === 'accepted') {
-            console.log('User accepted the install prompt');
-          } else {
-            console.log('User dismissed the install prompt');
-          }
-          deferredPrompt = null;
-        }
-      };
-
-      const installButton = document.createElement('button');
-      installButton.innerText = 'Install App';
-      installButton.style.position = 'fixed';
-      installButton.style.bottom = '60px';
-      installButton.style.left = '50%';
-      installButton.style.transform = 'translateX(-50%)';
-      installButton.style.backgroundColor = '#008080';
-      installButton.style.color = 'white';
-      installButton.style.padding = '10px 20px';
-      installButton.style.borderRadius = '5px';
-      installButton.addEventListener('click', installApp);
-
-      document.body.appendChild(installButton);
-
-      return () => {
-        document.body.removeChild(installButton);
-      };
-    }
-  }, []);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  // Use the store
+  const {
+    charging,
+    setCharging,
+    faceDown,
+    setFaceDown,
+    activeScreen,
+    setActiveScreen,
+    lastSentTime,
+    setLastSentTime,
+    lastStatus,
+    setLastStatus,
+    webhooks,
+    setWebhooks,
+  } = useAppStore();
 
   return (
-    <div className="flex min-h-screen flex-col bg-secondary">
+    <div className={styles.container}>
+      {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} />}
       <AppBar />
-      <main className="flex w-full flex-1 flex-col items-center p-4 md:p-8">
+      <main className={styles.main}>
         {activeScreen === 'status' ? (
-          <StatusSection charging={charging} faceDown={faceDown} />
+          <StatusSection
+            charging={charging}
+            faceDown={faceDown}
+            lastSentTime={lastSentTime}
+            lastStatus={lastStatus}
+          />
         ) : (
-          <SettingsSection />
+          <SettingsSection
+            onWebhookSent={async (success: boolean, url: string) => {
+              console.log("webhook sent with", success);
+              setLastSentTime(new Date());
+              if (success) {
+                setLastStatus("Sent successfully");
+              } else {
+                setLastStatus("Failed");
+              }
+            }}
+          />
         )}
       </main>
 
@@ -116,7 +60,7 @@ export default function HomePage() {
           <Button
             variant="ghost"
             onClick={() => setActiveScreen('status')}
-            className={activeScreen === 'status' ? 'text-[#78A0A8]' : ''}
+            className={activeScreen === 'status' ? 'text-primary font-bold' : ''}
           >
             <Home className="mr-2 h-4 w-4" />
             Device Status
@@ -124,7 +68,7 @@ export default function HomePage() {
           <Button
             variant="ghost"
             onClick={() => setActiveScreen('settings')}
-            className={activeScreen === 'settings' ? 'text-[#78A0A8]' : ''}
+            className={activeScreen === 'settings' ? 'text-primary font-bold' : ''}
           >
             <Settings className="mr-2 h-4 w-4" />
             Settings
