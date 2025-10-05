@@ -4,7 +4,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { X } from 'lucide-react';
 
 export function WebhookHelper({ onClose }: { onClose: () => void }) {
   const jsonPayload = JSON.stringify(
@@ -46,9 +45,6 @@ if __name__ == '__main__':
 
   return (
     <Card className="relative">
-      <Button variant="ghost" size="icon" className="absolute top-2 right-2" onClick={onClose}>
-        <X className="h-4 w-4" />
-      </Button>
       <CardHeader>
         <CardTitle>Webhook Helper</CardTitle>
       </CardHeader>

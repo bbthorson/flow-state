@@ -1,7 +1,6 @@
 // src/components/settings-section.tsx
 'use client';
 
-import { FormEvent, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { sendWebhookNotification } from '@/services/webhook';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAppStore } from '@/store/useAppStore';
 import { WebhookConfig, SettingsSectionProps } from '@/types'; // Import SettingsSectionProps
 
@@ -28,22 +26,14 @@ import {
 
 export function SettingsSection({ onWebhookSent }: SettingsSectionProps) {
   const { toast } = useToast();
-  const { webhooks, setWebhooks } = useAppStore(); // Use webhooks and setWebhooks from the store
-  const [showWebhookHelper, setShowWebhookHelper] = useState(false);
-
-  useEffect(() => {
-    const hasDismissed = localStorage.getItem('hasDismissedWebhookHelper');
-    if (!hasDismissed && webhooks.length === 0) {
-      setShowWebhookHelper(true);
-    }
-  }, [webhooks]);
+  const { webhooks, setWebhooks } = useAppStore();
 
   const handleWebhookChange = (
     id: string,
     field: string,
     value: string | boolean
   ) => {
-    setWebhooks(prevWebhooks => // Use setWebhooks from the store
+    setWebhooks(prevWebhooks =>
       prevWebhooks.map(webhook =>
         webhook.id === id ? { ...webhook, [field]: value } : webhook
       )
@@ -71,20 +61,10 @@ export function SettingsSection({ onWebhookSent }: SettingsSectionProps) {
 
   const handleAddWebhook = () => {
     const newId = Math.random().toString(36).substring(7);
-    setWebhooks([ // Use setWebhooks from the store
+    setWebhooks([
       ...webhooks,
       { id: newId, name: '', url: '', charging: false, orientation: false, enabled: true },
     ]);
-  };
-
-  const handleCloseWebhookHelper = () => {
-    localStorage.setItem('hasDismissedWebhookHelper', 'true');
-    setShowWebhookHelper(false);
-  };
-
-  const handleShowWebhookHelper = () => {
-    localStorage.removeItem('hasDismissedWebhookHelper');
-    setShowWebhookHelper(true);
   };
 
   return (
@@ -96,7 +76,6 @@ export function SettingsSection({ onWebhookSent }: SettingsSectionProps) {
           <CardTitle>Webhook Configuration</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {showWebhookHelper && <WebhookHelper onClose={handleCloseWebhookHelper} />}
           <Accordion type="single" collapsible className="w-full">
             {webhooks.map(webhook => (
               <AccordionItem value={webhook.id} key={webhook.id}>
@@ -163,17 +142,19 @@ export function SettingsSection({ onWebhookSent }: SettingsSectionProps) {
               </AccordionItem>
             ))}
           </Accordion>
-
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleAddWebhook}>
-              Add Webhook Trigger
-            </Button>
-            <Button variant="outline" onClick={handleShowWebhookHelper}>
-              Show Tutorial
-            </Button>
-          </div>
+          <Button variant="outline" onClick={handleAddWebhook}>
+            Add Webhook Trigger
+          </Button>
         </CardContent>
       </Card>
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="webhook-helper">
+          <AccordionTrigger>Webhook Tutorial</AccordionTrigger>
+          <AccordionContent>
+            <WebhookHelper onClose={() => {}} />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </section>
   );
 }
