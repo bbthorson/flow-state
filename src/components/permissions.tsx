@@ -25,7 +25,7 @@ export function Permissions() {
       if (typeof DeviceOrientationEvent.requestPermission === 'function') {
         // @ts-ignore
         DeviceOrientationEvent.requestPermission()
-          .then(permissionState => {
+          .then((permissionState: PermissionState) => {
             if (permissionState === 'granted') {
               setOrientationStatus('Granted');
             } else {
@@ -49,7 +49,7 @@ export function Permissions() {
     if (typeof DeviceOrientationEvent.requestPermission === 'function') {
       // @ts-ignore
       DeviceOrientationEvent.requestPermission()
-        .then(permissionState => {
+        .then((permissionState: PermissionState) => {
           if (permissionState === 'granted') {
             setOrientationStatus('Granted');
           } else {
