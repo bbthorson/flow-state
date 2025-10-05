@@ -82,6 +82,11 @@ export function SettingsSection({ onWebhookSent }: SettingsSectionProps) {
     setShowWebhookHelper(false);
   };
 
+  const handleShowWebhookHelper = () => {
+    localStorage.removeItem('hasDismissedWebhookHelper');
+    setShowWebhookHelper(true);
+  };
+
   return (
     <section className="w-full max-w-md flex flex-col gap-4">
       <Permissions />
@@ -159,9 +164,14 @@ export function SettingsSection({ onWebhookSent }: SettingsSectionProps) {
             ))}
           </Accordion>
 
-          <Button variant="outline" onClick={handleAddWebhook}>
-            Add Webhook Trigger
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleAddWebhook}>
+              Add Webhook Trigger
+            </Button>
+            <Button variant="outline" onClick={handleShowWebhookHelper}>
+              Show Tutorial
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </section>
