@@ -15,11 +15,17 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   description: 'Flow State App',
-  manifest: '/manifest.json',
+  manifest: '/manifest.webmanifest',
   themeColor: '#F8F6F2',
   title: 'Flow State',
   icons: {
     icon: '/favicon.ico',
+    apple: '/icons/apple-touch-icon.png',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Flow State',
   },
 };
 
