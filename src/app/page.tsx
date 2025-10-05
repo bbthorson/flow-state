@@ -1,6 +1,7 @@
 'use client';
 // src/app/page.tsx
 import { useEffect, useState } from 'react';
+import { useDeviceStatus } from '@/hooks/useDeviceStatus';
 import { AppBar } from '@/components/app-bar';
 import { StatusSection } from '@/components/status-section';
 import { SettingsSection } from '@/components/settings-section';
@@ -12,6 +13,11 @@ import styles from './page.module.css'; // Import the CSS module
 
 export default function HomePage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+  };
+
   // Use the store
   const {
     charging,
@@ -28,10 +34,12 @@ export default function HomePage() {
     setWebhooks,
   } = useAppStore();
 
+  useDeviceStatus();
+
   return (
     <div className={styles.container}>
       {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} />}
-      <AppBar />
+      <AppBar activeScreen={activeScreen} setActiveScreen={setActiveScreen} />
       <main className={styles.main}>
         {activeScreen === 'status' ? (
           <StatusSection
@@ -54,27 +62,6 @@ export default function HomePage() {
           />
         )}
       </main>
-
-      <footer className="sticky bottom-0 w-full bg-muted p-4 text-foreground shadow-md">
-        <div className="container mx-auto flex justify-around">
-          <Button
-            variant="ghost"
-            onClick={() => setActiveScreen('status')}
-            className={activeScreen === 'status' ? 'text-primary font-bold' : ''}
-          >
-            <Home className="mr-2 h-4 w-4" />
-            Device Status
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => setActiveScreen('settings')}
-            className={activeScreen === 'settings' ? 'text-primary font-bold' : ''}
-          >
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
-          </Button>
-        </div>
-      </footer>
     </div>
   );
 }

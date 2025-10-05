@@ -52,14 +52,11 @@ export function SettingsSection({ onWebhookSent }: SettingsSectionProps) {
 
   const handleTestWebhook = async (webhook: WebhookConfig) => {
     try {
-      const success = await sendWebhookNotification(webhook.url || '', {
-        message: 'Test notification from Do Not Disturb',
-        timestamp: new Date().toISOString(),
-        trigger: {
-          charging: webhook.charging,
-          orientation: webhook.orientation,
-        },
-      });
+      const success = await sendWebhookNotification(
+        webhook.url || '',
+        webhook.charging,
+        webhook.orientation ? 'face down' : 'face up'
+      );
       if (success) {
         onWebhookSent(true, webhook.url);
       } else {

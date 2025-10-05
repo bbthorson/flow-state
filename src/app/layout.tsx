@@ -1,4 +1,4 @@
-import type {Metadata} from 'next/server';
+import type {Metadata} from 'next';
 import {Nunito_Sans, Geist_Mono} from 'next/font/google';
 import './globals.css';
 
@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   themeColor: '#F8F6F2',
   title: 'Flow State',
+  icons: {
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({

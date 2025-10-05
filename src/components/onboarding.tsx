@@ -33,7 +33,7 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
           <CardTitle>Welcome to Flow State!</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <p>This app helps you automate tasks based on your phone's status.</p>
+          <p>This app helps you automate tasks based on your phone&apos;s status.</p>
           <p>For the best experience, please install this app to your home screen. This will allow it to run in the background and send webhooks reliably.</p>
           {deferredPrompt && (
             <Button onClick={handleInstallClick}>Install App</Button>

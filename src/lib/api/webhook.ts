@@ -7,7 +7,7 @@ export type WebhookConfig = {
   orientation: boolean;
 };
 
-export async function canSendWebhook(
+export function canSendWebhook(
   webhookConfig: WebhookConfig,
   charging: boolean | null,
   faceDown: boolean | null
@@ -25,11 +25,11 @@ export async function sendWebhook(
 ): Promise<boolean> {
   if (canSendWebhook(webhookConfig, charging, faceDown)) {
     try {
-      await sendWebhookNotification(webhookConfig.url, {
-        message: 'Device status changed',
-        timestamp: new Date().toISOString(),
-        trigger: { charging, orientation: faceDown },
-      });
+      await sendWebhookNotification(
+        webhookConfig.url,
+        charging || false,
+        faceDown ? 'face down' : 'face up'
+      );
       return true;
     } catch (error) {
       console.error('Error sending webhook:', error);
