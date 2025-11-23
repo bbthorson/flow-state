@@ -31,11 +31,10 @@ function formatTimeAgo(timestamp: number | null): string {
 }
 
 export function VaultSection() {
-  const { exportVault, importVault, lastBackupTimestamp } = useAppStore(state => ({
-    exportVault: state.exportVault,
-    importVault: state.importVault,
-    lastBackupTimestamp: state.lastBackupTimestamp
-  }));
+  const exportVault = useAppStore(state => state.exportVault);
+  const importVault = useAppStore(state => state.importVault);
+  const lastBackupTimestamp = useAppStore(state => state.lastBackupTimestamp);
+
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 

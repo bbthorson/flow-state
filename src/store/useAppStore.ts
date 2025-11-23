@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
+import { WebhookConfig } from '@/types';
 
 // 1. Type Definitions from the specification
 
@@ -39,6 +40,11 @@ interface AppState {
   logs: LogEntry[];
   lastBackupTimestamp: number | null;
   initialized: boolean; // To track if the store has been hydrated from localStorage
+
+  // Legacy/Compatibility state for Webhooks and Device Status
+  webhooks: WebhookConfig[];
+  isCharging: boolean;
+  isFaceDown: boolean;
 }
 
 // 3. Actions Interface
@@ -53,6 +59,11 @@ interface AppActions {
   importVault: (json: string) => { success: boolean; message: string };
   setInitialized: (initialized: boolean) => void;
   updateLastBackupTimestamp: () => void;
+
+  // Legacy/Compatibility actions
+  setWebhooks: (webhooks: WebhookConfig[] | ((prev: WebhookConfig[]) => WebhookConfig[])) => void;
+  setCharging: (charging: boolean) => void;
+  setFaceDown: (faceDown: boolean) => void;
 }
 
 // 4. Store Implementation
@@ -65,6 +76,10 @@ export const useAppStore = create<AppState & AppActions>()(
       logs: [],
       lastBackupTimestamp: null,
       initialized: false,
+
+      webhooks: [],
+      isCharging: false,
+      isFaceDown: false,
 
       // Actions
       setInitialized: (initialized) => set({ initialized }),
@@ -85,19 +100,24 @@ export const useAppStore = create<AppState & AppActions>()(
       updateLastBackupTimestamp: () => set({ lastBackupTimestamp: Date.now() }),
 
       exportVault: () => {
-        const { flows, logs } = get();
+        const { flows, logs, webhooks } = get();
         get().updateLastBackupTimestamp();
-        return JSON.stringify({ flows, logs }, null, 2);
+        // Export webhooks as well for compatibility
+        return JSON.stringify({ flows, logs, webhooks }, null, 2);
       },
 
       importVault: (json: string) => {
         try {
-          const { flows, logs } = JSON.parse(json);
-          if (Array.isArray(flows) && Array.isArray(logs)) {
-            set({ flows, logs, lastBackupTimestamp: Date.now() });
-            return { success: true, message: 'Vault successfully imported.' };
-          }
-          return { success: false, message: 'Invalid vault file format.' };
+          const { flows, logs, webhooks } = JSON.parse(json);
+          // Allow partial imports or legacy imports
+          const updates: Partial<AppState> = { lastBackupTimestamp: Date.now() };
+
+          if (Array.isArray(flows)) updates.flows = flows;
+          if (Array.isArray(logs)) updates.logs = logs;
+          if (Array.isArray(webhooks)) updates.webhooks = webhooks;
+
+          set(updates);
+          return { success: true, message: 'Vault successfully imported.' };
         } catch (error) {
           return { success: false, message: 'Failed to parse vault file.' };
         }
@@ -153,18 +173,26 @@ export const useAppStore = create<AppState & AppActions>()(
               });
         }
       },
+
+      setWebhooks: (webhooksOrFn) => set((state) => ({
+          webhooks: typeof webhooksOrFn === 'function' ? webhooksOrFn(state.webhooks) : webhooksOrFn
+      })),
+      setCharging: (charging) => set({ isCharging: charging }),
+      setFaceDown: (faceDown) => set({ isFaceDown: faceDown }),
     }),
     {
       name: 'flow-state-v2', // New storage name
-      // Persist the entire state except for the 'initialized' flag
+      // Persist the entire state except for the 'initialized' flag and transient device status
       partialize: (state) =>
-        Object.fromEntries(Object.entries(state).filter(([key]) => key !== 'initialized')) as Omit<
+        Object.fromEntries(Object.entries(state).filter(([key]) =>
+            key !== 'initialized' && key !== 'isCharging' && key !== 'isFaceDown'
+        )) as Omit<
           AppState,
-          'initialized'
+          'initialized' | 'isCharging' | 'isFaceDown'
         >,
       // Set 'initialized' flag once hydration is complete
-      onRehydrateStorage: () => () => {
-        useAppStore.getState().setInitialized(true);
+      onRehydrateStorage: () => (state) => {
+        state?.setInitialized(true);
       },
     }
   )

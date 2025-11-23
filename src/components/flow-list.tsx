@@ -83,7 +83,7 @@ function FlowListItem({ flow }: { flow: Flow }) {
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete your flow named "{flow.name}".
+                This action cannot be undone. This will permanently delete your flow named &quot;{flow.name}&quot;.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -131,7 +131,7 @@ export function FlowList() {
                 {flows.length === 0 ? (
                 <div className="text-center text-muted-foreground p-8">
                     <p>You have no flows yet.</p>
-                    <p>Click "Create Flow" to get started.</p>
+                    <p>Click &quot;Create Flow&quot; to get started.</p>
                 </div>
                 ) : (
                 flows.map((flow) => <FlowListItem key={flow.id} flow={flow} />)
