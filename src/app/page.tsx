@@ -35,27 +35,29 @@ export default function HomePage() {
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
       <AppHeader />
-      <main className="flex-grow p-4">
-        <Tabs defaultValue="flows" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="flows">Flows</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
-            <TabsTrigger value="library">Library</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="flows">
+      <Tabs defaultValue="flows" className="flex flex-col flex-grow overflow-hidden">
+        <main className="flex-grow overflow-y-auto p-4 pb-20">
+          <TabsContent value="flows" className="mt-0 h-full">
             <FlowList />
           </TabsContent>
           
-          <TabsContent value="history">
+          <TabsContent value="history" className="mt-0 h-full">
             <HistoryList />
           </TabsContent>
 
-          <TabsContent value="library">
+          <TabsContent value="library" className="mt-0 h-full">
             <Library />
           </TabsContent>
-        </Tabs>
-      </main>
+        </main>
+
+        <div className="border-t bg-background p-2">
+            <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="flows">Flows</TabsTrigger>
+                <TabsTrigger value="history">History</TabsTrigger>
+                <TabsTrigger value="library">Library</TabsTrigger>
+            </TabsList>
+        </div>
+      </Tabs>
     </div>
   );
 }
