@@ -1,68 +1,55 @@
-# Flow State
+# **Flow State 🌊**
 
-Flow State is a simple Progressive Web Application (PWA) that tracks the charging and orientation status of your device and sends webhook notifications when these states change.
+**The Programmable Web Layer for Your Physical World.**
 
-## Features
+Flow State is a privacy-first, local-only **Progressive Web App (PWA)** that turns your device's state into triggers for automation. Think of it as the "Brain" for your device's automation, bridging the gap between raw sensors and complex web workflows.
 
-  * **Device State Tracking**:
-      * **Charging Status**: Utilizes the Battery Status API to detect if the device is charging.
-      * **Face Down Status**: Uses the Device Orientation API to detect if the device is face down.
-  * **Webhook Notifications**: Sends a POST request to a configured webhook URL when the charging or orientation status changes, including a timestamp with each notification.
-  * **PWA Functionality**:
-      * Installable on supported devices for a native-app-like experience.
-      * Offline functionality through a service worker.
-  * **Configurable Webhooks**: Allows users to set and save webhook URLs, which are persisted in `localStorage`.
+## **🚀 Core Philosophy**
 
-## How It Works
+1. **Local-First:** Your data never leaves your device unless you explicitly send it.  
+2. **Web Native:** Built on standard Web APIs. No app store downloads required.  
+3. **Asymmetric Design:** We use the best tools available on each platform.  
+   * **Android:** We use native Web APIs (Battery, Network) directly.  
+   * **iOS:** We integrate with **Apple Shortcuts** to handle sensors we can't access, acting as the logic engine.
 
-This PWA tracks two device states and sends webhook notifications when they change:
+## **⚡ Capabilities**
 
-1.  **Charging Status**: Uses the Battery Status API to detect if the device is charging.
-2.  **Face Down Status**: Uses the Device Orientation API to detect if the device is face down.
-3.  **Webhook Configuration**: Allows users to set a webhook URL that's stored in `localStorage`.
+### **Triggers**
 
-## File Structure
+* **🔋 Power:** Battery level drops, charging starts/stops.  
+* **📡 Network:** Switch from Wifi to Cellular, go offline.  
+* **📍 Geolocation:** Enter or exit a specific area.  
+* **🔗 Share Target:** Trigger flows by sharing text/URLs from other apps.  
+* **⚡ External Webhook:** Trigger flows from Apple Shortcuts or other local apps.
 
-- **src/app/page.tsx**: Main component that manages state and initializes device sensors.
-- **src/app/manifest.ts**: PWA manifest configuration for installability.
-- **src/app/layout.tsx**: Root layout with PWA meta tags.
-- **src/components/app-bar.tsx**: Simple app bar with title and icons.
-- **src/components/status-section.tsx**: Displays current device states.
-- **src/components/webhook-section.tsx**: Form for configuring the webhook URL.
-- **src/components/onboarding.tsx**: Onboarding component for new users.
-- **src/components/permissions.tsx**: Component to handle device API permissions.
-- **src/components/settings-section.tsx**: Contains settings-related components.
-- **src/components/webhook-helper.tsx**: A helper component for webhook functionality.
-- **public/sw.js**: Service worker for offline functionality.
+### **Actions**
 
-## Getting Started
+* **Webhooks:** Send JSON payloads to Home Assistant, Zapier, or your own API.  
+* **Notifications:** Local push alerts.  
+* **Device:** Vibrate, play sounds, or copy to clipboard.
 
-To get a local copy up and running, follow these simple steps.
+## **🍎 The "Shortcuts Store" (iOS)**
 
-### Prerequisites
+Since iOS restricts browser access to battery and background location, Flow State features a built-in **Integration Marketplace**. You can one-tap install Apple Shortcuts that feed data into Flow State, letting you use Flow State's superior logic and logging engine with iOS's native sensors.
 
-  * npm
-    ```sh
-    npm install npm@latest -g
-    ```
+## **🛠️ Technology Stack**
 
-### Installation
+* **Framework:** Next.js 15 (App Router)  
+* **State Management:** Zustand (Persisted to localStorage \+ File System Backup)  
+* **Styling:** Tailwind CSS  
+* **PWA:** Custom Service Worker for offline support.
 
-1.  Clone the repo
-    ```sh
-    git clone https://github.com/your_username/flow-state.git
-    ```
-2.  Install NPM packages
-    ```sh
-    npm install
-    ```
-3.  Run the development server
-    ```sh
-    npm run dev
-    ```
+## **🏃‍♂️ Getting Started**
 
-## Usage
+1. Clone the repo:  
+   git clone \[https://github.com/yourusername/flow-state.git\](https://github.com/yourusername/flow-state.git)
 
-1.  Enter your webhook URL in the settings section.
-2.  Click "Save Webhook URL".
-3.  The application will begin tracking the device's charging and orientation status and send updates to your configured webhook.
+2. Install dependencies:  
+   npm install
+
+3. Run the development server:  
+   npm run dev
+
+## **📜 License**
+
+MIT

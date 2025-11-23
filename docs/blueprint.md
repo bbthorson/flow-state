@@ -1,101 +1,58 @@
-# **App Name**: Flow State
+# **Flow State v2.0: System Blueprint**
 
-## Core Features:
+## **1\. Product Identity**
 
-- Charging Status Display: Display the current charging status of the device (charging/discharging).
-- Orientation Status Display: Show whether the device is face up or face down.
-- Webhook Configuration: Allow the user to input and save a webhook URL to localStorage. The URL will be loaded when the app starts.
-- Webhook Notifications: Send a POST request to the configured webhook URL when the charging or orientation status changes. Include a timestamp with each notification.
-- PWA Features: Enable installability on supported devices and offline functionality using service worker caching.
+Flow State is a privacy-first, local-only Automation Engine for the mobile web.  
+It solves the "Air Gap" between physical device state (Battery, Location) and web-based workflows (APIs, Webhooks) by acting as a Logic Layer.
 
-## Style Guidelines:
+## **2\. The "Asymmetric" Architecture**
 
-- Primary color: White (#FFFFFF) for a clean and modern look.
-- Secondary color: Light gray (#F0F0F0) for backgrounds and subtle contrasts.
-- Accent: Teal (#008080) for interactive elements and highlights.
-- Use a simple, single-column layout for easy readability on mobile devices.
-- Use clear and recognizable icons for charging and orientation status.
-- Subtle animations or transitions when the device status changes.
+Unlike traditional PWAs that try (and fail) to act native on iOS, Flow State adopts a split strategy:
 
-## Original User Request:
-### Simple Progressive Web Application
+### **Android / Desktop (The Observer)**
 
-I'll help you build a simple PWA that tracks device charging and orientation, then sends webhook notifications when these states change. Let's create a clean, understandable structure using Next.js.
+* **Role:** Active Monitor.  
+* **Mechanism:** Uses Project Fugu APIs (navigator.getBattery, navigator.connection) to poll device state directly.  
+* **Background:** Leverages Service Workers and Periodic Sync to trigger automations.
 
-```typescriptreact project="pwa-tracker"
-...
-```
+### **iOS (The Handler)**
 
-## How It Works
+* **Role:** Passive Logic Engine.  
+* **Mechanism:** Rely on **Apple Shortcuts** to be the "Sensor."  
+* **Bridge:** Shortcuts trigger Flow State via **Deep Links** (https://flowstate.app/?trigger=...).  
+* **UX:** The app opens visibly, processes the logic, logs the result, and provides feedback.
 
-This PWA tracks two device states and sends webhook notifications when they change:
+## **3\. Core Components**
 
-1. **Charging Status**: Uses the Battery Status API to detect if the device is charging
-2. **Face Down Status**: Uses the Device Orientation API to detect if the device is face down
-3. **Webhook Configuration**: Allows users to set a webhook URL that's stored in localStorage
+### **A. The Flow Engine (State Management)**
 
+* **Store:** Zustand (persisted to localStorage).  
+* **Data Structure:**  
+  * **Flow:** A rule consisting of a Trigger and an Action.  
+  * **Log:** An immutable history entry of a Flow execution.  
+* **Persistence Strategy:**  
+  * **"The Vault":** Manual JSON export to the native file system to survive iOS 7-day storage eviction.
 
-### File Structure
+### **B. The "Integration Marketplace" (Library)**
 
-- **src/app/page.tsx**: Main component that manages state and initializes device sensors.
-- **src/app/manifest.ts**: PWA manifest configuration for installability.
-- **src/app/layout.tsx**: Root layout with PWA meta tags.
-- **src/components/app-bar.tsx**: Simple app bar with title and icons.
-- **src/components/status-section.tsx**: Displays current device states.
-- **src/components/webhook-section.tsx**: Form for configuring the webhook URL.
-- **src/components/onboarding.tsx**: Onboarding component for new users.
-- **src/components/permissions.tsx**: Component to handle device API permissions.
-- **src/components/settings-section.tsx**: Contains settings-related components.
-- **src/components/webhook-helper.tsx**: A helper component for webhook functionality.
-- **public/sw.js**: Service worker for offline functionality.
+* A curated list of external triggers (Apple Shortcuts) that users can install.  
+* Acts as the "Plugin System" for the app, allowing it to gain capabilities (like Geofencing) that the browser lacks.
 
+### **C. The Router (Deep Link Handler)**
 
-### Key Features
+* A useEffect hook on the main dashboard that parses window.location.search.  
+* **Security:** Verifies an optional secret key to prevent unauthorized web triggering.  
+* **Action:** Matches the URL parameters to a configured **Flow**, executes it, and scrubs the URL.
 
-1. **Device APIs**:
+## **4\. User Interface (Thumb-Zone First)**
 
-1. Battery Status API to detect charging
-2. Device Orientation API to detect face down position
+* **Navigation:** Fixed Bottom Bar (Flows, History, Library).  
+* **Header:** Sync Status & Settings (Sheet).  
+* **Visual Style:** Clean, utility-focused, "Command Center" aesthetic.
 
+## **5\. Tech Stack**
 
-
-2. **Local Storage**:
-
-1. Saves webhook URL in localStorage
-2. Loads saved URL on application start
-
-
-
-3. **Webhook Notifications**:
-
-1. Sends updates when charging or orientation status changes
-2. Includes timestamp with each notification
-
-
-
-4. **Progressive Web App**:
-
-1. Installable on supported devices
-2. Works offline with service worker caching
-3. Has app icons and manifest
-
-
-
-
-
-### Browser Compatibility Notes
-
-- The Battery Status API is not supported in all browsers
-- Device Orientation API may require permission on some devices
-- The application handles cases where these APIs are not available
-
-
-To use this application, simply:
-
-1. Enter your webhook URL
-2. Click "Save Webhook URL"
-3. The app will start tracking device states and sending updates
-
-
-The UI is clean and responsive, with clear sections for status display and configuration.
-  
+* **Framework:** Next.js 15 (App Router).  
+* **Styling:** Tailwind CSS \+ Shadcn UI.  
+* **Icons:** Lucide React.  
+* **PWA:** Custom Service Worker for offline capability.
