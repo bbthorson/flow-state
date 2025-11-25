@@ -1,8 +1,10 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DownloadCloud } from 'lucide-react';
+import { Permissions } from './permissions';
 
 interface LibraryItem {
     title: string;
@@ -62,6 +64,31 @@ function LibraryItemCard({ item }: { item: LibraryItem }) {
 
 
 export function Library() {
+  const [isAndroid, setIsAndroid] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator !== 'undefined') {
+      const userAgent = navigator.userAgent.toLowerCase();
+      setIsAndroid(userAgent.includes('android'));
+    }
+  }, []);
+
+  if (isAndroid) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Observer Mode</CardTitle>
+            <CardDescription>
+              On Android, Flow State runs in &quot;Observer Mode&quot;. It uses the Project Fugu APIs to directly access device sensors like Battery status and screen orientation from the web.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+        <Permissions />
+      </div>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
