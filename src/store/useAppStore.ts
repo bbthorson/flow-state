@@ -45,6 +45,9 @@ interface AppState {
   webhooks: WebhookConfig[];
   isCharging: boolean;
   isFaceDown: boolean;
+  isOnline: boolean;
+  networkType: string | null;
+  visibilityState: DocumentVisibilityState;
 }
 
 // 3. Actions Interface
@@ -64,6 +67,9 @@ interface AppActions {
   setWebhooks: (webhooks: WebhookConfig[] | ((prev: WebhookConfig[]) => WebhookConfig[])) => void;
   setCharging: (charging: boolean) => void;
   setFaceDown: (faceDown: boolean) => void;
+  setOnlineStatus: (isOnline: boolean) => void;
+  setNetworkType: (networkType: string | null) => void;
+  setVisibilityState: (visibilityState: DocumentVisibilityState) => void;
 }
 
 // 4. Store Implementation
@@ -80,6 +86,9 @@ export const useAppStore = create<AppState & AppActions>()(
       webhooks: [],
       isCharging: false,
       isFaceDown: false,
+      isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+      networkType: null,
+      visibilityState: typeof document !== 'undefined' ? document.visibilityState : 'visible',
 
       // Actions
       setInitialized: (initialized) => set({ initialized }),
@@ -179,16 +188,24 @@ export const useAppStore = create<AppState & AppActions>()(
       })),
       setCharging: (charging) => set({ isCharging: charging }),
       setFaceDown: (faceDown) => set({ isFaceDown: faceDown }),
+      setOnlineStatus: (isOnline) => set({ isOnline }),
+      setNetworkType: (networkType) => set({ networkType }),
+      setVisibilityState: (visibilityState) => set({ visibilityState }),
     }),
     {
       name: 'flow-state-v2', // New storage name
       // Persist the entire state except for the 'initialized' flag and transient device status
       partialize: (state) =>
         Object.fromEntries(Object.entries(state).filter(([key]) =>
-            key !== 'initialized' && key !== 'isCharging' && key !== 'isFaceDown'
+            key !== 'initialized' &&
+            key !== 'isCharging' &&
+            key !== 'isFaceDown' &&
+            key !== 'isOnline' &&
+            key !== 'networkType' &&
+            key !== 'visibilityState'
         )) as Omit<
           AppState,
-          'initialized' | 'isCharging' | 'isFaceDown'
+          'initialized' | 'isCharging' | 'isFaceDown' | 'isOnline' | 'networkType' | 'visibilityState'
         >,
       // Set 'initialized' flag once hydration is complete
       onRehydrateStorage: () => (state) => {

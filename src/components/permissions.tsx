@@ -10,6 +10,8 @@ type PermissionStatus = 'Granted' | 'Denied' | 'Prompt' | 'Not Available';
 export function Permissions() {
   const [batteryStatus, setBatteryStatus] = useState<PermissionStatus>('Not Available');
   const [orientationStatus, setOrientationStatus] = useState<PermissionStatus>('Not Available');
+  const [networkStatus, setNetworkStatus] = useState<PermissionStatus>('Not Available');
+  const [visibilityStatus, setVisibilityStatus] = useState<PermissionStatus>('Not Available');
 
   useEffect(() => {
     // Check for Battery API
@@ -41,6 +43,21 @@ export function Permissions() {
       }
     } else {
       setOrientationStatus('Not Available');
+    }
+
+    // Check for Network Information API
+    // @ts-ignore
+    if (navigator.connection || navigator.mozConnection || navigator.webkitConnection) {
+        setNetworkStatus('Granted');
+    } else {
+        setNetworkStatus('Not Available');
+    }
+
+    // Check for Page Visibility API
+    if (typeof document.visibilityState !== 'undefined') {
+        setVisibilityStatus('Granted');
+    } else {
+        setVisibilityStatus('Not Available');
     }
   }, []);
 
@@ -92,6 +109,24 @@ export function Permissions() {
         {orientationStatus === 'Denied' && (
             <p className="text-sm text-red-500">Permission was denied. You may need to grant it manually in your browser settings.</p>
         )}
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="font-semibold">Network Info</h4>
+            <p className="text-sm text-muted-foreground">Used to detect connectivity type (Wifi/Cellular).</p>
+          </div>
+          <span className={`text-sm font-semibold ${networkStatus === 'Granted' ? 'text-green-500' : 'text-red-500'}`}>
+            {networkStatus}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="font-semibold">App Visibility</h4>
+            <p className="text-sm text-muted-foreground">Used to pause tasks when app is in background.</p>
+          </div>
+          <span className={`text-sm font-semibold ${visibilityStatus === 'Granted' ? 'text-green-500' : 'text-red-500'}`}>
+            {visibilityStatus}
+          </span>
+        </div>
       </CardContent>
     </Card>
   );
