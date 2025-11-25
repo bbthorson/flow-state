@@ -43,8 +43,7 @@ export function HistoryList() {
                     <p>No events have been logged yet.</p>
                 </div>
             ) : (
-                <div className="flex flex-col-reverse">
-                    {/* Reverse flex direction to show newest logs at the top */}
+                <div className="flex flex-col">
                     {logs.map((log) => (
                         <div key={log.id} className="flex items-start gap-4 p-3 border-b">
                             {log.status === 'success' && <CheckCircle2 className="h-5 w-5 text-green-500 mt-1" />}
