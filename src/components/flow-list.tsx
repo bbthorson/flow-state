@@ -18,40 +18,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Flow } from '@/store/useAppStore';
 import { Link, Trash2, Pencil, PlusCircle } from 'lucide-react';
+import { FlowForm } from '@/components/flow-form';
 
-// This would be in its own file, e.g., components/flow-form.tsx
-function FlowForm({ flow, onSave, onCancel }: { flow?: Flow, onSave: (flow: Omit<Flow, 'id'>) => void, onCancel: () => void }) {
-    // For now, this is a placeholder. A real implementation would use a form library.
-    const handleSave = () => {
-        const newFlow: Omit<Flow, 'id'> = {
-            name: 'New Sample Flow',
-            enabled: true,
-            trigger: {
-                type: 'DEEP_LINK',
-                details: { 'event': 'sample' }
-            },
-            actions: [{
-                type: 'LOG',
-                details: {}
-            }]
-        };
-        onSave(newFlow);
-    }
-    return (
-        <div className="p-4 border rounded-lg">
-            <h3 className="text-lg font-bold mb-4">{flow ? 'Edit Flow' : 'Create Flow'}</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-                Flow creation form will be here. For now, saving will create a sample flow.
-            </p>
-            <div className="flex justify-end gap-2">
-                <Button variant="ghost" onClick={onCancel}>Cancel</Button>
-                <Button onClick={handleSave}>Save</Button>
-            </div>
-        </div>
-    );
-}
-
-function FlowListItem({ flow }: { flow: Flow }) {
+function FlowListItem({ flow, onEdit }: { flow: Flow, onEdit: () => void }) {
   const { updateFlow, deleteFlow } = useAppStore();
 
   const handleToggle = (enabled: boolean) => {
@@ -70,7 +39,7 @@ function FlowListItem({ flow }: { flow: Flow }) {
       </div>
       <div className="flex items-center gap-4">
         <Switch checked={flow.enabled} onCheckedChange={handleToggle} />
-        <Button variant="ghost" size="icon" disabled>
+        <Button variant="ghost" size="icon" onClick={onEdit}>
             <Pencil className="h-4 w-4" />
         </Button>
         <AlertDialog>
@@ -100,11 +69,53 @@ function FlowListItem({ flow }: { flow: Flow }) {
 export function FlowList() {
   const flows = useAppStore((state) => state.flows);
   const addFlow = useAppStore((state) => state.addFlow);
+  const updateFlow = useAppStore((state) => state.updateFlow);
+
   const [isCreating, setIsCreating] = useState(false);
+  const [editingFlowId, setEditingFlowId] = useState<string | null>(null);
 
   const handleSaveNewFlow = (flow: Omit<Flow, 'id'>) => {
     addFlow(flow);
     setIsCreating(false);
+  };
+
+  const handleSaveEditedFlow = (flowData: Omit<Flow, 'id'>) => {
+      if (editingFlowId) {
+          updateFlow({ ...flowData, id: editingFlowId });
+          setEditingFlowId(null);
+      }
+  };
+
+  const editingFlow = flows.find(f => f.id === editingFlowId);
+
+  if (isCreating) {
+      return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Create New Flow</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <FlowForm onSave={handleSaveNewFlow} onCancel={() => setIsCreating(false)} />
+            </CardContent>
+        </Card>
+      )
+  }
+
+  if (editingFlow) {
+      return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Edit Flow</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <FlowForm
+                    flow={editingFlow}
+                    onSave={handleSaveEditedFlow}
+                    onCancel={() => setEditingFlowId(null)}
+                />
+            </CardContent>
+        </Card>
+      )
   }
 
   return (
@@ -115,29 +126,29 @@ export function FlowList() {
                 <CardTitle>Flows</CardTitle>
                 <CardDescription>Create and manage your automations.</CardDescription>
             </div>
-            {!isCreating && (
-                <Button onClick={() => setIsCreating(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4"/>
-                    Create Flow
-                </Button>
-            )}
+            <Button onClick={() => setIsCreating(true)}>
+                <PlusCircle className="mr-2 h-4 w-4"/>
+                Create Flow
+            </Button>
         </div>
       </CardHeader>
       <CardContent>
-        {isCreating ? (
-            <FlowForm onSave={handleSaveNewFlow} onCancel={() => setIsCreating(false)} />
-        ) : (
-            <div className="border rounded-md">
-                {flows.length === 0 ? (
-                <div className="text-center text-muted-foreground p-8">
-                    <p>You have no flows yet.</p>
-                    <p>Click &quot;Create Flow&quot; to get started.</p>
-                </div>
-                ) : (
-                flows.map((flow) => <FlowListItem key={flow.id} flow={flow} />)
-                )}
-          </div>
-        )}
+        <div className="border rounded-md">
+            {flows.length === 0 ? (
+            <div className="text-center text-muted-foreground p-8">
+                <p>You have no flows yet.</p>
+                <p>Click &quot;Create Flow&quot; to get started.</p>
+            </div>
+            ) : (
+            flows.map((flow) => (
+                <FlowListItem
+                    key={flow.id}
+                    flow={flow}
+                    onEdit={() => setEditingFlowId(flow.id)}
+                />
+            ))
+            )}
+        </div>
       </CardContent>
     </Card>
   );
