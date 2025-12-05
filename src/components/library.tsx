@@ -75,33 +75,31 @@ export function Library() {
 
   if (isAndroid) {
     return (
-      <div className="flex flex-col gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Observer Mode</CardTitle>
-            <CardDescription>
+      <div className="space-y-4">
+        <div>
+           <h2 className="text-2xl font-bold tracking-tight">Observer Mode</h2>
+           <p className="text-muted-foreground">
               On Android, Flow State runs in &quot;Observer Mode&quot;. It uses the Project Fugu APIs to directly access device sensors like Battery status and screen orientation from the web.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+            </p>
+        </div>
         <Permissions />
       </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Integration Library</CardTitle>
-        <CardDescription>
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">Integration Library</h2>
+        <p className="text-muted-foreground">
             Install these iOS Shortcuts to trigger flows from your device events. This is the bridge between your phone and Flow State.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4 md:grid-cols-2">
+        </p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
         {libraryItems.map(item => (
             <LibraryItemCard key={item.title} item={item} />
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
