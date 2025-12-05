@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import {
   AlertDialog,
@@ -32,7 +32,7 @@ function FlowListItem({ flow, onEdit }: { flow: Flow, onEdit: () => void }) {
   };
 
   return (
-    <div className="flex items-center justify-between p-3 border-b">
+    <div className="flex items-center justify-between p-4">
       <div className="flex items-center gap-4">
         <Link className="h-5 w-5 text-muted-foreground" />
         <span className="font-medium">{flow.name}</span>
@@ -90,50 +90,53 @@ export function FlowList() {
 
   if (isCreating) {
       return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Create New Flow</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <FlowForm onSave={handleSaveNewFlow} onCancel={() => setIsCreating(false)} />
-            </CardContent>
-        </Card>
+        <div className="space-y-4">
+            <div>
+                <h2 className="text-2xl font-bold tracking-tight">Create New Flow</h2>
+            </div>
+            <Card>
+                <CardContent className="p-6">
+                    <FlowForm onSave={handleSaveNewFlow} onCancel={() => setIsCreating(false)} />
+                </CardContent>
+            </Card>
+        </div>
       )
   }
 
   if (editingFlow) {
       return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Edit Flow</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <FlowForm
-                    flow={editingFlow}
-                    onSave={handleSaveEditedFlow}
-                    onCancel={() => setEditingFlowId(null)}
-                />
-            </CardContent>
-        </Card>
+        <div className="space-y-4">
+            <div>
+                <h2 className="text-2xl font-bold tracking-tight">Edit Flow</h2>
+            </div>
+            <Card>
+                <CardContent className="p-6">
+                    <FlowForm
+                        flow={editingFlow}
+                        onSave={handleSaveEditedFlow}
+                        onCancel={() => setEditingFlowId(null)}
+                    />
+                </CardContent>
+            </Card>
+        </div>
       )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-            <div>
-                <CardTitle>Flows</CardTitle>
-                <CardDescription>Create and manage your automations.</CardDescription>
-            </div>
-            <Button onClick={() => setIsCreating(true)}>
-                <PlusCircle className="mr-2 h-4 w-4"/>
-                Create Flow
-            </Button>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+            <h2 className="text-2xl font-bold tracking-tight">Flows</h2>
+            <p className="text-muted-foreground">Create and manage your automations.</p>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="border rounded-md">
+        <Button onClick={() => setIsCreating(true)}>
+            <PlusCircle className="mr-2 h-4 w-4"/>
+            Create Flow
+        </Button>
+      </div>
+
+      <Card>
+        <div className="divide-y">
             {flows.length === 0 ? (
             <div className="text-center text-muted-foreground p-8">
                 <p>You have no flows yet.</p>
@@ -149,7 +152,7 @@ export function FlowList() {
             ))
             )}
         </div>
-      </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 }

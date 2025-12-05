@@ -1,7 +1,7 @@
 'use client';
 
 import { useAppStore } from '@/store/useAppStore';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { CheckCircle2, XCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -31,21 +31,22 @@ export function HistoryList() {
   const logs = useAppStore((state) => state.logs);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>History</CardTitle>
-        <CardDescription>A log of all flow executions and system events.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="border rounded-md">
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">History</h2>
+        <p className="text-muted-foreground">A log of all flow executions and system events.</p>
+      </div>
+
+      <Card>
+        <div className="divide-y">
             {logs.length === 0 ? (
                 <div className="text-center text-muted-foreground p-8">
                     <p>No events have been logged yet.</p>
                 </div>
             ) : (
-                <div className="flex flex-col">
+                <div className="flex flex-col divide-y">
                     {logs.map((log) => (
-                        <div key={log.id} className="flex items-start gap-4 p-3 border-b">
+                        <div key={log.id} className="flex items-start gap-4 p-4">
                             {log.status === 'success' && <CheckCircle2 className="h-5 w-5 text-green-500 mt-1" />}
                             {log.status === 'failure' && <XCircle className="h-5 w-5 text-red-500 mt-1" />}
                             {log.flowId === 'SYSTEM' && log.status !== 'success' && log.status !== 'failure' && <Info className="h-5 w-5 text-blue-500 mt-1" />}
@@ -65,7 +66,7 @@ export function HistoryList() {
                 </div>
             )}
         </div>
-      </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 }
