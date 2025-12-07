@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { Card } from '@/components/ui/card';
 import { CheckCircle2, XCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PageHeader } from '@/components/page-header';
 
 function formatTimeAgo(timestamp: number): string {
     const now = Date.now();
@@ -32,10 +33,7 @@ export function HistoryList() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">History</h2>
-        <p className="text-muted-foreground">A log of all flow executions and system events.</p>
-      </div>
+      <PageHeader title="History" description="A log of all flow executions and system events." />
 
       <Card>
         <div className="divide-y">

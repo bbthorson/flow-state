@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { DownloadCloud } from 'lucide-react';
 import { Permissions } from './permissions';
+import { PageHeader } from '@/components/page-header';
 
 interface LibraryItem {
     title: string;
@@ -76,12 +77,10 @@ export function Library() {
   if (isAndroid) {
     return (
       <div className="space-y-4">
-        <div>
-           <h2 className="text-2xl font-bold tracking-tight">Observer Mode</h2>
-           <p className="text-muted-foreground">
-              On Android, Flow State runs in &quot;Observer Mode&quot;. It uses the Project Fugu APIs to directly access device sensors like Battery status and screen orientation from the web.
-            </p>
-        </div>
+        <PageHeader
+            title="Observer Mode"
+            description="On Android, Flow State runs in &quot;Observer Mode&quot;. It uses the Project Fugu APIs to directly access device sensors like Battery status and screen orientation from the web."
+        />
         <Permissions />
       </div>
     );
@@ -89,12 +88,10 @@ export function Library() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Integration Library</h2>
-        <p className="text-muted-foreground">
-            Install these iOS Shortcuts to trigger flows from your device events. This is the bridge between your phone and Flow State.
-        </p>
-      </div>
+      <PageHeader
+        title="Integration Library"
+        description="Install these iOS Shortcuts to trigger flows from your device events. This is the bridge between your phone and Flow State."
+      />
       <div className="grid gap-4 md:grid-cols-2">
         {libraryItems.map(item => (
             <LibraryItemCard key={item.title} item={item} />

@@ -19,6 +19,7 @@ import {
 import { Flow } from '@/store/useAppStore';
 import { Link, Trash2, Pencil, PlusCircle } from 'lucide-react';
 import { FlowForm } from '@/components/flow-form';
+import { PageHeader } from '@/components/page-header';
 
 function FlowListItem({ flow, onEdit }: { flow: Flow, onEdit: () => void }) {
   const { updateFlow, deleteFlow } = useAppStore();
@@ -91,9 +92,7 @@ export function FlowList() {
   if (isCreating) {
       return (
         <div className="space-y-4">
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight">Create New Flow</h2>
-            </div>
+            <PageHeader title="Create New Flow" description="Configure your automation triggers and actions." />
             <Card>
                 <CardContent className="p-6">
                     <FlowForm onSave={handleSaveNewFlow} onCancel={() => setIsCreating(false)} />
@@ -106,9 +105,7 @@ export function FlowList() {
   if (editingFlow) {
       return (
         <div className="space-y-4">
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight">Edit Flow</h2>
-            </div>
+             <PageHeader title="Edit Flow" description="Update your automation details." />
             <Card>
                 <CardContent className="p-6">
                     <FlowForm
@@ -124,16 +121,12 @@ export function FlowList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-            <h2 className="text-2xl font-bold tracking-tight">Flows</h2>
-            <p className="text-muted-foreground">Create and manage your automations.</p>
-        </div>
+      <PageHeader title="Flows" description="Create and manage your automations.">
         <Button onClick={() => setIsCreating(true)}>
             <PlusCircle className="mr-2 h-4 w-4"/>
             Create Flow
         </Button>
-      </div>
+      </PageHeader>
 
       <Card>
         <div className="divide-y">
