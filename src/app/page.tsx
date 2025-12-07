@@ -33,7 +33,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground">
+    <div className="flex flex-col h-[100dvh] bg-background text-foreground">
       <AppHeader />
       <Tabs defaultValue="flows" className="flex flex-col flex-grow overflow-hidden">
         <main className="flex-grow overflow-y-auto p-4 pb-20">
