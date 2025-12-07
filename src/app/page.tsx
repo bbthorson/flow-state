@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
-import { AppHeader } from '@/components/app-bar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FlowList } from '@/components/flow-list';
 import { HistoryList } from '@/components/history-list';
@@ -34,7 +33,6 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
-      <AppHeader />
       <Tabs defaultValue="flows" className="flex flex-col flex-grow overflow-hidden">
         <main className="flex-grow overflow-y-auto p-4 pb-20">
           <TabsContent value="history" className="mt-0 h-full">
