@@ -18,9 +18,9 @@
     - [x] Subtask: Add coordinate/radius inputs to the `flow-form.tsx` when Geolocation is selected.
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Geolocation Integration' [checkpoint: b463681]
 
-## Phase 3: Developer Experience & Variable Hints
-- [ ] Task: Add Variable Hint UI
-    - [ ] Subtask: Create a `VariableHints` component that shows available `{{tokens}}` in the flow form.
-- [ ] Task: Implement "Test Flow" Action
-    - [ ] Subtask: Add a manual "Play" button to flow cards to trigger actions with mock data.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Developer Experience & Variable Hints'
+## Phase 3: Developer Experience & Variable Hints [checkpoint: ac57032]
+- [x] Task: Add Variable Hint UI [checkpoint: b463681]
+    - [x] Subtask: Create a `VariableHints` component that shows available `{{tokens}}` in the flow form.
+- [x] Task: Implement "Test Flow" Action [checkpoint: ac57032]
+    - [x] Subtask: Add a manual "Play" button to flow cards to trigger actions with mock data.
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Developer Experience & Variable Hints' [checkpoint: ac57032]
