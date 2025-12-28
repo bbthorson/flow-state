@@ -14,7 +14,7 @@
 - [x] Task: Integrate `VaultSection` into the Status tab bf83ba1
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Vault Backup & Restore UI' (Protocol in workflow.md) 864be67
 
-## Phase 3: Permissions Health Check
+## Phase 3: Permissions Health Check [checkpoint: d4ff42f]
 - [x] Task: Implement Permission Detection Utility ef79b6b
     - [x] Subtask: Create a helper to check `navigator.permissions` for key sensors.
 - [x] Task: Enhance `DeviceStatusPanel` UI 3ab926f
