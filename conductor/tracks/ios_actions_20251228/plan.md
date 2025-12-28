@@ -10,12 +10,12 @@
     - [x] Subtask: Update `useBatteryStatus` and `useNetworkStatus` to trigger flows (this connects the previous track's work to actual actions).
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Action Execution Layer' (Protocol in workflow.md) [checkpoint: 82ed294]
 
-## Phase 2: External Webhook Trigger & UI
+## Phase 2: External Webhook Trigger & UI [checkpoint: 92fed6f]
 - [x] Task: Enhance Deep Link Processing [checkpoint: d3e4f5a]
     - [x] Subtask: Ensure `processDeepLink` can parse generic JSON payloads passed via query params (for iOS Shortcuts compatibility).
 - [x] Task: Create "Connect to Shortcuts" Component [checkpoint: e4f5g6h]
     - [x] Subtask: Build a UI component in `src/components/shortcut-guide.tsx` that displays the user's unique "Trigger URL".
     - [x] Subtask: Add a "Copy to Clipboard" button.
-- [~] Task: Integrate into Library Tab
-    - [ ] Subtask: Add the `ShortcutGuide` component to the Library tab.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: External Webhook Trigger & UI' (Protocol in workflow.md)
+- [x] Task: Integrate into Library Tab [checkpoint: f5g6h7i]
+    - [x] Subtask: Add the `ShortcutGuide` component to the Library tab.
+- [x] Task: Conductor - User Manual Verification 'Phase 2: External Webhook Trigger & UI' (Protocol in workflow.md) [checkpoint: 92fed6f]
