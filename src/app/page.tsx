@@ -7,10 +7,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FlowList } from '@/components/flow-list';
 import { HistoryList } from '@/components/history-list';
 import { Library } from '@/components/library';
+import { DeviceStatusPanel } from '@/components/DeviceStatusPanel';
+import { useBatteryStatus } from '@/hooks/useBatteryStatus';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { useVisibilityStatus } from '@/hooks/useVisibilityStatus';
 
 export default function HomePage() {
   const initialized = useAppStore((state) => state.initialized);
   const processDeepLink = useAppStore((state) => state.processDeepLink);
+
+  // Initialize triggers
+  useBatteryStatus();
+  useNetworkStatus();
+  useVisibilityStatus();
 
   // Deep Link Handler Effect
   useEffect(() => {
@@ -36,16 +45,17 @@ export default function HomePage() {
     <div className="flex flex-col h-screen bg-background text-foreground">
       <AppHeader />
       <Tabs defaultValue="flows" className="flex flex-col flex-grow overflow-hidden">
-        <main className="flex-grow overflow-y-auto p-4 pb-20">
-          <TabsContent value="history" className="mt-0 h-full">
+        <main className="flex-grow overflow-y-auto p-4 pb-20 space-y-4">
+          <DeviceStatusPanel />
+          <TabsContent value="history" className="mt-0 h-full pt-4">
             <HistoryList />
           </TabsContent>
 
-          <TabsContent value="flows" className="mt-0 h-full">
+          <TabsContent value="flows" className="mt-0 h-full pt-4">
             <FlowList />
           </TabsContent>
 
-          <TabsContent value="library" className="mt-0 h-full">
+          <TabsContent value="library" className="mt-0 h-full pt-4">
             <Library />
           </TabsContent>
         </main>
