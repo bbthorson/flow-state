@@ -20,9 +20,9 @@
     - [x] Subtask: Create `useBatteryStatus` hook.
     - [x] Subtask: Handle `navigator.getBattery()` promise and event listeners (levelchange, chargingchange).
     - [x] Subtask: Add safe guards for unsupported browsers.
-- [ ] Task: Implement Network Information API (Connection Type)
-    - [ ] Subtask: Extend `useNetworkStatus` to check `navigator.connection` (effectiveType, type).
-    - [ ] Subtask: Handle `change` event on the connection object.
+- [x] Task: Implement Network Information API (Connection Type) 69ccd30
+    - [x] Subtask: Extend `useNetworkStatus` to check `navigator.connection` (effectiveType, type).
+    - [x] Subtask: Handle `change` event on the connection object.
 
 ## Phase 3: UI & Verification
 - [ ] Task: Create "Device Monitor" Dashboard
