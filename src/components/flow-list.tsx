@@ -17,11 +17,20 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Flow } from '@/store/useAppStore';
-import { Link, Trash2, Pencil, PlusCircle } from 'lucide-react';
+import { Link, Trash2, Pencil, PlusCircle, Play } from 'lucide-react';
 import { FlowForm } from '@/components/flow-form';
+import { TriggerType } from '@/types';
+
+const MOCK_DATA: Record<TriggerType, any> = {
+  NATIVE_BATTERY: { level: 0.5, charging: true },
+  NETWORK: { online: true, ssid: 'Mock-WiFi', type: 'wifi' },
+  GEOLOCATION: { latitude: 0, longitude: 0, distance: 0, event: 'ENTER' },
+  DEEP_LINK: { event: 'TEST', custom: 'data' },
+  MANUAL: {},
+};
 
 function FlowListItem({ flow, onEdit }: { flow: Flow, onEdit: () => void }) {
-  const { updateFlow, deleteFlow } = useAppStore();
+  const { updateFlow, deleteFlow, triggerFlows } = useAppStore();
 
   const handleToggle = (enabled: boolean) => {
     updateFlow({ ...flow, enabled });
@@ -31,6 +40,10 @@ function FlowListItem({ flow, onEdit }: { flow: Flow, onEdit: () => void }) {
     deleteFlow(flow.id);
   };
 
+  const handleTest = () => {
+    triggerFlows(flow.trigger.type, MOCK_DATA[flow.trigger.type], flow.id);
+  };
+
   return (
     <div className="flex items-center justify-between p-4">
       <div className="flex items-center gap-4">
@@ -38,6 +51,9 @@ function FlowListItem({ flow, onEdit }: { flow: Flow, onEdit: () => void }) {
         <span className="font-medium">{flow.name}</span>
       </div>
       <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={handleTest} title="Test Flow">
+            <Play className="h-4 w-4 text-green-500" />
+        </Button>
         <Switch checked={flow.enabled} onCheckedChange={handleToggle} />
         <Button variant="ghost" size="icon" onClick={onEdit}>
             <Pencil className="h-4 w-4" />

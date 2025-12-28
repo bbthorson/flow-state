@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/form';
 import { Card, CardContent } from '@/components/ui/card';
 import { Trash2, PlusCircle } from 'lucide-react';
+import { VariableHints } from './variable-hints';
 
 const triggerTypes: TriggerType[] = ['NATIVE_BATTERY', 'NETWORK', 'GEOLOCATION', 'DEEP_LINK', 'MANUAL'];
 const actionTypes: ActionType[] = ['WEBHOOK', 'NOTIFICATION', 'LOG'];
@@ -275,6 +276,8 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                     <PlusCircle className="mr-2 h-4 w-4"/> Add Action
                 </Button>
             </div>
+
+            <VariableHints type={triggerType} />
 
             {fields.map((field, index) => (
                 <Card key={field.id}>
