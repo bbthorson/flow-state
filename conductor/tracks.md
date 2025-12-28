@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Implement Universal Web API Triggers
+## [~] Track: Implement Universal Web API Triggers
 *Link: [./conductor/tracks/universal_web_triggers_20251228/](./conductor/tracks/universal_web_triggers_20251228/)*
