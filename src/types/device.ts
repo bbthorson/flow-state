@@ -2,6 +2,7 @@ export interface BatteryState {
   level: number;
   charging: boolean;
   supported: boolean;
+  pending?: Partial<Omit<BatteryState, 'pending'>>;
 }
 
 export interface NetworkState {
@@ -9,6 +10,7 @@ export interface NetworkState {
   type: string;
   effectiveType: string;
   supported: boolean;
+  pending?: Partial<Omit<NetworkState, 'pending'>>;
 }
 
 export interface VisibilityState {

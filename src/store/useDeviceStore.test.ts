@@ -1,7 +1,20 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useDeviceStore } from './useDeviceStore';
 
 describe('useDeviceStore', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    useDeviceStore.setState({
+      battery: { level: 1, charging: false, supported: false },
+      network: { online: true, type: 'unknown', effectiveType: 'unknown', supported: false },
+      visibility: { state: 'visible', supported: false },
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('should have initial state', () => {
     const state = useDeviceStore.getState();
     expect(state.battery).toEqual({
@@ -25,6 +38,8 @@ describe('useDeviceStore', () => {
     const { updateBattery } = useDeviceStore.getState();
     updateBattery({ level: 0.5, charging: true });
     
+    vi.advanceTimersByTime(5000);
+
     const state = useDeviceStore.getState();
     expect(state.battery.level).toBe(0.5);
     expect(state.battery.charging).toBe(true);
@@ -34,6 +49,8 @@ describe('useDeviceStore', () => {
     const { updateNetwork } = useDeviceStore.getState();
     updateNetwork({ online: false, type: 'wifi' });
     
+    vi.advanceTimersByTime(5000);
+
     const state = useDeviceStore.getState();
     expect(state.network.online).toBe(false);
     expect(state.network.type).toBe('wifi');
