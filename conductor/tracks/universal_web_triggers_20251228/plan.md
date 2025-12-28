@@ -8,10 +8,10 @@
     - [x] Subtask: Create a utility function `getSupportedTriggers()` to return which APIs are available on the current device.
 
 ## Phase 2: Implement Triggers
-- [ ] Task: Implement Online/Offline Triggers
-    - [ ] Subtask: Create a React hook `useNetworkStatus` that listens to `window` online/offline events.
-    - [ ] Subtask: Update the Zustand store on status change.
-    - [ ] Subtask: Write unit test for the hook (mocking window events).
+- [x] Task: Implement Online/Offline Triggers 390c946
+    - [x] Subtask: Create a React hook `useNetworkStatus` that listens to `window` online/offline events.
+    - [x] Subtask: Update the Zustand store on status change.
+    - [x] Subtask: Write unit test for the hook (mocking window events).
 - [ ] Task: Implement Page Visibility Trigger
     - [ ] Subtask: Create a React hook `useVisibilityStatus` for `document.visibilitychange`.
     - [ ] Subtask: Update store on change.
