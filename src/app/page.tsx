@@ -12,6 +12,7 @@ import { VaultSection } from '@/components/vault-section';
 import { useBatteryStatus } from '@/hooks/useBatteryStatus';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useVisibilityStatus } from '@/hooks/useVisibilityStatus';
+import { useGeolocationStatus } from '@/hooks/useGeolocationStatus';
 import { useFlowTriggerManager } from '@/hooks/useFlowTriggerManager';
 
 export default function HomePage() {
@@ -22,6 +23,7 @@ export default function HomePage() {
   useBatteryStatus();
   useNetworkStatus();
   useVisibilityStatus();
+  useGeolocationStatus();
   useFlowTriggerManager();
 
   // Deep Link Handler Effect

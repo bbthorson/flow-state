@@ -7,6 +7,7 @@ const DEBOUNCE_DELAY = 5000; // 5 seconds
 interface DeviceStore extends DeviceState, DeviceActions {
   batteryTimer: NodeJS.Timeout | null;
   networkTimer: NodeJS.Timeout | null;
+  geolocationTimer: NodeJS.Timeout | null;
 }
 
 export const useDeviceStore = create<DeviceStore>()(
@@ -27,8 +28,16 @@ export const useDeviceStore = create<DeviceStore>()(
         state: typeof document !== 'undefined' ? document.visibilityState : 'visible',
         supported: false,
       },
+      geolocation: {
+        latitude: null,
+        longitude: null,
+        accuracy: null,
+        speed: null,
+        supported: false,
+      },
       batteryTimer: null,
       networkTimer: null,
+      geolocationTimer: null,
 
       updateBattery: (batteryUpdate: Partial<BatteryState>) => {
         const state = get();
@@ -98,6 +107,40 @@ export const useDeviceStore = create<DeviceStore>()(
         set({ networkTimer: timer });
       },
 
+      updateGeolocation: (geoUpdate: Partial<GeolocationState>) => {
+        const state = get();
+        
+        // Clear existing timer
+        if (state.geolocationTimer) {
+          clearTimeout(state.geolocationTimer);
+        }
+
+        // Merge with existing pending state if any
+        const newPending = {
+            ...(state.geolocation.pending || {}),
+            ...geoUpdate
+        };
+
+        // Set pending state
+        set((state) => ({
+          geolocation: { ...state.geolocation, pending: newPending },
+        }));
+
+        // Start new timer
+        const timer = setTimeout(() => {
+          set((state) => ({
+            geolocation: {
+              ...state.geolocation,
+              ...newPending,
+              pending: undefined,
+            },
+            geolocationTimer: null,
+          }));
+        }, DEBOUNCE_DELAY);
+
+        set({ geolocationTimer: timer });
+      },
+
       updateVisibility: (visibility) =>
         set((state) => ({
           visibility: { ...state.visibility, ...visibility },
@@ -109,6 +152,13 @@ export const useDeviceStore = create<DeviceStore>()(
         battery: state.battery,
         network: state.network,
         visibility: state.visibility,
+        geolocation: {
+            latitude: null,
+            longitude: null,
+            accuracy: null,
+            speed: null,
+            supported: state.geolocation.supported
+        }
       }),
     }
   )

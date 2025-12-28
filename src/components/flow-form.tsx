@@ -20,13 +20,13 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Trash2, PlusCircle } from 'lucide-react';
 
-const triggerTypes: TriggerType[] = ['NATIVE_BATTERY', 'DEEP_LINK', 'MANUAL'];
+const triggerTypes: TriggerType[] = ['NATIVE_BATTERY', 'NETWORK', 'GEOLOCATION', 'DEEP_LINK', 'MANUAL'];
 const actionTypes: ActionType[] = ['WEBHOOK', 'NOTIFICATION', 'LOG'];
 
 const flowSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   trigger: z.object({
-    type: z.enum(['NATIVE_BATTERY', 'DEEP_LINK', 'MANUAL']),
+    type: z.enum(['NATIVE_BATTERY', 'NETWORK', 'GEOLOCATION', 'DEEP_LINK', 'MANUAL']),
     details: z.record(z.any()),
   }),
   actions: z.array(z.object({
@@ -138,6 +138,133 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                     </FormItem>
                     )}
                 />
+            )}
+
+            {triggerType === 'NETWORK' && (
+                <FormField
+                    control={form.control}
+                    name="trigger.details.ssid"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>SSID (Network Name)</FormLabel>
+                        <FormControl>
+                        <Input placeholder="e.g., Home-WiFi" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormDescription>
+                            Trigger when connecting to this specific network.
+                        </FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            )}
+
+            {triggerType === 'GEOLOCATION' && (
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="trigger.details.latitude"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Latitude</FormLabel>
+                                <FormControl>
+                                <Input 
+                                    type="number" 
+                                    step="any" 
+                                    placeholder="0.0" 
+                                    {...field} 
+                                    onChange={e => field.onChange(parseFloat(e.target.value))}
+                                    value={field.value === undefined ? '' : field.value} 
+                                />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="trigger.details.longitude"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Longitude</FormLabel>
+                                <FormControl>
+                                <Input 
+                                    type="number" 
+                                    step="any" 
+                                    placeholder="0.0" 
+                                    {...field} 
+                                    onChange={e => field.onChange(parseFloat(e.target.value))}
+                                    value={field.value === undefined ? '' : field.value} 
+                                />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="trigger.details.radius"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Radius (meters)</FormLabel>
+                                <FormControl>
+                                <Input 
+                                    type="number" 
+                                    placeholder="100" 
+                                    {...field} 
+                                    onChange={e => field.onChange(parseInt(e.target.value))}
+                                    value={field.value === undefined ? '' : field.value} 
+                                />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="trigger.details.event"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Event</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value || 'ENTER'}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select event" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="ENTER">Enters Zone</SelectItem>
+                                        <SelectItem value="EXIT">Exits Zone</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    </div>
+                    
+                    <Button 
+                        type="button" 
+                        variant="secondary" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => {
+                            navigator.geolocation.getCurrentPosition((pos) => {
+                                form.setValue('trigger.details.latitude', pos.coords.latitude);
+                                form.setValue('trigger.details.longitude', pos.coords.longitude);
+                                if (!form.getValues('trigger.details.radius')) {
+                                    form.setValue('trigger.details.radius', 100);
+                                }
+                            });
+                        }}
+                    >
+                        Use Current Location
+                    </Button>
+                </div>
             )}
         </div>
 

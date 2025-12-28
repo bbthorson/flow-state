@@ -9,7 +9,8 @@ describe('useFlowTriggerManager', () => {
     vi.useFakeTimers();
     useDeviceStore.setState({
       battery: { level: 1, charging: false, supported: true },
-      network: { online: true, type: 'wifi', effectiveType: '4g', supported: true }
+      network: { online: true, type: 'wifi', effectiveType: '4g', supported: true },
+      geolocation: { latitude: null, longitude: null, accuracy: null, speed: null, supported: true }
     });
     useAppStore.setState({ flows: [], logs: [] });
     
@@ -52,5 +53,95 @@ describe('useFlowTriggerManager', () => {
     });
 
     expect(useAppStore.getState().triggerFlows).toHaveBeenCalledWith('NETWORK', { online: false });
+  });
+
+  it('should trigger flows when entering a geofence', async () => {
+    const flowId = 'geo-flow-1';
+    useAppStore.setState({
+      flows: [{
+        id: flowId,
+        name: 'Home Flow',
+        enabled: true,
+        trigger: {
+          type: 'GEOLOCATION',
+          details: {
+            latitude: 45.0,
+            longitude: 90.0,
+            radius: 100, // 100 meters
+            event: 'ENTER'
+          }
+        },
+        actions: []
+      } as any]
+    });
+
+    const { rerender } = renderHook(() => useFlowTriggerManager());
+
+    // 1. Initial position: Outside (Distance is ~157km from 45,90 to 46,91)
+    act(() => {
+      useDeviceStore.getState().updateGeolocation({ latitude: 46.0, longitude: 91.0 });
+    });
+    act(() => vi.advanceTimersByTime(5000));
+    rerender();
+    
+    expect(useAppStore.getState().triggerFlows).not.toHaveBeenCalled();
+
+    // 2. Move Inside: (Distance is 0)
+    act(() => {
+      useDeviceStore.getState().updateGeolocation({ latitude: 45.0, longitude: 90.0 });
+    });
+    act(() => vi.advanceTimersByTime(5000));
+    rerender();
+
+    expect(useAppStore.getState().triggerFlows).toHaveBeenCalledWith(
+      'GEOLOCATION',
+      expect.objectContaining({ event: 'ENTER' }),
+      flowId
+    );
+  });
+
+  it('should trigger flows when exiting a geofence', async () => {
+    const flowId = 'geo-flow-2';
+    useAppStore.setState({
+      flows: [{
+        id: flowId,
+        name: 'Leave Home Flow',
+        enabled: true,
+        trigger: {
+          type: 'GEOLOCATION',
+          details: {
+            latitude: 45.0,
+            longitude: 90.0,
+            radius: 100,
+            event: 'EXIT'
+          }
+        },
+        actions: []
+      } as any]
+    });
+
+    const { rerender } = renderHook(() => useFlowTriggerManager());
+
+    // 1. Initial position: Inside
+    act(() => {
+      useDeviceStore.getState().updateGeolocation({ latitude: 45.0, longitude: 90.0 });
+    });
+    act(() => vi.advanceTimersByTime(5000));
+    rerender();
+    
+    expect(useAppStore.getState().triggerFlows).not.toHaveBeenCalled();
+
+    // 2. Move Outside
+    act(() => {
+      useDeviceStore.getState().updateGeolocation({ latitude: 46.0, longitude: 91.0 });
+    });
+    act(() => vi.advanceTimersByTime(5000));
+    rerender();
+
+    expect(useAppStore.getState().triggerFlows).toHaveBeenCalledWith(
+      'GEOLOCATION',
+      expect.objectContaining({ event: 'EXIT' }),
+      flowId
+    );
   });
 });
