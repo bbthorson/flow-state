@@ -12,7 +12,7 @@
     - [x] Subtask: Add "Export Vault" button using `exportVault` store action.
     - [x] Subtask: Add "Import Vault" file picker using `importVault` store action.
 - [x] Task: Integrate `VaultSection` into the Status tab bf83ba1
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Vault Backup & Restore UI' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Vault Backup & Restore UI' (Protocol in workflow.md) 864be67
 
 ## Phase 3: Permissions Health Check
 - [ ] Task: Implement Permission Detection Utility
