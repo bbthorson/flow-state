@@ -24,10 +24,10 @@
     - [x] Subtask: Extend `useNetworkStatus` to check `navigator.connection` (effectiveType, type).
     - [x] Subtask: Handle `change` event on the connection object.
 
-## Phase 3: UI & Verification [checkpoint: 267ecba]
+## Phase 3: UI & Verification [checkpoint: 1368130]
 - [x] Task: Create "Device Monitor" Dashboard 80066cc
     - [x] Subtask: Create a component `DeviceStatusPanel` that subscribes to the store and displays current real-time values (Battery %, Online Status, Visibility).
-    - [ ] Subtask: Add a visual log/list to show a history of recent state changes (e.g., "10:00:01 - Went Offline").
-- [ ] Task: Manual Verification Protocol
-    - [ ] Subtask: Test on Desktop (Chrome/Safari).
-    - [ ] Subtask: Test on Mobile Device (Toggle Airplane mode, plug in charger).
+    - [x] Subtask: Add a visual log/list to show a history of recent state changes (e.g., "10:00:01 - Went Offline").
+- [x] Task: Manual Verification Protocol
+    - [x] Subtask: Test on Desktop (Chrome/Safari).
+    - [x] Subtask: Test on Mobile Device (Toggle Airplane mode, plug in charger).
