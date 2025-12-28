@@ -9,7 +9,7 @@
 *   **Tertiary:** Advanced power users and home automation enthusiasts.
 
 ## 3. Goals
-1.  **MVP Release:** Deliver a functional PWA with essential triggers (battery, network) and actions (webhooks, notifications).
+1.  **MVP Release:** Delivered a functional PWA with essential triggers (battery, network) and actions (webhooks, notifications).
 2.  **Core Infrastructure:** Ensure robust local data storage and reliable sensor integrations.
 3.  **Automation Engine:** Build a flexible "trigger-action" system for creating flows.
 4.  **Marketplace:** Develop the "Integration Marketplace" for sharing and downloading flows.
@@ -19,6 +19,7 @@
 *   **Vault Management:** Securely export and import your local configuration for backups and data sovereignty.
 *   **Stable Universal Triggers:** Reliable, debounced triggers for battery, network, and app visibility status.
 *   **Permissions Health Check:** Real-time visibility into required browser permissions with actionable recovery steps.
-*   **Basic Triggers & Actions:** Geolocation triggers and webhook/notification actions.
+*   **Action Execution Engine:** Functional execution of HTTP webhooks (with data templating) and local notifications.
+*   **iOS Shortcuts Bridge:** Direct integration with iOS Shortcuts via deep links, enabling complex external triggers and data passing.
 *   **Flow Visualizer/Log:** A clear UI to view, debug, and monitor active flows and history.
 *   **Integration Marketplace (V1):** A directory of installable Apple Shortcuts and pre-built automation templates.

@@ -14,7 +14,7 @@
 
 ## AI & Automation
 - **AI Framework:** Genkit AI
-- **Platform Integration:** Apple Shortcuts (via external webhooks)
+- **Platform Integration:** Apple Shortcuts (via deep link webhooks with JSON payload parsing and data templating)
 
 ## Infrastructure
 - **App Type:** Progressive Web App (PWA) via `next-pwa`
