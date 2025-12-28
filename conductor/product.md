@@ -16,7 +16,9 @@
 
 ## 4. Features
 *   **Privacy & Local Storage (Critical Differentiator):** End-to-end local data persistence with no mandatory cloud sync.
-*   **Universal Web API Triggers:** Battery level/charging, network connectivity (offline/online, wifi/cellular), and app visibility status.
+*   **Vault Management:** Securely export and import your local configuration for backups and data sovereignty.
+*   **Stable Universal Triggers:** Reliable, debounced triggers for battery, network, and app visibility status.
+*   **Permissions Health Check:** Real-time visibility into required browser permissions with actionable recovery steps.
 *   **Basic Triggers & Actions:** Geolocation triggers and webhook/notification actions.
 *   **Flow Visualizer/Log:** A clear UI to view, debug, and monitor active flows and history.
 *   **Integration Marketplace (V1):** A directory of installable Apple Shortcuts and pre-built automation templates.

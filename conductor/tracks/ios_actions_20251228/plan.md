@@ -1,7 +1,7 @@
 # Plan: iOS Integration & Action Execution
 
 ## Phase 1: Action Execution Layer
-- [ ] Task: Implement `ActionExecutor` service
+- [~] Task: Implement `ActionExecutor` service
     - [ ] Subtask: Create `src/services/actions.ts` with `executeWebhook` and `executeNotification` functions.
     - [ ] Subtask: Implement `executeWebhook` using `fetch` with error handling.
     - [ ] Subtask: Implement `executeNotification` with permission checks.

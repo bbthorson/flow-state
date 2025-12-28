@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: iOS Integration & Action Execution
+## [~] Track: iOS Integration & Action Execution
 *Link: [./conductor/tracks/ios_actions_20251228/](./conductor/tracks/ios_actions_20251228/)*
