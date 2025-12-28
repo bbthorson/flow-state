@@ -8,10 +8,10 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Signal Debouncing & Stability' (Protocol in workflow.md) 6545a80
 
 ## Phase 2: Vault Backup & Restore UI
-- [ ] Task: Implement `VaultSection` component
-    - [ ] Subtask: Add "Export Vault" button using `exportVault` store action.
-    - [ ] Subtask: Add "Import Vault" file picker using `importVault` store action.
-- [ ] Task: Integrate `VaultSection` into the Status tab
+- [x] Task: Implement `VaultSection` component 77a5c0b
+    - [x] Subtask: Add "Export Vault" button using `exportVault` store action.
+    - [x] Subtask: Add "Import Vault" file picker using `importVault` store action.
+- [x] Task: Integrate `VaultSection` into the Status tab bf83ba1
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Vault Backup & Restore UI' (Protocol in workflow.md)
 
 ## Phase 3: Permissions Health Check
