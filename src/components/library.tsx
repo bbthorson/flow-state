@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { DownloadCloud } from 'lucide-react';
 import { Permissions } from './permissions';
+import { ShortcutGuide } from './shortcut-guide';
 
 interface LibraryItem {
     title: string;
@@ -89,6 +90,8 @@ export function Library() {
 
   return (
     <div className="space-y-4">
+      <ShortcutGuide />
+      
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Integration Library</h2>
         <p className="text-muted-foreground">

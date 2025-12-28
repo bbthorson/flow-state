@@ -18,6 +18,7 @@ describe('useAppStore', () => {
   });
 
   it('should trigger flow actions when processDeepLink matches', async () => {
+    const secret = useAppStore.getState().webhookSecret;
     const flow = {
       name: 'Test Flow',
       enabled: true,
@@ -36,11 +37,11 @@ describe('useAppStore', () => {
     useAppStore.getState().addFlow(flow);
     const addedFlow = useAppStore.getState().flows[0];
 
-    const params = new URLSearchParams('event=test');
+    const params = new URLSearchParams(`event=test&secret=${secret}`);
     useAppStore.getState().processDeepLink(params);
 
     // Verify action was called
-    expect(actions.executeWebhook).toHaveBeenCalledWith(flow.actions[0].details);
+    expect(actions.executeWebhook).toHaveBeenCalledWith(flow.actions[0].details, { event: 'test' });
     
     // Verify log was added
     const logs = useAppStore.getState().logs;
@@ -80,6 +81,69 @@ describe('useAppStore', () => {
     expect(logs[0].message).toContain('Invalid security key');
   });
 
+  it('should verify global webhookSecret in processDeepLink', async () => {
+    const secret = useAppStore.getState().webhookSecret;
+    const flow = {
+      name: 'Global Secret Flow',
+      enabled: true,
+      trigger: {
+        type: 'DEEP_LINK' as const,
+        details: { event: 'global_test' },
+      },
+      actions: [],
+    };
+
+    useAppStore.getState().addFlow(flow);
+
+    // 1. Correct secret
+    const paramsOk = new URLSearchParams(`event=global_test&secret=${secret}`);
+    useAppStore.getState().processDeepLink(paramsOk);
+    expect(useAppStore.getState().logs[0].status).toBe('success');
+
+    // 2. Wrong secret
+    const paramsWrong = new URLSearchParams(`event=global_test&secret=wrong`);
+    useAppStore.getState().processDeepLink(paramsWrong);
+    expect(useAppStore.getState().logs[0].status).toBe('failure');
+  });
+
+  it('should parse JSON payload in processDeepLink', async () => {
+    const secret = useAppStore.getState().webhookSecret;
+    // We need to check if the action receives the parsed payload.
+    // However, our current triggerFlows just passes 'details' to executeWebhook.
+    const flow = {
+      name: 'Payload Flow',
+      enabled: true,
+      trigger: {
+        type: 'DEEP_LINK' as const,
+        details: { event: 'payload_test' },
+      },
+      actions: [
+        {
+          type: 'WEBHOOK' as const,
+          details: { url: 'https://example.com', method: 'POST' },
+        },
+      ],
+    };
+
+    useAppStore.getState().addFlow(flow);
+
+    const payload = JSON.stringify({ custom_data: 'value123' });
+    const params = new URLSearchParams(`event=payload_test&payload=${encodeURIComponent(payload)}&secret=${secret}`);
+    
+    // We want to verify that 'custom_data' is available in the execution context,
+    // but right now executeWebhook only gets the fixed action.details.
+    // Let's at least verify it's parsed and passed to triggerFlows if we update it.
+    
+    // For now, let's just implement the parsing in useAppStore first.
+    useAppStore.getState().processDeepLink(params);
+
+    // Verify action was called with the parsed payload data
+    expect(actions.executeWebhook).toHaveBeenCalledWith(
+      flow.actions[0].details,
+      expect.objectContaining({ event: 'payload_test', custom_data: 'value123' })
+    );
+  });
+
   it('should trigger flow actions when triggerFlows is called', async () => {
     const flow = {
       name: 'Battery Flow',
@@ -100,8 +164,11 @@ describe('useAppStore', () => {
 
     useAppStore.getState().triggerFlows('NATIVE_BATTERY', { charging: true });
 
-    // Verify action was called
-    expect(actions.executeNotification).toHaveBeenCalledWith('Charging', 'Started');
+    // Verify action was called with details
+    expect(actions.executeNotification).toHaveBeenCalledWith(
+      flow.actions[0].details,
+      { charging: true }
+    );
     
     // Verify log was added
     const logs = useAppStore.getState().logs;

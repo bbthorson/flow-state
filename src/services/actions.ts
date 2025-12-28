@@ -16,12 +16,24 @@ export interface ActionResult {
   message?: string;
 }
 
-export async function executeWebhook(details: WebhookDetails): Promise<ActionResult> {
+function templateString(str: string | undefined, data: Record<string, any>): string {
+  if (!str) return '';
+  return str.replace(/\{\{(.*?)\}\}/g, (match, key) => {
+    const value = data[key.trim()];
+    return value !== undefined ? String(value) : match;
+  });
+}
+
+export async function executeWebhook(details: WebhookDetails, data: Record<string, any> = {}): Promise<ActionResult> {
   try {
-    const response = await fetch(details.url, {
+    const templatedUrl = templateString(details.url, data);
+    const templatedBody = details.body ? templateString(details.body, data) : undefined;
+    const templatedHeaders = details.headers ? JSON.parse(templateString(JSON.stringify(details.headers), data)) : undefined;
+
+    const response = await fetch(templatedUrl, {
       method: details.method || 'POST',
-      headers: details.headers,
-      body: details.body,
+      headers: templatedHeaders,
+      body: templatedBody,
     });
 
     if (!response.ok) {
@@ -40,7 +52,7 @@ export async function executeWebhook(details: WebhookDetails): Promise<ActionRes
   }
 }
 
-export async function executeNotification(details: NotificationDetails): Promise<ActionResult> {
+export async function executeNotification(details: NotificationDetails, data: Record<string, any> = {}): Promise<ActionResult> {
   if (typeof window === 'undefined' || typeof Notification === 'undefined') {
     return { success: false, message: 'Notifications not supported in this environment' };
   }
@@ -55,8 +67,11 @@ export async function executeNotification(details: NotificationDetails): Promise
       return { success: false, message: `Notification permission ${permission}` };
     }
 
-    new Notification(details.title, {
-      body: details.body,
+    const templatedTitle = templateString(details.title, data);
+    const templatedBody = details.body ? templateString(details.body, data) : undefined;
+
+    new Notification(templatedTitle, {
+      body: templatedBody,
       icon: details.icon,
     });
 

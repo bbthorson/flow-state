@@ -39,6 +39,7 @@ export interface LogEntry {
 interface AppState {
   flows: Flow[];
   logs: LogEntry[];
+  webhookSecret: string;
   lastBackupTimestamp: number | null;
   initialized: boolean; // To track if the store has been hydrated from localStorage
 
@@ -60,6 +61,7 @@ interface AppActions {
   addLog: (log: Omit<LogEntry, 'id' | 'timestamp'>) => void;
   processDeepLink: (params: URLSearchParams) => void;
   triggerFlows: (type: TriggerType, details: Record<string, any>, specificFlowId?: string) => void;
+  regenerateWebhookSecret: () => void;
   exportVault: () => string;
   importVault: (json: string) => { success: boolean; message: string };
   setInitialized: (initialized: boolean) => void;
@@ -82,6 +84,7 @@ export const useAppStore = create<AppState & AppActions>()(
       // Initial State
       flows: [],
       logs: [],
+      webhookSecret: uuidv4(),
       lastBackupTimestamp: null,
       initialized: false,
 
@@ -95,6 +98,7 @@ export const useAppStore = create<AppState & AppActions>()(
       // Actions
       setInitialized: (initialized) => set({ initialized }),
       addFlow: (flow) => set((state) => ({ flows: [...state.flows, { ...flow, id: uuidv4() }] })),
+      regenerateWebhookSecret: () => set({ webhookSecret: uuidv4() }),
       updateFlow: (updatedFlow) =>
         set((state) => ({
           flows: state.flows.map((flow) => (flow.id === updatedFlow.id ? updatedFlow : flow)),
@@ -135,12 +139,28 @@ export const useAppStore = create<AppState & AppActions>()(
       },
 
       processDeepLink: (params) => {
-        const { flows, addLog, triggerFlows } = get();
+        const { flows, addLog, triggerFlows, webhookSecret } = get();
         const secret = params.get('secret');
         params.delete('secret'); // Don't use secret for matching
 
-        const details = Object.fromEntries(params.entries());
+        let details = Object.fromEntries(params.entries());
         
+        // Support for JSON payload in query params (for iOS Shortcuts)
+        const jsonPayload = params.get('payload');
+        if (jsonPayload) {
+          try {
+            const parsed = JSON.parse(jsonPayload);
+            details = { ...details, ...parsed };
+            delete details.payload;
+          } catch (e) {
+            addLog({
+              flowId: 'SYSTEM',
+              status: 'failure',
+              message: `Failed to parse deep link payload: ${jsonPayload}`,
+            });
+          }
+        }
+
         let foundAnyFlow = false;
         for (const flow of flows) {
           if (!flow.enabled || flow.trigger.type !== 'DEEP_LINK') {
@@ -150,7 +170,7 @@ export const useAppStore = create<AppState & AppActions>()(
           // Trigger Details Match
           const triggerDetails = flow.trigger.details;
           const isMatch = Object.keys(triggerDetails).every(
-            (key) => params.has(key) && params.get(key) === triggerDetails[key]
+            (key) => details[key] === triggerDetails[key]
           );
 
           if (!isMatch) {
@@ -159,8 +179,9 @@ export const useAppStore = create<AppState & AppActions>()(
 
           foundAnyFlow = true;
 
-          // Security Key Check
-          if (flow.securityKey && flow.securityKey !== secret) {
+          // Security Key Check (Flow specific OR global)
+          const requiredSecret = flow.securityKey || webhookSecret;
+          if (requiredSecret && requiredSecret !== secret) {
             addLog({
               flowId: flow.id,
               status: 'failure',
@@ -207,19 +228,35 @@ export const useAppStore = create<AppState & AppActions>()(
           // Execute actions
           flow.actions.forEach(action => {
             if (action.type === 'WEBHOOK') {
-              executeWebhook(action.details as WebhookAction).catch(err => {
+              executeWebhook(action.details as any, details).then(result => {
+                if (!result.success) {
+                  addLog({
+                    flowId: flow.id,
+                    status: 'failure',
+                    message: `Webhook failed: ${result.message}`,
+                  });
+                }
+              }).catch(err => {
                 addLog({
                   flowId: flow.id,
                   status: 'failure',
-                  message: `Webhook failed: ${err.message}`,
+                  message: `Webhook error: ${err.message}`,
                 });
               });
             } else if (action.type === 'NOTIFICATION') {
-              executeNotification(action.details.title, action.details.body).catch(err => {
+              executeNotification(action.details as any, details).then(result => {
+                if (!result.success) {
+                  addLog({
+                    flowId: flow.id,
+                    status: 'failure',
+                    message: `Notification failed: ${result.message}`,
+                  });
+                }
+              }).catch(err => {
                 addLog({
                   flowId: flow.id,
                   status: 'failure',
-                  message: `Notification failed: ${err.message}`,
+                  message: `Notification error: ${err.message}`,
                 });
               });
             }
