@@ -12,10 +12,10 @@
     - [x] Subtask: Create a React hook `useNetworkStatus` that listens to `window` online/offline events.
     - [x] Subtask: Update the Zustand store on status change.
     - [x] Subtask: Write unit test for the hook (mocking window events).
-- [ ] Task: Implement Page Visibility Trigger
-    - [ ] Subtask: Create a React hook `useVisibilityStatus` for `document.visibilitychange`.
-    - [ ] Subtask: Update store on change.
-    - [ ] Subtask: Write unit test.
+- [x] Task: Implement Page Visibility Trigger f965561
+    - [x] Subtask: Create a React hook `useVisibilityStatus` for `document.visibilitychange`.
+    - [x] Subtask: Update store on change.
+    - [x] Subtask: Write unit test.
 - [ ] Task: Implement Battery API Trigger
     - [ ] Subtask: Create `useBatteryStatus` hook.
     - [ ] Subtask: Handle `navigator.getBattery()` promise and event listeners (levelchange, chargingchange).
