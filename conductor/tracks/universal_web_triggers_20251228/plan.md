@@ -1,6 +1,6 @@
 # Plan: Universal Web API Triggers
 
-## Phase 1: Core Infrastructure & State
+## Phase 1: Core Infrastructure & State [checkpoint: 95765b3]
 - [x] Task: Create `DeviceState` interface and Zustand store 12258d9
     - [x] Subtask: Define TypeScript interfaces for Battery, Network, and Visibility state.
     - [x] Subtask: Create a persistent Zustand store (`useDeviceStore`) to hold this data.
