@@ -11,3 +11,18 @@ export function getSupportedTriggers(): TriggerSupport {
     visibility: typeof document !== 'undefined' && 'visibilityState' in document,
   };
 }
+
+export type PermissionNameWithExtra = PermissionName | 'notifications' | 'geolocation' | 'push';
+
+export async function getPermissionStatus(name: PermissionNameWithExtra): Promise<PermissionState | 'unsupported'> {
+  if (typeof navigator === 'undefined' || !navigator.permissions) {
+    return 'unsupported';
+  }
+
+  try {
+    const status = await navigator.permissions.query({ name: name as any });
+    return status.state;
+  } catch (error) {
+    return 'unsupported';
+  }
+}

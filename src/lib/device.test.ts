@@ -1,9 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { getSupportedTriggers } from './device';
+import { getSupportedTriggers, getPermissionStatus } from './device';
 
 describe('getSupportedTriggers', () => {
   it('should detect support for various APIs', () => {
-    // Mock navigator and document if needed, but for now we just check if it returns an object
     const support = getSupportedTriggers();
     expect(support).toHaveProperty('battery');
     expect(support).toHaveProperty('network');
@@ -11,8 +10,7 @@ describe('getSupportedTriggers', () => {
   });
 
   it('should detect battery support', () => {
-    // Mock navigator.getBattery
-    const originalGetBattery = navigator.getBattery;
+    const originalGetBattery = (navigator as any).getBattery;
     (navigator as any).getBattery = vi.fn().mockResolvedValue({});
     
     expect(getSupportedTriggers().battery).toBe(true);
@@ -20,7 +18,33 @@ describe('getSupportedTriggers', () => {
     (navigator as any).getBattery = undefined;
     expect(getSupportedTriggers().battery).toBe(false);
 
-    // Restore
     (navigator as any).getBattery = originalGetBattery;
+  });
+});
+
+describe('getPermissionStatus', () => {
+  it('should return unsupported when navigator.permissions is missing', async () => {
+    const originalPermissions = navigator.permissions;
+    Object.defineProperty(navigator, 'permissions', { value: undefined, configurable: true });
+    
+    expect(await getPermissionStatus('geolocation' as any)).toBe('unsupported');
+    
+    Object.defineProperty(navigator, 'permissions', { value: originalPermissions, configurable: true });
+  });
+
+  it('should return permission state when supported', async () => {
+    const mockStatus = { state: 'granted' };
+    const mockQuery = vi.fn().mockResolvedValue(mockStatus);
+    const originalPermissions = navigator.permissions;
+    
+    Object.defineProperty(navigator, 'permissions', { 
+      value: { query: mockQuery }, 
+      configurable: true 
+    });
+
+    expect(await getPermissionStatus('notifications' as any)).toBe('granted');
+    expect(mockQuery).toHaveBeenCalledWith({ name: 'notifications' });
+
+    Object.defineProperty(navigator, 'permissions', { value: originalPermissions, configurable: true });
   });
 });
