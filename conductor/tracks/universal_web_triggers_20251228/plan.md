@@ -1,9 +1,9 @@
 # Plan: Universal Web API Triggers
 
 ## Phase 1: Core Infrastructure & State
-- [ ] Task: Create `DeviceState` interface and Zustand store
-    - [ ] Subtask: Define TypeScript interfaces for Battery, Network, and Visibility state.
-    - [ ] Subtask: Create a persistent Zustand store (`useDeviceStore`) to hold this data.
+- [x] Task: Create `DeviceState` interface and Zustand store 12258d9
+    - [x] Subtask: Define TypeScript interfaces for Battery, Network, and Visibility state.
+    - [x] Subtask: Create a persistent Zustand store (`useDeviceStore`) to hold this data.
 - [ ] Task: Implement Feature Detection Utility
     - [ ] Subtask: Create a utility function `getSupportedTriggers()` to return which APIs are available on the current device.
 
