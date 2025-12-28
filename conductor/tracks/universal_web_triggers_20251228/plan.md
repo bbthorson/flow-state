@@ -16,10 +16,10 @@
     - [x] Subtask: Create a React hook `useVisibilityStatus` for `document.visibilitychange`.
     - [x] Subtask: Update store on change.
     - [x] Subtask: Write unit test.
-- [ ] Task: Implement Battery API Trigger
-    - [ ] Subtask: Create `useBatteryStatus` hook.
-    - [ ] Subtask: Handle `navigator.getBattery()` promise and event listeners (levelchange, chargingchange).
-    - [ ] Subtask: Add safe guards for unsupported browsers.
+- [x] Task: Implement Battery API Trigger e2ebe4f
+    - [x] Subtask: Create `useBatteryStatus` hook.
+    - [x] Subtask: Handle `navigator.getBattery()` promise and event listeners (levelchange, chargingchange).
+    - [x] Subtask: Add safe guards for unsupported browsers.
 - [ ] Task: Implement Network Information API (Connection Type)
     - [ ] Subtask: Extend `useNetworkStatus` to check `navigator.connection` (effectiveType, type).
     - [ ] Subtask: Handle `change` event on the connection object.
