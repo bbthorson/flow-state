@@ -45,24 +45,24 @@ export default function HomePage() {
     <div className="flex flex-col h-screen bg-background text-foreground">
       <AppHeader />
       <Tabs defaultValue="flows" className="flex flex-col flex-grow overflow-hidden">
-        <main className="flex-grow overflow-y-auto p-4 pb-20 space-y-4">
-          <DeviceStatusPanel />
-          <TabsContent value="history" className="mt-0 h-full pt-4">
+        <main className="flex-grow overflow-y-auto p-4 pb-20">
+          <TabsContent value="status" className="mt-0 h-full space-y-4">
+            <DeviceStatusPanel />
             <HistoryList />
           </TabsContent>
 
-          <TabsContent value="flows" className="mt-0 h-full pt-4">
+          <TabsContent value="flows" className="mt-0 h-full">
             <FlowList />
           </TabsContent>
 
-          <TabsContent value="library" className="mt-0 h-full pt-4">
+          <TabsContent value="library" className="mt-0 h-full">
             <Library />
           </TabsContent>
         </main>
 
         <div className="border-t bg-background p-2">
             <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="history">History</TabsTrigger>
+                <TabsTrigger value="status">Status</TabsTrigger>
                 <TabsTrigger value="flows">Flows</TabsTrigger>
                 <TabsTrigger value="library">Library</TabsTrigger>
             </TabsList>
