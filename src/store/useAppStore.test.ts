@@ -175,4 +175,27 @@ describe('useAppStore', () => {
     expect(logs[0].status).toBe('success');
     expect(logs[0].message).toContain('Flow triggered by NATIVE_BATTERY');
   });
+
+  it('should add a flow from a template', () => {
+    const template = {
+      name: 'Template Flow',
+      enabled: true,
+      trigger: {
+        type: 'MANUAL' as const,
+        details: {},
+      },
+      actions: [],
+    };
+
+    useAppStore.getState().addFlowFromTemplate(template);
+    
+    const flows = useAppStore.getState().flows;
+    expect(flows).toHaveLength(1);
+    expect(flows[0].name).toBe('Template Flow');
+    expect(flows[0].id).toBeDefined();
+    
+    const logs = useAppStore.getState().logs;
+    expect(logs).toHaveLength(1);
+    expect(logs[0].message).toContain('Installed flow template: Template Flow');
+  });
 });

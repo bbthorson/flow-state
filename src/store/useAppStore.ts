@@ -1,38 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { WebhookConfig } from '@/types';
+import { WebhookConfig, Flow, TriggerType, ActionType, LogEntry } from '@/types';
 import { executeWebhook, executeNotification, WebhookAction } from '@/services/actions';
-
-// 1. Type Definitions from the specification
-
-export type TriggerType = 'NATIVE_BATTERY' | 'NETWORK' | 'DEEP_LINK' | 'MANUAL';
-export type ActionType = 'WEBHOOK' | 'NOTIFICATION' | 'LOG';
-
-export interface Flow {
-  id: string;
-  name: string;
-  enabled: boolean;
-  securityKey?: string; // For Deep Links verification
-  trigger: {
-    type: TriggerType;
-    // For DEEP_LINK: { param: "event", value: "left_work" }
-    // URL would look like: /?event=left_work
-    details: Record<string, any>;
-  };
-  actions: Array<{
-    type: ActionType;
-    details: Record<string, any>;
-  }>;
-}
-
-export interface LogEntry {
-  id: string;
-  flowId: string; // or 'SYSTEM'
-  timestamp: number;
-  status: 'success' | 'failure';
-  message: string;
-}
 
 // 2. State Interface
 
@@ -56,6 +26,7 @@ interface AppState {
 
 interface AppActions {
   addFlow: (flow: Omit<Flow, 'id'>) => void;
+  addFlowFromTemplate: (template: Omit<Flow, 'id'>) => void;
   updateFlow: (flow: Flow) => void;
   deleteFlow: (flowId: string) => void;
   addLog: (log: Omit<LogEntry, 'id' | 'timestamp'>) => void;
@@ -98,6 +69,15 @@ export const useAppStore = create<AppState & AppActions>()(
       // Actions
       setInitialized: (initialized) => set({ initialized }),
       addFlow: (flow) => set((state) => ({ flows: [...state.flows, { ...flow, id: uuidv4() }] })),
+      addFlowFromTemplate: (template) => {
+        const newFlow = { ...template, id: uuidv4() };
+        set((state) => ({ flows: [...state.flows, newFlow] }));
+        get().addLog({
+          flowId: newFlow.id,
+          status: 'success',
+          message: `Installed flow template: ${newFlow.name}`,
+        });
+      },
       regenerateWebhookSecret: () => set({ webhookSecret: uuidv4() }),
       updateFlow: (updatedFlow) =>
         set((state) => ({

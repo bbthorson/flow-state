@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DownloadCloud } from 'lucide-react';
 import { Permissions } from './permissions';
 import { ShortcutGuide } from './shortcut-guide';
+import { StarterPacks } from './starter-packs';
 
 interface LibraryItem {
     title: string;
@@ -89,19 +90,23 @@ export function Library() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8 pb-10">
       <ShortcutGuide />
+
+      <StarterPacks />
       
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Integration Library</h2>
-        <p className="text-muted-foreground">
-            Install these iOS Shortcuts to trigger flows from your device events. This is the bridge between your phone and Flow State.
-        </p>
-      </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        {libraryItems.map(item => (
-            <LibraryItemCard key={item.title} item={item} />
-        ))}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight">Shortcut Templates</h2>
+          <p className="text-sm text-muted-foreground">
+              Pre-built iOS Shortcuts that you can install and use with the Trigger URL above.
+          </p>
+        </div>
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+          {libraryItems.map(item => (
+              <LibraryItemCard key={item.title} item={item} />
+          ))}
+        </div>
       </div>
     </div>
   );
