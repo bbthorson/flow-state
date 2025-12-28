@@ -6,6 +6,7 @@
 - **UI Library:** React 18
 - **Styling:** Tailwind CSS with Radix UI primitives
 - **Icons:** Lucide React
+- **Device APIs:** Battery Status, Network Information, Geolocation (Haversine Geofencing)
 
 ## State & Data
 - **State Management:** Zustand (with local persistence)

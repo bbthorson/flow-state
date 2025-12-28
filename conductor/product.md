@@ -17,9 +17,10 @@
 ## 4. Features
 *   **Privacy & Local Storage (Critical Differentiator):** End-to-end local data persistence with no mandatory cloud sync.
 *   **Vault Management:** Securely export and import your local configuration for backups and data sovereignty.
-*   **Stable Universal Triggers:** Reliable, debounced triggers for battery, network, and app visibility status.
+*   **Stable Universal Triggers:** Reliable, debounced triggers for battery, network, app visibility, and **Geolocation (Geofencing)**.
 *   **Permissions Health Check:** Real-time visibility into required browser permissions with actionable recovery steps.
 *   **Action Execution Engine:** Functional execution of HTTP webhooks (with data templating) and local notifications.
 *   **iOS Shortcuts Bridge:** Direct integration with iOS Shortcuts via deep links, enabling complex external triggers and data passing.
 *   **Flow Visualizer/Log:** A clear UI to view, debug, and monitor active flows and history.
 *   **Integration Marketplace (V1):** A directory of installable Apple Shortcuts and pre-built automation templates.
+*   **Starter Packs:** One-tap installation of common automations (e.g., Low Battery alert, Home arrival) directly from the Library.
