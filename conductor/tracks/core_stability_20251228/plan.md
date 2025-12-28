@@ -4,7 +4,7 @@
 - [x] Task: Implement signal stabilization logic in `useDeviceStore` b89a6cf
     - [x] Subtask: Add `pending` states to the store for battery and network.
     - [x] Subtask: Implement a timer-based confirm/commit mechanism for state changes.
-- [ ] Task: Unit tests for debouncing logic
+- [x] Task: Unit tests for debouncing logic b89a6cf
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Signal Debouncing & Stability' (Protocol in workflow.md)
 
 ## Phase 2: Vault Backup & Restore UI
