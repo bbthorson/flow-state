@@ -2,10 +2,11 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { WebhookConfig } from '@/types';
+import { executeWebhook, executeNotification, WebhookAction } from '@/services/actions';
 
 // 1. Type Definitions from the specification
 
-export type TriggerType = 'NATIVE_BATTERY' | 'DEEP_LINK' | 'MANUAL';
+export type TriggerType = 'NATIVE_BATTERY' | 'NETWORK' | 'DEEP_LINK' | 'MANUAL';
 export type ActionType = 'WEBHOOK' | 'NOTIFICATION' | 'LOG';
 
 export interface Flow {
@@ -58,6 +59,7 @@ interface AppActions {
   deleteFlow: (flowId: string) => void;
   addLog: (log: Omit<LogEntry, 'id' | 'timestamp'>) => void;
   processDeepLink: (params: URLSearchParams) => void;
+  triggerFlows: (type: TriggerType, details: Record<string, any>, specificFlowId?: string) => void;
   exportVault: () => string;
   importVault: (json: string) => { success: boolean; message: string };
   setInitialized: (initialized: boolean) => void;
@@ -133,53 +135,95 @@ export const useAppStore = create<AppState & AppActions>()(
       },
 
       processDeepLink: (params) => {
-        const { flows, addLog } = get();
+        const { flows, addLog, triggerFlows } = get();
         const secret = params.get('secret');
         params.delete('secret'); // Don't use secret for matching
 
-        let processed = false;
+        const details = Object.fromEntries(params.entries());
+        
+        let foundAnyFlow = false;
         for (const flow of flows) {
           if (!flow.enabled || flow.trigger.type !== 'DEEP_LINK') {
             continue;
           }
 
-          // 1. Security Key Check
+          // Trigger Details Match
+          const triggerDetails = flow.trigger.details;
+          const isMatch = Object.keys(triggerDetails).every(
+            (key) => params.has(key) && params.get(key) === triggerDetails[key]
+          );
+
+          if (!isMatch) {
+            continue;
+          }
+
+          foundAnyFlow = true;
+
+          // Security Key Check
           if (flow.securityKey && flow.securityKey !== secret) {
             addLog({
               flowId: flow.id,
               status: 'failure',
               message: `Deep link trigger failed: Invalid security key.`,
             });
-            continue; // Invalid secret, skip this flow
+            continue;
           }
           
-          // 2. Trigger Details Match
-          const triggerDetails = flow.trigger.details;
-          const isMatch = Object.keys(triggerDetails).every(
-            (key) => params.has(key) && params.get(key) === triggerDetails[key]
-          );
-
-          if (isMatch) {
-            processed = true;
-            addLog({
-              flowId: flow.id,
-              status: 'success',
-              message: `Flow triggered by deep link: ${flow.name}.`,
-            });
-            
-            // TODO: Execute actions associated with the flow
-            flow.actions.forEach(action => {
-              console.log(`Executing action: ${action.type}`, action.details);
-              // In the future, this would call services, e.g., services.webhook.send(...)
-            });
-          }
+          triggerFlows('DEEP_LINK', details, flow.id);
         }
-        if (!processed) {
+
+        if (!foundAnyFlow) {
             addLog({
                 flowId: 'SYSTEM',
                 status: 'failure',
                 message: `No flow found for deep link: ${params.toString()}`,
               });
+        }
+      },
+
+      triggerFlows: (type, details, specificFlowId) => {
+        const { flows, addLog } = get();
+        
+        for (const flow of flows) {
+          if (!flow.enabled) continue;
+          if (specificFlowId && flow.id !== specificFlowId) continue;
+          if (!specificFlowId && flow.trigger.type !== type) continue;
+
+          // Match details if not already matched (for deep links, we might pass specificFlowId)
+          if (!specificFlowId) {
+            const triggerDetails = flow.trigger.details;
+            const isMatch = Object.keys(triggerDetails).every(
+              (key) => details[key] === triggerDetails[key]
+            );
+            if (!isMatch) continue;
+          }
+
+          addLog({
+            flowId: flow.id,
+            status: 'success',
+            message: `Flow triggered by ${type}: ${flow.name}.`,
+          });
+          
+          // Execute actions
+          flow.actions.forEach(action => {
+            if (action.type === 'WEBHOOK') {
+              executeWebhook(action.details as WebhookAction).catch(err => {
+                addLog({
+                  flowId: flow.id,
+                  status: 'failure',
+                  message: `Webhook failed: ${err.message}`,
+                });
+              });
+            } else if (action.type === 'NOTIFICATION') {
+              executeNotification(action.details.title, action.details.body).catch(err => {
+                addLog({
+                  flowId: flow.id,
+                  status: 'failure',
+                  message: `Notification failed: ${err.message}`,
+                });
+              });
+            }
+          });
         }
       },
 

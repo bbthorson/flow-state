@@ -12,6 +12,7 @@ import { VaultSection } from '@/components/vault-section';
 import { useBatteryStatus } from '@/hooks/useBatteryStatus';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useVisibilityStatus } from '@/hooks/useVisibilityStatus';
+import { useFlowTriggerManager } from '@/hooks/useFlowTriggerManager';
 
 export default function HomePage() {
   const initialized = useAppStore((state) => state.initialized);
@@ -21,6 +22,7 @@ export default function HomePage() {
   useBatteryStatus();
   useNetworkStatus();
   useVisibilityStatus();
+  useFlowTriggerManager();
 
   // Deep Link Handler Effect
   useEffect(() => {
