@@ -15,8 +15,8 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Vault Backup & Restore UI' (Protocol in workflow.md) 864be67
 
 ## Phase 3: Permissions Health Check
-- [ ] Task: Implement Permission Detection Utility
-    - [ ] Subtask: Create a helper to check `navigator.permissions` for key sensors.
-- [ ] Task: Enhance `DeviceStatusPanel` UI
-    - [ ] Subtask: Show "Permission Denied" alerts with instruction text.
+- [x] Task: Implement Permission Detection Utility ef79b6b
+    - [x] Subtask: Create a helper to check `navigator.permissions` for key sensors.
+- [x] Task: Enhance `DeviceStatusPanel` UI 3ab926f
+    - [x] Subtask: Show "Permission Denied" alerts with instruction text.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Permissions Health Check' (Protocol in workflow.md)
