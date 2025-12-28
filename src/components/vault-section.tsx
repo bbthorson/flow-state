@@ -1,59 +1,41 @@
 'use client';
 
-import { useRef } from 'react';
+import React, { useRef } from 'react';
 import { useAppStore } from '@/store/useAppStore';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Download, Upload, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Label } from './ui/label';
-
-function formatTimeAgo(timestamp: number | null): string {
-    if (timestamp === null) {
-      return 'No backup has been created yet.';
-    }
-  
-    const now = Date.now();
-    const seconds = Math.floor((now - timestamp) / 1000);
-  
-    if (seconds < 60) {
-      return `Last backup: just now`;
-    }
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) {
-        return `Last backup: ${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-    }
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) {
-        return `Last backup: ${hours} hour${hours > 1 ? 's' : ''} ago`;
-    }
-    const days = Math.floor(hours / 24);
-    return `Last backup: ${days} day${days > 1 ? 's' : ''} ago`;
-}
 
 export function VaultSection() {
-  const exportVault = useAppStore(state => state.exportVault);
-  const importVault = useAppStore(state => state.importVault);
-  const lastBackupTimestamp = useAppStore(state => state.lastBackupTimestamp);
-
-  const { toast } = useToast();
+  const { exportVault, importVault } = useAppStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const handleExport = () => {
-    const vaultJson = exportVault();
-    const blob = new Blob([vaultJson], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const date = new Date().toISOString().split('T')[0];
-    a.href = url;
-    a.download = `flow-state-vault-${date}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast({
-      title: 'Vault Exported',
-      description: 'Your configuration has been downloaded.',
-    });
+    try {
+      const data = exportVault();
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `flow-state-vault-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: 'Vault Exported',
+        description: 'Your configuration has been downloaded successfully.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Export Failed',
+        description: 'An error occurred while exporting your vault.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,50 +44,72 @@ export function VaultSection() {
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      const json = e.target?.result as string;
-      const { success, message } = importVault(json);
-      if (success) {
+      try {
+        const content = e.target?.result as string;
+        const result = importVault(content);
+        
+        if (result.success) {
+          toast({
+            title: 'Vault Imported',
+            description: result.message,
+          });
+        } else {
+          toast({
+            title: 'Import Failed',
+            description: result.message,
+            variant: 'destructive',
+          });
+        }
+      } catch (error) {
         toast({
-          title: 'Vault Imported',
-          description: message,
-        });
-      } else {
-        toast({
-          title: 'Import Failed',
-          description: message,
+          title: 'Import Error',
+          description: 'The selected file is not a valid vault format.',
           variant: 'destructive',
         });
       }
-      // Reset file input
-      if(fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
     };
     reader.readAsText(file);
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   return (
-    <div className="flex flex-col gap-4 mt-4">
-        <p className="text-sm text-muted-foreground">
-            {formatTimeAgo(lastBackupTimestamp)}
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-            <Button onClick={handleExport}>Download Backup</Button>
-            <Label htmlFor="import-vault" className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-                Import Backup
-            </Label>
-            <Input
-                id="import-vault"
-                type="file"
-                accept=".json"
-                ref={fileInputRef}
-                className="hidden"
-                onChange={handleImport}
-                />
+    <Card>
+      <CardHeader>
+        <CardTitle>Vault Management</CardTitle>
+        <CardDescription>
+          Export or import your local configuration. Your data never leaves your device.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="flex gap-2">
+          <Button onClick={handleExport} className="flex-1" variant="outline">
+            <Download className="mr-2 h-4 w-4" />
+            Export Vault
+          </Button>
+          
+          <div className="relative flex-1">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImport}
+              accept=".json"
+              className="hidden"
+            />
+            <Button onClick={() => fileInputRef.current?.click()} className="w-full">
+              <Upload className="mr-2 h-4 w-4" />
+              Import Vault
+            </Button>
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground pt-4">
-            Your data is only stored in this browser. To prevent data loss from browser cache clearing (common on iOS), you should create regular backups.
+        
+        <p className="text-xs text-muted-foreground italic">
+          Tip: Download a backup regularly to prevent data loss if you clear your browser cache.
         </p>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
