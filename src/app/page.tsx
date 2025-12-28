@@ -8,6 +8,7 @@ import { FlowList } from '@/components/flow-list';
 import { HistoryList } from '@/components/history-list';
 import { Library } from '@/components/library';
 import { DeviceStatusPanel } from '@/components/DeviceStatusPanel';
+import { VaultSection } from '@/components/vault-section';
 import { useBatteryStatus } from '@/hooks/useBatteryStatus';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useVisibilityStatus } from '@/hooks/useVisibilityStatus';
@@ -48,6 +49,7 @@ export default function HomePage() {
         <main className="flex-grow overflow-y-auto p-4 pb-20">
           <TabsContent value="status" className="mt-0 h-full space-y-4">
             <DeviceStatusPanel />
+            <VaultSection />
             <HistoryList />
           </TabsContent>
 
