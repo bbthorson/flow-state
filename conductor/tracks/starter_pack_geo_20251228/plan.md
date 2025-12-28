@@ -9,14 +9,14 @@
     - [x] Subtask: Integrate `StarterPacks` into the Library tab.
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Starter Flows & Library Seeding' [checkpoint: f044939]
 
-## Phase 2: Geolocation Integration
-- [ ] Task: Implement Geolocation Monitoring
-    - [ ] Subtask: Add `GEOLOCATION` to `TriggerType` in `useAppStore`.
-    - [ ] Subtask: Create `useGeolocationStatus` hook to update `useDeviceStore`.
-    - [ ] Subtask: Implement geofence "Enter/Exit" logic in `useFlowTriggerManager`.
-- [ ] Task: Update Flow Form for Location
-    - [ ] Subtask: Add coordinate/radius inputs to the `flow-form.tsx` when Geolocation is selected.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Geolocation Integration'
+## Phase 2: Geolocation Integration [checkpoint: b463681]
+- [x] Task: Implement Geolocation Monitoring [checkpoint: f044939]
+    - [x] Subtask: Add `GEOLOCATION` to `TriggerType` in `useAppStore`.
+    - [x] Subtask: Create `useGeolocationStatus` hook to update `useDeviceStore`.
+    - [x] Subtask: Implement geofence "Enter/Exit" logic in `useFlowTriggerManager`.
+- [x] Task: Update Flow Form for Location [checkpoint: b463681]
+    - [x] Subtask: Add coordinate/radius inputs to the `flow-form.tsx` when Geolocation is selected.
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Geolocation Integration' [checkpoint: b463681]
 
 ## Phase 3: Developer Experience & Variable Hints
 - [ ] Task: Add Variable Hint UI
