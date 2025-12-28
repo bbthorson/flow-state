@@ -4,8 +4,8 @@
 - [x] Task: Create `DeviceState` interface and Zustand store 12258d9
     - [x] Subtask: Define TypeScript interfaces for Battery, Network, and Visibility state.
     - [x] Subtask: Create a persistent Zustand store (`useDeviceStore`) to hold this data.
-- [ ] Task: Implement Feature Detection Utility
-    - [ ] Subtask: Create a utility function `getSupportedTriggers()` to return which APIs are available on the current device.
+- [x] Task: Implement Feature Detection Utility 90d994a
+    - [x] Subtask: Create a utility function `getSupportedTriggers()` to return which APIs are available on the current device.
 
 ## Phase 2: Implement Triggers
 - [ ] Task: Implement Online/Offline Triggers
