@@ -19,4 +19,4 @@
     - [x] Subtask: Create a helper to check `navigator.permissions` for key sensors.
 - [x] Task: Enhance `DeviceStatusPanel` UI 3ab926f
     - [x] Subtask: Show "Permission Denied" alerts with instruction text.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Permissions Health Check' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Permissions Health Check' (Protocol in workflow.md) d2851cc
