@@ -69,9 +69,9 @@ export function ShortcutGuide() {
           <h4 className="text-sm font-semibold">How to setup:</h4>
           <ol className="text-xs space-y-2 list-decimal list-inside text-muted-foreground">
             <li>Open the <strong>Shortcuts</strong> app on your iPhone.</li>
-            <li>Add a <strong>"Get Contents of URL"</strong> action.</li>
+            <li>Add a <strong>&quot;Get Contents of URL&quot;</strong> action.</li>
             <li>Paste your Trigger URL into the URL field.</li>
-            <li>(Optional) Add a <strong>"payload"</strong> parameter to pass data.</li>
+            <li>(Optional) Add a <strong>&quot;payload&quot;</strong> parameter to pass data.</li>
           </ol>
           <div className="pt-2">
             <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>

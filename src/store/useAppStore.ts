@@ -2,7 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { WebhookConfig, Flow, TriggerType, ActionType, LogEntry } from '@/types';
-import { executeWebhook, executeNotification, WebhookAction } from '@/services/actions';
+import { executeWebhook, executeNotification } from '@/services/actions';
+
+export type { Flow, TriggerType, ActionType } from '@/types';
 
 // 2. State Interface
 
@@ -124,7 +126,7 @@ export const useAppStore = create<AppState & AppActions>()(
         params.delete('secret'); // Don't use secret for matching
 
         let details = Object.fromEntries(params.entries());
-        
+
         // Support for JSON payload in query params (for iOS Shortcuts)
         const jsonPayload = params.get('payload');
         if (jsonPayload) {
@@ -169,22 +171,22 @@ export const useAppStore = create<AppState & AppActions>()(
             });
             continue;
           }
-          
+
           triggerFlows('DEEP_LINK', details, flow.id);
         }
 
         if (!foundAnyFlow) {
-            addLog({
-                flowId: 'SYSTEM',
-                status: 'failure',
-                message: `No flow found for deep link: ${params.toString()}`,
-              });
+          addLog({
+            flowId: 'SYSTEM',
+            status: 'failure',
+            message: `No flow found for deep link: ${params.toString()}`,
+          });
         }
       },
 
       triggerFlows: (type, details, specificFlowId) => {
         const { flows, addLog } = get();
-        
+
         for (const flow of flows) {
           if (!flow.enabled) continue;
           if (specificFlowId && flow.id !== specificFlowId) continue;
@@ -204,7 +206,7 @@ export const useAppStore = create<AppState & AppActions>()(
             status: 'success',
             message: `Flow triggered by ${type}: ${flow.name}.`,
           });
-          
+
           // Execute actions
           flow.actions.forEach(action => {
             if (action.type === 'WEBHOOK') {
@@ -245,7 +247,7 @@ export const useAppStore = create<AppState & AppActions>()(
       },
 
       setWebhooks: (webhooksOrFn) => set((state) => ({
-          webhooks: typeof webhooksOrFn === 'function' ? webhooksOrFn(state.webhooks) : webhooksOrFn
+        webhooks: typeof webhooksOrFn === 'function' ? webhooksOrFn(state.webhooks) : webhooksOrFn
       })),
       setCharging: (charging) => set({ isCharging: charging }),
       setFaceDown: (faceDown) => set({ isFaceDown: faceDown }),
@@ -258,12 +260,12 @@ export const useAppStore = create<AppState & AppActions>()(
       // Persist the entire state except for the 'initialized' flag and transient device status
       partialize: (state) =>
         Object.fromEntries(Object.entries(state).filter(([key]) =>
-            key !== 'initialized' &&
-            key !== 'isCharging' &&
-            key !== 'isFaceDown' &&
-            key !== 'isOnline' &&
-            key !== 'networkType' &&
-            key !== 'visibilityState'
+          key !== 'initialized' &&
+          key !== 'isCharging' &&
+          key !== 'isFaceDown' &&
+          key !== 'isOnline' &&
+          key !== 'networkType' &&
+          key !== 'visibilityState'
         )) as Omit<
           AppState,
           'initialized' | 'isCharging' | 'isFaceDown' | 'isOnline' | 'networkType' | 'visibilityState'

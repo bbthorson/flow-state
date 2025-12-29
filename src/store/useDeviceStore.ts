@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { DeviceState, DeviceActions, BatteryState, NetworkState } from '@/types/device';
+import { DeviceState, DeviceActions, BatteryState, NetworkState, GeolocationState } from '@/types/device';
 
 const DEBOUNCE_DELAY = 5000; // 5 seconds
 
@@ -41,7 +41,7 @@ export const useDeviceStore = create<DeviceStore>()(
 
       updateBattery: (batteryUpdate: Partial<BatteryState>) => {
         const state = get();
-        
+
         // Clear existing timer
         if (state.batteryTimer) {
           clearTimeout(state.batteryTimer);
@@ -49,8 +49,8 @@ export const useDeviceStore = create<DeviceStore>()(
 
         // Merge with existing pending state if any
         const newPending = {
-            ...(state.battery.pending || {}),
-            ...batteryUpdate
+          ...(state.battery.pending || {}),
+          ...batteryUpdate
         };
 
         // Set pending state
@@ -75,7 +75,7 @@ export const useDeviceStore = create<DeviceStore>()(
 
       updateNetwork: (networkUpdate: Partial<NetworkState>) => {
         const state = get();
-        
+
         // Clear existing timer
         if (state.networkTimer) {
           clearTimeout(state.networkTimer);
@@ -83,8 +83,8 @@ export const useDeviceStore = create<DeviceStore>()(
 
         // Merge with existing pending state if any
         const newPending = {
-            ...(state.network.pending || {}),
-            ...networkUpdate
+          ...(state.network.pending || {}),
+          ...networkUpdate
         };
 
         // Set pending state
@@ -109,7 +109,7 @@ export const useDeviceStore = create<DeviceStore>()(
 
       updateGeolocation: (geoUpdate: Partial<GeolocationState>) => {
         const state = get();
-        
+
         // Clear existing timer
         if (state.geolocationTimer) {
           clearTimeout(state.geolocationTimer);
@@ -117,8 +117,8 @@ export const useDeviceStore = create<DeviceStore>()(
 
         // Merge with existing pending state if any
         const newPending = {
-            ...(state.geolocation.pending || {}),
-            ...geoUpdate
+          ...(state.geolocation.pending || {}),
+          ...geoUpdate
         };
 
         // Set pending state
@@ -153,11 +153,11 @@ export const useDeviceStore = create<DeviceStore>()(
         network: state.network,
         visibility: state.visibility,
         geolocation: {
-            latitude: null,
-            longitude: null,
-            accuracy: null,
-            speed: null,
-            supported: state.geolocation.supported
+          latitude: null,
+          longitude: null,
+          accuracy: null,
+          speed: null,
+          supported: state.geolocation.supported
         }
       }),
     }

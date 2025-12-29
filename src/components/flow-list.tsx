@@ -16,10 +16,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Flow } from '@/store/useAppStore';
+import { Flow, TriggerType } from '@/types';
 import { Link, Trash2, Pencil, PlusCircle, Play } from 'lucide-react';
 import { FlowForm } from '@/components/flow-form';
-import { TriggerType } from '@/types';
 
 const MOCK_DATA: Record<TriggerType, any> = {
   NATIVE_BATTERY: { level: 0.5, charging: true },
@@ -52,11 +51,11 @@ function FlowListItem({ flow, onEdit }: { flow: Flow, onEdit: () => void }) {
       </div>
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={handleTest} title="Test Flow">
-            <Play className="h-4 w-4 text-green-500" />
+          <Play className="h-4 w-4 text-green-500" />
         </Button>
         <Switch checked={flow.enabled} onCheckedChange={handleToggle} />
         <Button variant="ghost" size="icon" onClick={onEdit}>
-            <Pencil className="h-4 w-4" />
+          <Pencil className="h-4 w-4" />
         </Button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
@@ -96,77 +95,77 @@ export function FlowList() {
   };
 
   const handleSaveEditedFlow = (flowData: Omit<Flow, 'id'>) => {
-      if (editingFlowId) {
-          updateFlow({ ...flowData, id: editingFlowId });
-          setEditingFlowId(null);
-      }
+    if (editingFlowId && editingFlow) {
+      updateFlow({ ...editingFlow, ...flowData, id: editingFlowId });
+      setEditingFlowId(null);
+    }
   };
 
   const editingFlow = flows.find(f => f.id === editingFlowId);
 
   if (isCreating) {
-      return (
-        <div className="space-y-4">
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight">Create New Flow</h2>
-            </div>
-            <Card>
-                <CardContent className="p-6">
-                    <FlowForm onSave={handleSaveNewFlow} onCancel={() => setIsCreating(false)} />
-                </CardContent>
-            </Card>
+    return (
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Create New Flow</h2>
         </div>
-      )
+        <Card>
+          <CardContent className="p-6">
+            <FlowForm onSave={handleSaveNewFlow} onCancel={() => setIsCreating(false)} />
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   if (editingFlow) {
-      return (
-        <div className="space-y-4">
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight">Edit Flow</h2>
-            </div>
-            <Card>
-                <CardContent className="p-6">
-                    <FlowForm
-                        flow={editingFlow}
-                        onSave={handleSaveEditedFlow}
-                        onCancel={() => setEditingFlowId(null)}
-                    />
-                </CardContent>
-            </Card>
+    return (
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Edit Flow</h2>
         </div>
-      )
+        <Card>
+          <CardContent className="p-6">
+            <FlowForm
+              flow={editingFlow}
+              onSave={handleSaveEditedFlow}
+              onCancel={() => setEditingFlowId(null)}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-            <h2 className="text-2xl font-bold tracking-tight">Flows</h2>
-            <p className="text-muted-foreground">Create and manage your automations.</p>
+          <h2 className="text-2xl font-bold tracking-tight">Flows</h2>
+          <p className="text-muted-foreground">Create and manage your automations.</p>
         </div>
         <Button onClick={() => setIsCreating(true)}>
-            <PlusCircle className="mr-2 h-4 w-4"/>
-            Create Flow
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Create Flow
         </Button>
       </div>
 
       <Card>
         <div className="divide-y">
-            {flows.length === 0 ? (
+          {flows.length === 0 ? (
             <div className="text-center text-muted-foreground p-8">
-                <p>You have no flows yet.</p>
-                <p>Click &quot;Create Flow&quot; to get started.</p>
+              <p>You have no flows yet.</p>
+              <p>Click &quot;Create Flow&quot; to get started.</p>
             </div>
-            ) : (
+          ) : (
             flows.map((flow) => (
-                <FlowListItem
-                    key={flow.id}
-                    flow={flow}
-                    onEdit={() => setEditingFlowId(flow.id)}
-                />
+              <FlowListItem
+                key={flow.id}
+                flow={flow}
+                onEdit={() => setEditingFlowId(flow.id)}
+              />
             ))
-            )}
+          )}
         </div>
       </Card>
     </div>

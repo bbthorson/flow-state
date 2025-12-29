@@ -71,6 +71,7 @@
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^5.1.2",
     "@vitest/coverage-v8": "^4.0.16",
+    "baseline-browser-mapping": "^2.9.11",
     "eslint": "^9.37.0",
     "eslint-config-next": "^15.5.4",
     "genkit-cli": "^1.0.4",
