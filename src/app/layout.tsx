@@ -1,4 +1,4 @@
-import type {Metadata} from 'next';
+import type {Metadata, Viewport} from 'next';
 import {Nunito_Sans, Geist_Mono} from 'next/font/google';
 import './globals.css';
 
@@ -13,10 +13,13 @@ const geistMono = Geist_Mono({
   weight: ['400'],
 });
 
+export const viewport: Viewport = {
+  themeColor: '#F8F6F2',
+};
+
 export const metadata: Metadata = {
   description: 'Flow State App',
   manifest: '/manifest.webmanifest',
-  themeColor: '#F8F6F2',
   title: 'Flow State',
   icons: {
     icon: '/favicon.ico',

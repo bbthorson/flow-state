@@ -16,6 +16,15 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        'require-in-the-middle': false,
+      };
+    }
+    return config;
+  },
 };
 
 export default withPWA(nextConfig);
