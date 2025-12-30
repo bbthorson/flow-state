@@ -1,16 +1,6 @@
 'use client';
 
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
-import { Settings } from 'lucide-react';
 import { SyncStatusIcon } from '@/components/sync-status-icon';
-import { VaultSection } from '@/components/vault-section';
 
 export function AppHeader() {
   return (
@@ -20,19 +10,6 @@ export function AppHeader() {
 
         <div className="flex items-center gap-2">
           <SyncStatusIcon />
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Settings className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent>
-              <SheetHeader>
-                <SheetTitle>Settings & Vault</SheetTitle>
-              </SheetHeader>
-              <VaultSection />
-            </SheetContent>
-          </Sheet>
         </div>
       </div>
     </header>
