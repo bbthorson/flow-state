@@ -14,7 +14,7 @@ import { VaultSection } from '@/components/vault-section';
 
 export function AppHeader() {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 p-2 backdrop-blur-[4px]">
+    <header className="z-50 w-full border-b border-border bg-background/95 p-2 backdrop-blur-[4px]">
       <div className="container mx-auto flex items-center justify-between">
         <h1 className="text-xl font-bold">Flow State</h1>
 
