@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7BA3AD"/>
+      <stop offset="100%" stop-color="#5B8A96"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="108" fill="url(#bg)"/>
+  <!-- Flow path: S-curve connecting trigger to action -->
+  <path d="M152 168 C 280 168, 232 344, 360 344" fill="none" stroke="#F8F6F2" stroke-opacity="0.5" stroke-width="32" stroke-linecap="round"/>
+  <!-- Arrow chevron on the curve -->
+  <path d="M270 240 L296 264 L270 288" fill="none" stroke="#F8F6F2" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Top node (trigger: circle with dot) -->
+  <circle cx="152" cy="168" r="52" fill="#F8F6F2"/>
+  <circle cx="152" cy="168" r="24" fill="#5B8A96"/>
+  <!-- Bottom node (action: circle with bolt) -->
+  <circle cx="360" cy="344" r="52" fill="#F8F6F2"/>
+  <path d="M370 320 L350 348 L366 348 L346 376" fill="none" stroke="#5B8A96" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
