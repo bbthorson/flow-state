@@ -200,60 +200,67 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
 
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4 border rounded-lg bg-card">
-                <h3 className="text-lg font-bold mb-4">{flow ? 'Edit Flow' : 'Create Flow'}</h3>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-bold tracking-tight">{flow ? 'Edit Flow' : 'Create Flow'}</h2>
+                    <div className="flex gap-2">
+                        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" size="sm">Save Flow</Button>
+                    </div>
+                </div>
 
                 {!flow && aiAvailability !== 'unavailable' && (
                     <AiFlowInput onGenerated={(data) => {
                         form.setValue('name', data.name);
                         form.setValue('trigger.type', data.trigger.type as any);
                         form.setValue('trigger.details', data.trigger.details || {});
-                        // Replace actions array
                         while (fields.length > 0) remove(0);
                         data.actions.forEach((action) => append({ type: action.type as any, details: action.details || {} }));
                     }} />
                 )}
 
-                <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Flow Name</FormLabel>
-                            <FormControl>
-                                <Input placeholder="My Automation Flow" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <div className="space-y-4 border p-4 rounded-md">
-                    <h4 className="font-medium">Trigger</h4>
-                    <FormField
-                        control={form.control}
-                        name="trigger.type"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Type</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Card>
+                    <CardContent className="p-4 space-y-4">
+                        <FormField
+                            control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Flow Name</FormLabel>
                                     <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select a trigger" />
-                                        </SelectTrigger>
+                                        <Input placeholder="My Automation Flow" {...field} />
                                     </FormControl>
-                                    <SelectContent>
-                                        {triggerTypes.map((type) => (
-                                            <SelectItem key={type} value={type}>
-                                                {TRIGGER_LABELS[type]}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="trigger.type"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>When this happens...</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select a trigger" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {triggerTypes.map((type) => (
+                                                <SelectItem key={type} value={type}>
+                                                    {TRIGGER_LABELS[type]}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
                     {triggerType === 'IDLE' && (
                         <div className="space-y-4">
@@ -494,44 +501,34 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                             </Button>
                         </div>
                     )}
-                </div>
+                    </CardContent>
+                </Card>
 
                 <PermissionWarning unmet={unmetPerms} permissions={permissions} />
 
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h4 className="font-medium">Actions</h4>
-                        <Button type="button" variant="outline" size="sm" onClick={() => append({ type: 'LOG', details: {} })}>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Add Action
-                        </Button>
-                    </div>
+                <Card>
+                    <CardContent className="p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <FormLabel className="text-base">...do this</FormLabel>
+                            <Button type="button" variant="outline" size="sm" onClick={() => append({ type: 'LOG', details: {} })}>
+                                <PlusCircle className="mr-2 h-4 w-4" /> Add Action
+                            </Button>
+                        </div>
 
-                    <VariableHints type={triggerType} />
+                        <VariableHints type={triggerType} />
 
-                    {fields.map((field, index) => (
-                        <Card key={field.id}>
-                            <CardContent className="pt-6 relative">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute right-2 top-2 text-destructive"
-                                    onClick={() => remove(index)}
-                                    disabled={fields.length === 1}
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                                <div className="grid gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name={`actions.${index}.type`}
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Action Type</FormLabel>
+                        {fields.map((field, index) => (
+                            <div key={field.id} className="space-y-3 rounded-md border p-3">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-muted-foreground shrink-0">#{index + 1}</span>
+                                    <div className="flex-1">
+                                        <FormField
+                                            control={form.control}
+                                            name={`actions.${index}.type`}
+                                            render={({ field }) => (
                                                 <Select
                                                     onValueChange={(value) => {
                                                         field.onChange(value);
-                                                        // Reset details when type changes
                                                         form.setValue(`actions.${index}.details`, {});
                                                     }}
                                                     defaultValue={field.value}
@@ -549,24 +546,26 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <ActionDetails index={index} form={form} />
+                                            )}
+                                        />
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="shrink-0 text-destructive h-8 w-8"
+                                        onClick={() => remove(index)}
+                                        disabled={fields.length === 1}
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
 
-                <div className="flex justify-end gap-2">
-                    <Button type="button" variant="ghost" onClick={onCancel}>
-                        Cancel
-                    </Button>
-                    <Button type="submit">Save Flow</Button>
-                </div>
+                                <ActionDetails index={index} form={form} />
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
             </form>
         </Form>
     );

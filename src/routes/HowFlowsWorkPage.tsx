@@ -168,7 +168,7 @@ export function HowFlowsWorkPage() {
   const permissions = usePermissions();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <Button variant="ghost" size="sm" asChild className="mb-2 -ml-2">
           <Link to="/discover">

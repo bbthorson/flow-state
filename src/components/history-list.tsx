@@ -38,7 +38,7 @@ export function HistoryList() {
       <Card>
         <div className="divide-y">
             {logs.length === 0 ? (
-                <div className="text-center text-muted-foreground p-8 space-y-1">
+                <div className="text-center text-muted-foreground p-10 space-y-1">
                     <p className="font-medium">No activity yet</p>
                     <p className="text-sm">Events will appear here as your flows trigger.</p>
                 </div>

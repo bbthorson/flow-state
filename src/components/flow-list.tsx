@@ -122,35 +122,17 @@ export function FlowList() {
 
   if (isCreating) {
     return (
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Create New Flow</h2>
-        </div>
-        <Card>
-          <CardContent className="p-6">
-            <FlowForm onSave={handleSaveNewFlow} onCancel={() => setIsCreating(false)} />
-          </CardContent>
-        </Card>
-      </div>
+      <FlowForm onSave={handleSaveNewFlow} onCancel={() => setIsCreating(false)} />
     )
   }
 
   if (editingFlow) {
     return (
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Edit Flow</h2>
-        </div>
-        <Card>
-          <CardContent className="p-6">
-            <FlowForm
-              flow={editingFlow}
-              onSave={handleSaveEditedFlow}
-              onCancel={() => setEditingFlowId(null)}
-            />
-          </CardContent>
-        </Card>
-      </div>
+      <FlowForm
+        flow={editingFlow}
+        onSave={handleSaveEditedFlow}
+        onCancel={() => setEditingFlowId(null)}
+      />
     )
   }
 
