@@ -15,7 +15,7 @@ import {
     FormLabel,
     FormMessage,
 } from '@/components/ui/form';
-import { Trash2, PlusCircle, ShieldAlert, Sparkles, Loader2 } from 'lucide-react';
+import { Trash2, PlusCircle, ShieldAlert, Sparkles, Loader2, ArrowLeft } from 'lucide-react';
 import { VariableHints } from './variable-hints';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useLanguageModel, generateFlow } from '@/hooks/useLanguageModel';
@@ -197,17 +197,17 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
         });
     }
 
+    const name = form.watch('name');
+    const isValid = name?.trim().length > 0;
+
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <Button type="button" variant="ghost" size="icon" className="shrink-0 -ml-2" onClick={onCancel}>
+                        <ArrowLeft className="h-4 w-4" />
+                    </Button>
                     <h2 className="text-2xl font-bold tracking-tight">{flow ? 'Edit Flow' : 'Create Flow'}</h2>
-                    <div className="flex gap-2">
-                        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-                            Cancel
-                        </Button>
-                        <Button type="submit" size="sm">Save Flow</Button>
-                    </div>
                 </div>
 
                 {!flow && aiAvailability !== 'unavailable' && (
@@ -561,6 +561,10 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                             </div>
                         ))}
                 </div>
+
+                <Button type="submit" className="w-full" disabled={!isValid}>
+                    Save Flow
+                </Button>
             </form>
         </Form>
     );

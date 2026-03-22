@@ -1,10 +1,9 @@
 import { useNavigate } from 'react-router';
 import { useAppStore } from '@/store/useAppStore';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { RefreshCw, Copy, Eye, EyeOff, ShieldCheck, X } from 'lucide-react';
+import { RefreshCw, Copy, Eye, EyeOff, X } from 'lucide-react';
 import { VaultSection } from '@/components/vault-section';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -48,14 +47,14 @@ function WebhookSecretSection() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Webhook Secret</CardTitle>
-        <CardDescription>
+    <div className="space-y-2">
+      <div>
+        <h3 className="text-sm font-semibold">Webhook Secret</h3>
+        <p className="text-xs text-muted-foreground">
           Used to authenticate deep link triggers. Share this with services that need to trigger your flows.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
+        </p>
+      </div>
+      <div className="space-y-3">
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Input
@@ -96,8 +95,8 @@ function WebhookSecretSection() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -118,17 +117,14 @@ function PermissionsSection() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="h-5 w-5" />
-          <CardTitle>Permissions</CardTitle>
-        </div>
-        <CardDescription>
+    <div className="space-y-2">
+      <div>
+        <h3 className="text-sm font-semibold">Permissions</h3>
+        <p className="text-xs text-muted-foreground">
           Browser capabilities used by your triggers and actions.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2">
+        </p>
+      </div>
+      <div className="space-y-2">
         {ALL_PERMISSIONS.map((perm) => {
           const state = permissions[perm];
           return (
@@ -153,18 +149,16 @@ function PermissionsSection() {
             </div>
           );
         })}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
 function AboutSection() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>About</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2 text-sm text-muted-foreground">
+    <div className="space-y-2">
+      <h3 className="text-sm font-semibold">About</h3>
+      <div className="space-y-2 text-sm text-muted-foreground">
         <div className="flex justify-between">
           <span>Version</span>
           <span className="font-mono">0.2.0</span>
@@ -176,8 +170,8 @@ function AboutSection() {
         <p className="pt-2 text-xs">
           Flow State runs entirely on your device. No data is sent to any server unless you configure a webhook action.
         </p>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -195,11 +189,19 @@ export function SettingsPage() {
         </div>
       </header>
       <main className="flex-grow overflow-y-auto p-4">
-        <div className="space-y-4">
-          <WebhookSecretSection />
-          <PermissionsSection />
-          <VaultSection />
-          <AboutSection />
+        <div className="divide-y">
+          <div className="pb-4">
+            <WebhookSecretSection />
+          </div>
+          <div className="py-4">
+            <PermissionsSection />
+          </div>
+          <div className="py-4">
+            <VaultSection />
+          </div>
+          <div className="pt-4">
+            <AboutSection />
+          </div>
         </div>
       </main>
     </div>
