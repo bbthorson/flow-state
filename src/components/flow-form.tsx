@@ -15,7 +15,6 @@ import {
     FormLabel,
     FormMessage,
 } from '@/components/ui/form';
-import { Card, CardContent } from '@/components/ui/card';
 import { Trash2, PlusCircle, ShieldAlert, Sparkles, Loader2 } from 'lucide-react';
 import { VariableHints } from './variable-hints';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -221,28 +220,27 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                     }} />
                 )}
 
-                <Card>
-                    <CardContent className="p-4 space-y-4">
-                        <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Flow Name</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="My Automation Flow" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                <div className="space-y-4">
+                    <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Flow Name</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="My Automation Flow" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
 
-                        <FormField
-                            control={form.control}
-                            name="trigger.type"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>When this happens...</FormLabel>
+                    <FormField
+                        control={form.control}
+                        name="trigger.type"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>When this happens...</FormLabel>
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl>
                                             <SelectTrigger>
@@ -501,15 +499,13 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                             </Button>
                         </div>
                     )}
-                    </CardContent>
-                </Card>
+                </div>
 
                 <PermissionWarning unmet={unmetPerms} permissions={permissions} />
 
-                <Card>
-                    <CardContent className="p-4 space-y-4">
-                        <div className="flex items-center justify-between">
-                            <FormLabel className="text-base">...do this</FormLabel>
+                <div className="space-y-4 border-t pt-4">
+                    <div className="flex items-center justify-between">
+                        <FormLabel className="text-base">...do this</FormLabel>
                             <Button type="button" variant="outline" size="sm" onClick={() => append({ type: 'LOG', details: {} })}>
                                 <PlusCircle className="mr-2 h-4 w-4" /> Add Action
                             </Button>
@@ -564,8 +560,7 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                                 <ActionDetails index={index} form={form} />
                             </div>
                         ))}
-                    </CardContent>
-                </Card>
+                </div>
             </form>
         </Form>
     );

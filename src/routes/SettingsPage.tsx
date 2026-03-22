@@ -1,9 +1,10 @@
+import { useNavigate } from 'react-router';
 import { useAppStore } from '@/store/useAppStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { RefreshCw, Copy, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { RefreshCw, Copy, Eye, EyeOff, ShieldCheck, X } from 'lucide-react';
 import { VaultSection } from '@/components/vault-section';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -181,16 +182,26 @@ function AboutSection() {
 }
 
 export function SettingsPage() {
+  const navigate = useNavigate();
+
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
-        <p className="text-muted-foreground">Manage your security, backups, and preferences.</p>
-      </div>
-      <WebhookSecretSection />
-      <PermissionsSection />
-      <VaultSection />
-      <AboutSection />
+    <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
+      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 px-4 py-2 backdrop-blur-[4px]">
+        <div className="container mx-auto flex items-center justify-between">
+          <h1 className="text-xl font-bold">Settings</h1>
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </header>
+      <main className="flex-grow overflow-y-auto p-4">
+        <div className="space-y-4">
+          <WebhookSecretSection />
+          <PermissionsSection />
+          <VaultSection />
+          <AboutSection />
+        </div>
+      </main>
     </div>
   );
 }
