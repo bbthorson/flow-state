@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useEffect, useState } from 'react';
 import { useDeviceStore } from '@/store/useDeviceStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

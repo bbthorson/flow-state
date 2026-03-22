@@ -1,5 +1,3 @@
-'use client';
-
 import { useAppStore } from '@/store/useAppStore';
 import { cn } from '@/lib/utils';
 import {

@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useRef } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

@@ -1,5 +1,3 @@
-'use client';
-
 import React from 'react';
 import { TriggerType } from '@/types';
 import { Badge } from '@/components/ui/badge';

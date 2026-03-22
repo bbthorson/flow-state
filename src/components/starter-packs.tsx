@@ -1,5 +1,3 @@
-'use client';
-
 import React from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { STARTER_FLOWS, FlowTemplate } from '@/lib/templates';

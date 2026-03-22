@@ -1,5 +1,3 @@
-'use client';
-
 import { useAppStore } from '@/store/useAppStore';
 import { Card } from '@/components/ui/card';
 import { CheckCircle2, XCircle, Info } from 'lucide-react';
