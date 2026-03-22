@@ -21,13 +21,28 @@ An Android-first PWA for on-device automations. Connects device triggers (batter
 ## Architecture
 
 - `src/types/` — Core types derived from lexicon schemas
-- `src/lexicons/` — AT Protocol lexicon JSON files (app.flowstate.*)
-- `src/store/` — Zustand stores (useAppStore for flows/logs, useDeviceStore for sensors)
+- `src/lexicons/` — AT Protocol lexicon JSON files (app.flowstate.flow, app.flowstate.install, triggers, actions)
+- `src/store/useAppStore.ts` — Zustand store for flows, logs, vault import/export (persisted to localStorage)
+- `src/store/useDeviceStore.ts` — Zustand store for device sensor state
+- `src/store/useAuthStore.ts` — Zustand store for AT Protocol OAuth (did, handle, published flows map, network discovery)
 - `src/hooks/` — Device sensor hooks (battery, network, geo, idle, motion, orientation), useFlowTriggerManager connects sensor data to flow execution
 - `src/services/actions.ts` — Action executors, all return ActionResult
+- `src/services/atproto.ts` — AT Protocol operations: publish/unpublish flows, record installs, discover flows from follows
+- `src/lib/atproto.ts` — BrowserOAuthClient singleton (handles PKCE/PAR/DPoP automatically)
 - `src/lib/permissions.ts` — Permission registry mapping trigger/action types to browser capabilities
-- `src/components/AppLayout.tsx` — Main shell with header, content area, bottom tab nav. All device hooks initialize here.
+- `src/components/AppLayout.tsx` — Main shell with header, content area, bottom tab nav. All device hooks and auth init here. Uses `h-dvh` for mobile viewport.
 - `src/routes/` — Page components rendered via React Router
+
+## AT Protocol Integration
+
+- OAuth via `@atproto/oauth-client-browser` — user signs in with Bluesky handle
+- Client metadata at `public/oauth/client-metadata.json` (public client, no secrets)
+- Handle resolution through Bluesky's public API (`https://bsky.social`)
+- Flows are published to the user's PDS as `app.flowstate.flow` records
+- Installs are recorded as `app.flowstate.install` records (AT URI reference + timestamp)
+- Discovery crawls the user's follow list client-side — no backend indexer
+- OAuth callback route at `/oauth/callback`, processed by `BrowserOAuthClient.init()` on app load
+- Auth state persists `did`, `handle`, and `publishedFlows` map; session/agent are runtime-only
 
 ## UI/Styling Conventions
 
