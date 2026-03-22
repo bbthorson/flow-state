@@ -16,9 +16,10 @@ import {
     FormMessage,
 } from '@/components/ui/form';
 import { Card, CardContent } from '@/components/ui/card';
-import { Trash2, PlusCircle, ShieldAlert } from 'lucide-react';
+import { Trash2, PlusCircle, ShieldAlert, Sparkles, Loader2 } from 'lucide-react';
 import { VariableHints } from './variable-hints';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useLanguageModel, generateFlow } from '@/hooks/useLanguageModel';
 import {
     TRIGGER_PERMISSIONS,
     ACTION_PERMISSIONS,
@@ -111,8 +112,52 @@ function PermissionWarning({ unmet, permissions }: {
     );
 }
 
+function AiFlowInput({ onGenerated }: { onGenerated: (data: { name: string; trigger: any; actions: any[] }) => void }) {
+    const [input, setInput] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleGenerate = async () => {
+        if (!input.trim()) return;
+        setLoading(true);
+        setError(null);
+        const result = await generateFlow(input.trim());
+        setLoading(false);
+        if (result) {
+            onGenerated(result);
+            setInput('');
+        } else {
+            setError('Could not generate a flow from that description. Try being more specific.');
+        }
+    };
+
+    return (
+        <div className="space-y-2 rounded-md border border-dashed border-primary/30 bg-primary/5 p-3">
+            <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+                <Sparkles className="h-3 w-3" />
+                <span>Describe your automation</span>
+            </div>
+            <div className="flex gap-2">
+                <Input
+                    placeholder="e.g. Notify me when my battery drops below 20%"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleGenerate())}
+                    disabled={loading}
+                />
+                <Button type="button" size="sm" onClick={handleGenerate} disabled={loading || !input.trim()}>
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Generate'}
+                </Button>
+            </div>
+            {error && <p className="text-xs text-destructive">{error}</p>}
+            <p className="text-[10px] text-muted-foreground">Powered by on-device AI. Nothing leaves your device.</p>
+        </div>
+    );
+}
+
 export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
     const permissions = usePermissions();
+    const aiAvailability = useLanguageModel();
     const defaultValues: Partial<FlowFormValues> = flow
         ? {
             name: flow.name,
@@ -157,6 +202,17 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4 border rounded-lg bg-card">
                 <h3 className="text-lg font-bold mb-4">{flow ? 'Edit Flow' : 'Create Flow'}</h3>
+
+                {!flow && aiAvailability !== 'unavailable' && (
+                    <AiFlowInput onGenerated={(data) => {
+                        form.setValue('name', data.name);
+                        form.setValue('trigger.type', data.trigger.type as any);
+                        form.setValue('trigger.details', data.trigger.details || {});
+                        // Replace actions array
+                        while (fields.length > 0) remove(0);
+                        data.actions.forEach((action) => append({ type: action.type as any, details: action.details || {} }));
+                    }} />
+                )}
 
                 <FormField
                     control={form.control}
