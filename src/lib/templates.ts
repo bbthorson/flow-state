@@ -29,28 +29,27 @@ export const STARTER_FLOWS: FlowTemplate[] = [
     },
     actions: [
       {
-        type: 'WEBHOOK',
+        type: 'NOTIFICATION',
         details: {
-          url: 'https://hooks.example.com/home-arrival',
-          method: 'POST',
-          body: JSON.stringify({ event: 'arrival', location: 'home' }),
+          title: 'Welcome Home',
+          body: 'You connected to your home network.',
         },
       },
     ],
   },
   {
-    name: 'Siri Shortcut Trigger',
+    name: 'Manual Webhook Ping',
     enabled: true,
     trigger: {
-      type: 'DEEP_LINK',
-      details: { event: 'SHORTCUT' },
+      type: 'MANUAL',
+      details: {},
     },
     actions: [
       {
         type: 'NOTIFICATION',
         details: {
-          title: 'Shortcut Executed',
-          body: 'Flow State successfully triggered from iOS Shortcuts.',
+          title: 'Manual Trigger',
+          body: 'Flow State ran a manual flow successfully.',
         },
       },
     ],

@@ -30,6 +30,6 @@ describe('STARTER_FLOWS', () => {
     const names = STARTER_FLOWS.map(f => f.name);
     expect(names).toContain('Low Battery Alert');
     expect(names).toContain('Home WiFi Connect');
-    expect(names).toContain('Siri Shortcut Trigger');
+    expect(names).toContain('Manual Webhook Ping');
   });
 });

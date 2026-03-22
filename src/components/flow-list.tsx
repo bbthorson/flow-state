@@ -15,7 +15,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Flow, TriggerType } from '@/types';
-import { Link, Trash2, Pencil, PlusCircle, Play } from 'lucide-react';
+import { Link, Trash2, Pencil, PlusCircle, Play, Zap } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import { FlowForm } from '@/components/flow-form';
 
 const MOCK_DATA: Record<TriggerType, any> = {
@@ -84,6 +85,7 @@ export function FlowList() {
   const addFlow = useAppStore((state) => state.addFlow);
   const updateFlow = useAppStore((state) => state.updateFlow);
 
+  const navigate = useNavigate();
   const [isCreating, setIsCreating] = useState(false);
   const [editingFlowId, setEditingFlowId] = useState<string | null>(null);
 
@@ -148,24 +150,42 @@ export function FlowList() {
         </Button>
       </div>
 
-      <Card>
-        <div className="divide-y">
-          {flows.length === 0 ? (
-            <div className="text-center text-muted-foreground p-8">
-              <p>You have no flows yet.</p>
-              <p>Click &quot;Create Flow&quot; to get started.</p>
+      {flows.length === 0 ? (
+        <Card>
+          <div className="flex flex-col items-center text-center p-10 space-y-4">
+            <div className="rounded-full bg-muted p-4">
+              <Zap className="h-8 w-8 text-muted-foreground" />
             </div>
-          ) : (
-            flows.map((flow) => (
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold">No automations yet</h3>
+              <p className="text-sm text-muted-foreground max-w-xs">
+                Flows connect device events like battery level or network changes to actions like webhooks and notifications.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 w-full max-w-xs">
+              <Button onClick={() => setIsCreating(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Create Your First Flow
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/discover')}>
+                Browse Starter Templates
+              </Button>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <Card>
+          <div className="divide-y">
+            {flows.map((flow) => (
               <FlowListItem
                 key={flow.id}
                 flow={flow}
                 onEdit={() => setEditingFlowId(flow.id)}
               />
-            ))
-          )}
-        </div>
-      </Card>
+            ))}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

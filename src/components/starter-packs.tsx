@@ -1,4 +1,3 @@
-import React from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { STARTER_FLOWS, FlowTemplate } from '@/lib/templates';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,18 +66,10 @@ function StarterFlowCard({ template }: { template: FlowTemplate }) {
 
 export function StarterPacks() {
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold tracking-tight">Starter Packs</h2>
-        <p className="text-sm text-muted-foreground">
-          One-tap templates to get you started quickly.
-        </p>
-      </div>
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-        {STARTER_FLOWS.map((template) => (
-          <StarterFlowCard key={template.name} template={template} />
-        ))}
-      </div>
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+      {STARTER_FLOWS.map((template) => (
+        <StarterFlowCard key={template.name} template={template} />
+      ))}
     </div>
   );
 }
