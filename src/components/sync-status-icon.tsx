@@ -9,7 +9,7 @@ import {
 
 const getStatus = (timestamp: number | null): { color: string; tooltip: string } => {
     if (timestamp === null) {
-        return { color: 'bg-red-500', tooltip: 'No backup created yet. Create one from the settings menu.' };
+        return { color: 'bg-red-500', tooltip: 'No backup created yet. Export one from Settings.' };
     }
 
     const sevenDays = 7 * 24 * 60 * 60 * 1000;
