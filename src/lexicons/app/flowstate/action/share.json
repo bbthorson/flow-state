@@ -1,0 +1,26 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.action.share",
+  "description": "Shares content via the system share sheet. Uses the Web Share API.",
+  "defs": {
+    "main": {
+      "type": "object",
+      "description": "Web Share action configuration.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Share title. Supports {{variable}} template syntax."
+        },
+        "text": {
+          "type": "string",
+          "description": "Share text content. Supports {{variable}} template syntax."
+        },
+        "url": {
+          "type": "string",
+          "description": "URL to share. Supports {{variable}} template syntax."
+        }
+      },
+      "permissions": ["web-share"]
+    }
+  }
+}

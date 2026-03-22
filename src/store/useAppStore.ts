@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { Flow, TriggerType, ActionType, LogEntry } from '@/types';
-import { executeWebhook, executeNotification } from '@/services/actions';
+import { executeWebhook, executeNotification, executeVibration, executeClipboard, executeShare, executeWakeLock, executeSpeech } from '@/services/actions';
 
 export type { Flow, TriggerType, ActionType } from '@/types';
 
@@ -223,6 +223,26 @@ export const useAppStore = create<AppState & AppActions>()(
                   status: 'failure',
                   message: `Notification error: ${err.message}`,
                 });
+              });
+            } else if (action.type === 'VIBRATION') {
+              executeVibration(action.details as any, details).then(result => {
+                if (!result.success) addLog({ flowId: flow.id, status: 'failure', message: `Vibration failed: ${result.message}` });
+              });
+            } else if (action.type === 'CLIPBOARD') {
+              executeClipboard(action.details as any, details).then(result => {
+                if (!result.success) addLog({ flowId: flow.id, status: 'failure', message: `Clipboard failed: ${result.message}` });
+              });
+            } else if (action.type === 'WEB_SHARE') {
+              executeShare(action.details as any, details).then(result => {
+                if (!result.success) addLog({ flowId: flow.id, status: 'failure', message: `Share failed: ${result.message}` });
+              });
+            } else if (action.type === 'WAKE_LOCK') {
+              executeWakeLock(action.details as any, details).then(result => {
+                if (!result.success) addLog({ flowId: flow.id, status: 'failure', message: `Wake Lock failed: ${result.message}` });
+              });
+            } else if (action.type === 'SPEECH') {
+              executeSpeech(action.details as any, details).then(result => {
+                if (!result.success) addLog({ flowId: flow.id, status: 'failure', message: `Speech failed: ${result.message}` });
               });
             }
           });

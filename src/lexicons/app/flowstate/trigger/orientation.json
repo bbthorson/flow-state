@@ -1,0 +1,20 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.trigger.orientation",
+  "description": "Triggers when the screen orientation changes between portrait and landscape.",
+  "defs": {
+    "main": {
+      "type": "object",
+      "description": "Screen orientation trigger configuration.",
+      "required": ["orientation"],
+      "properties": {
+        "orientation": {
+          "type": "string",
+          "description": "The orientation to trigger on.",
+          "enum": ["portrait", "landscape"]
+        }
+      },
+      "permissions": ["screen-orientation"]
+    }
+  }
+}

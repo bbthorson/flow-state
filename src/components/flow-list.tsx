@@ -27,6 +27,9 @@ const MOCK_DATA: Record<TriggerType, any> = {
   GEOLOCATION: { latitude: 0, longitude: 0, distance: 0, event: 'ENTER' },
   DEEP_LINK: { event: 'TEST', custom: 'data' },
   MANUAL: {},
+  IDLE: { userState: 'idle', screenState: 'unlocked' },
+  DEVICE_MOTION: { gesture: 'SHAKE', accelerationX: 0, accelerationY: 0, accelerationZ: 15 },
+  SCREEN_ORIENTATION: { orientation: 'landscape', angle: 90 },
 };
 
 function FlowListItem({ flow, onEdit, permissions }: { flow: Flow, onEdit: () => void, permissions: Record<string, string> }) {

@@ -7,6 +7,9 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useVisibilityStatus } from '@/hooks/useVisibilityStatus';
 import { useGeolocationStatus } from '@/hooks/useGeolocationStatus';
 import { useFlowTriggerManager } from '@/hooks/useFlowTriggerManager';
+import { useIdleStatus } from '@/hooks/useIdleStatus';
+import { useDeviceMotion } from '@/hooks/useDeviceMotion';
+import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 
 export function AppLayout() {
   const initialized = useAppStore((state) => state.initialized);
@@ -18,6 +21,9 @@ export function AppLayout() {
   useNetworkStatus();
   useVisibilityStatus();
   useGeolocationStatus();
+  useIdleStatus();
+  useDeviceMotion();
+  useScreenOrientation();
   useFlowTriggerManager();
 
   // Deep Link Handler

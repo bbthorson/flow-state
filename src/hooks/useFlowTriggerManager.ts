@@ -11,11 +11,18 @@ export function useFlowTriggerManager() {
   const battery = useDeviceStore((state) => state.battery);
   const network = useDeviceStore((state) => state.network);
   const geolocation = useDeviceStore((state) => state.geolocation);
+  const idle = useDeviceStore((state) => state.idle);
+  const motion = useDeviceStore((state) => state.motion);
+  const orientation = useDeviceStore((state) => state.orientation);
   const triggerFlows = useAppStore((state) => state.triggerFlows);
   const flows = useAppStore((state) => state.flows);
 
   const lastBatteryCharging = useRef(battery.charging);
   const lastNetworkOnline = useRef(network.online);
+  const lastIdleUserState = useRef(idle.userState);
+  const lastIdleScreenState = useRef(idle.screenState);
+  const lastMotionGesture = useRef(motion.gesture);
+  const lastOrientationType = useRef(orientation.type);
   
   // Track "inside/outside" state for each geolocation flow
   // Map<flowId, isInside>
@@ -77,4 +84,35 @@ export function useFlowTriggerManager() {
       });
     }
   }, [geolocation.latitude, geolocation.longitude, geolocation.supported, geolocation.pending, flows, triggerFlows]);
+
+  // Trigger for idle state changes
+  useEffect(() => {
+    if (idle.supported) {
+      const userChanged = idle.userState !== lastIdleUserState.current;
+      const screenChanged = idle.screenState !== lastIdleScreenState.current;
+
+      if (userChanged || screenChanged) {
+        triggerFlows('IDLE', { userState: idle.userState, screenState: idle.screenState });
+        lastIdleUserState.current = idle.userState;
+        lastIdleScreenState.current = idle.screenState;
+      }
+    }
+  }, [idle.userState, idle.screenState, idle.supported, triggerFlows]);
+
+  // Trigger for device motion gestures
+  useEffect(() => {
+    if (motion.supported && motion.gesture && motion.gesture !== lastMotionGesture.current) {
+      triggerFlows('DEVICE_MOTION', { gesture: motion.gesture });
+    }
+    lastMotionGesture.current = motion.gesture;
+  }, [motion.gesture, motion.supported, triggerFlows]);
+
+  // Trigger for screen orientation changes
+  useEffect(() => {
+    if (orientation.supported && orientation.type !== lastOrientationType.current) {
+      const mapped = orientation.type.startsWith('portrait') ? 'portrait' : 'landscape';
+      triggerFlows('SCREEN_ORIENTATION', { orientation: mapped, angle: orientation.angle });
+      lastOrientationType.current = orientation.type;
+    }
+  }, [orientation.type, orientation.angle, orientation.supported, triggerFlows]);
 }

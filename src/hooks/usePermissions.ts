@@ -2,17 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   DevicePermission,
   PermissionState,
+  ALL_PERMISSIONS,
   checkAllPermissions,
 } from '@/lib/permissions';
 
 type PermissionMap = Record<DevicePermission, PermissionState>;
 
-const INITIAL: PermissionMap = {
-  'battery-status': 'unavailable',
-  'network-information': 'unavailable',
-  geolocation: 'unavailable',
-  notifications: 'unavailable',
-};
+const INITIAL: PermissionMap = Object.fromEntries(
+  ALL_PERMISSIONS.map((p) => [p, 'unavailable' as PermissionState])
+) as PermissionMap;
 
 /**
  * Reactive hook that returns the current state of all device permissions.

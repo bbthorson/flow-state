@@ -1,13 +1,49 @@
 import { TriggerType, ActionType, Flow } from '@/types';
 
-export type DevicePermission = 'battery-status' | 'network-information' | 'geolocation' | 'notifications';
+export type DevicePermission =
+  | 'battery-status'
+  | 'network-information'
+  | 'geolocation'
+  | 'notifications'
+  | 'idle-detection'
+  | 'device-motion'
+  | 'screen-orientation'
+  | 'vibration'
+  | 'clipboard-write'
+  | 'web-share'
+  | 'wake-lock'
+  | 'speech-synthesis';
+
 export type PermissionState = 'granted' | 'prompt' | 'denied' | 'unavailable';
 
 export const PERMISSION_LABELS: Record<DevicePermission, string> = {
   'battery-status': 'Battery Status',
   'network-information': 'Network Information',
-  'geolocation': 'Location',
-  'notifications': 'Notifications',
+  geolocation: 'Location',
+  notifications: 'Notifications',
+  'idle-detection': 'Idle Detection',
+  'device-motion': 'Device Motion',
+  'screen-orientation': 'Screen Orientation',
+  vibration: 'Vibration',
+  'clipboard-write': 'Clipboard',
+  'web-share': 'Web Share',
+  'wake-lock': 'Wake Lock',
+  'speech-synthesis': 'Text to Speech',
+};
+
+export const PERMISSION_DESCRIPTIONS: Record<DevicePermission, string> = {
+  'battery-status': 'Monitor battery level and charging state.',
+  'network-information': 'Detect connectivity and network type.',
+  geolocation: 'Access device location for geofencing.',
+  notifications: 'Show browser notifications.',
+  'idle-detection': 'Detect when the user is inactive.',
+  'device-motion': 'Detect shakes and device orientation.',
+  'screen-orientation': 'Detect portrait/landscape changes.',
+  vibration: 'Provide haptic feedback.',
+  'clipboard-write': 'Copy text to the clipboard.',
+  'web-share': 'Share content via the system share sheet.',
+  'wake-lock': 'Keep the screen awake.',
+  'speech-synthesis': 'Speak text aloud.',
 };
 
 export const TRIGGER_PERMISSIONS: Record<TriggerType, DevicePermission[]> = {
@@ -16,12 +52,20 @@ export const TRIGGER_PERMISSIONS: Record<TriggerType, DevicePermission[]> = {
   GEOLOCATION: ['geolocation'],
   DEEP_LINK: [],
   MANUAL: [],
+  IDLE: ['idle-detection'],
+  DEVICE_MOTION: ['device-motion'],
+  SCREEN_ORIENTATION: ['screen-orientation'],
 };
 
 export const ACTION_PERMISSIONS: Record<ActionType, DevicePermission[]> = {
   WEBHOOK: [],
   NOTIFICATION: ['notifications'],
   LOG: [],
+  VIBRATION: ['vibration'],
+  CLIPBOARD: ['clipboard-write'],
+  WEB_SHARE: ['web-share'],
+  WAKE_LOCK: ['wake-lock'],
+  SPEECH: ['speech-synthesis'],
 };
 
 /** Get all unique permissions required by a flow. */
@@ -51,7 +95,7 @@ export async function checkPermission(permission: DevicePermission): Promise<Per
         const status = await navigator.permissions.query({ name: 'geolocation' });
         return status.state;
       } catch {
-        return 'prompt'; // Permissions API unavailable, but Geolocation API exists
+        return 'prompt';
       }
     }
 
@@ -62,25 +106,71 @@ export async function checkPermission(permission: DevicePermission): Promise<Per
       return 'prompt';
     }
 
+    case 'idle-detection': {
+      if (!('IdleDetector' in window)) return 'unavailable';
+      try {
+        const status = await (window as any).IdleDetector.requestPermission();
+        return status === 'granted' ? 'granted' : 'prompt';
+      } catch {
+        return 'prompt';
+      }
+    }
+
+    case 'device-motion':
+      return typeof DeviceMotionEvent !== 'undefined' ? 'granted' : 'unavailable';
+
+    case 'screen-orientation':
+      return screen?.orientation ? 'granted' : 'unavailable';
+
+    case 'vibration':
+      return typeof navigator.vibrate === 'function' ? 'granted' : 'unavailable';
+
+    case 'clipboard-write':
+      return navigator.clipboard ? 'granted' : 'unavailable';
+
+    case 'web-share':
+      return typeof navigator.share === 'function' ? 'granted' : 'unavailable';
+
+    case 'wake-lock':
+      return 'wakeLock' in navigator ? 'granted' : 'unavailable';
+
+    case 'speech-synthesis':
+      return typeof speechSynthesis !== 'undefined' ? 'granted' : 'unavailable';
+
     default:
       return 'unavailable';
   }
 }
 
+/** All permission keys in display order. */
+export const ALL_PERMISSIONS: DevicePermission[] = [
+  'battery-status',
+  'network-information',
+  'geolocation',
+  'notifications',
+  'idle-detection',
+  'device-motion',
+  'screen-orientation',
+  'vibration',
+  'clipboard-write',
+  'web-share',
+  'wake-lock',
+  'speech-synthesis',
+];
+
 /** Check all permissions at once. */
 export async function checkAllPermissions(): Promise<Record<DevicePermission, PermissionState>> {
-  const [battery, network, geolocation, notifications] = await Promise.all([
-    checkPermission('battery-status'),
-    checkPermission('network-information'),
-    checkPermission('geolocation'),
-    checkPermission('notifications'),
-  ]);
-  return {
-    'battery-status': battery,
-    'network-information': network,
-    geolocation,
-    notifications,
-  };
+  const results = await Promise.all(ALL_PERMISSIONS.map(checkPermission));
+  const map = {} as Record<DevicePermission, PermissionState>;
+  ALL_PERMISSIONS.forEach((p, i) => { map[p] = results[i]; });
+  return map;
+}
+
+/** Permissions that can be prompted via requestPermission. */
+const PROMPTABLE: DevicePermission[] = ['geolocation', 'notifications', 'idle-detection'];
+
+export function isPromptable(permission: DevicePermission): boolean {
+  return PROMPTABLE.includes(permission);
 }
 
 /** Request a promptable permission. Returns the new state. */
@@ -101,6 +191,16 @@ export async function requestPermission(permission: DevicePermission): Promise<P
       if (result === 'granted') return 'granted';
       if (result === 'denied') return 'denied';
       return 'prompt';
+    }
+
+    case 'idle-detection': {
+      if (!('IdleDetector' in window)) return 'unavailable';
+      try {
+        const result = await (window as any).IdleDetector.requestPermission();
+        return result === 'granted' ? 'granted' : 'denied';
+      } catch {
+        return 'denied';
+      }
     }
 
     default:

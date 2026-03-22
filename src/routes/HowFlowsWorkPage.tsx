@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Battery, Wifi, MapPin, Link as LinkIcon, Hand, Bell, Globe, FileText, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { Battery, Wifi, MapPin, Link as LinkIcon, Hand, Bell, Globe, FileText, ArrowLeft, ShieldCheck, Timer, Smartphone, RotateCw, Vibrate, Clipboard, Share2, Sun, Volume2 } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSION_LABELS, DevicePermission, PermissionState } from '@/lib/permissions';
 
@@ -52,6 +52,33 @@ const TRIGGERS = [
     permissions: [] as DevicePermission[],
     variables: [],
   },
+  {
+    type: 'IDLE',
+    name: 'Idle Detection',
+    lexicon: 'app.flowstate.trigger.idle',
+    icon: Timer,
+    description: 'Fires when the user has been idle for a specified duration, or when the screen locks.',
+    permissions: ['idle-detection'] as DevicePermission[],
+    variables: ['userState', 'screenState'],
+  },
+  {
+    type: 'DEVICE_MOTION',
+    name: 'Device Motion',
+    lexicon: 'app.flowstate.trigger.motion',
+    icon: Smartphone,
+    description: 'Fires on physical gestures like shaking the device or placing it face down.',
+    permissions: ['device-motion'] as DevicePermission[],
+    variables: ['gesture', 'accelerationX', 'accelerationY', 'accelerationZ'],
+  },
+  {
+    type: 'SCREEN_ORIENTATION',
+    name: 'Screen Orientation',
+    lexicon: 'app.flowstate.trigger.orientation',
+    icon: RotateCw,
+    description: 'Fires when the device rotates between portrait and landscape.',
+    permissions: ['screen-orientation'] as DevicePermission[],
+    variables: ['orientation', 'angle'],
+  },
 ];
 
 const ACTIONS = [
@@ -78,6 +105,46 @@ const ACTIONS = [
     icon: FileText,
     description: 'Records a message to the activity log.',
     permissions: [] as DevicePermission[],
+  },
+  {
+    type: 'VIBRATION',
+    name: 'Vibration',
+    lexicon: 'app.flowstate.action.vibration',
+    icon: Vibrate,
+    description: 'Vibrates the device for a specified duration or pattern.',
+    permissions: ['vibration'] as DevicePermission[],
+  },
+  {
+    type: 'CLIPBOARD',
+    name: 'Copy to Clipboard',
+    lexicon: 'app.flowstate.action.clipboard',
+    icon: Clipboard,
+    description: 'Copies text to the system clipboard. Supports template variables.',
+    permissions: ['clipboard-write'] as DevicePermission[],
+  },
+  {
+    type: 'WEB_SHARE',
+    name: 'Share',
+    lexicon: 'app.flowstate.action.share',
+    icon: Share2,
+    description: 'Opens the system share sheet with customizable title, text, and URL.',
+    permissions: ['web-share'] as DevicePermission[],
+  },
+  {
+    type: 'WAKE_LOCK',
+    name: 'Wake Lock',
+    lexicon: 'app.flowstate.action.wakeLock',
+    icon: Sun,
+    description: 'Keeps the screen awake for a specified duration or until released.',
+    permissions: ['wake-lock'] as DevicePermission[],
+  },
+  {
+    type: 'SPEECH',
+    name: 'Text to Speech',
+    lexicon: 'app.flowstate.action.speech',
+    icon: Volume2,
+    description: 'Speaks text aloud with configurable rate, pitch, and volume.',
+    permissions: ['speech-synthesis'] as DevicePermission[],
   },
 ];
 

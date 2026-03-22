@@ -1,0 +1,23 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.trigger.idle",
+  "description": "Triggers when the user becomes idle or the screen locks. Requires the Idle Detection API permission.",
+  "defs": {
+    "main": {
+      "type": "object",
+      "description": "Idle detection trigger configuration.",
+      "properties": {
+        "threshold": {
+          "type": "integer",
+          "description": "Idle threshold in milliseconds. Minimum 60000 (60 seconds).",
+          "minimum": 60000
+        },
+        "detectScreen": {
+          "type": "boolean",
+          "description": "Whether to also trigger when the screen locks."
+        }
+      },
+      "permissions": ["idle-detection"]
+    }
+  }
+}

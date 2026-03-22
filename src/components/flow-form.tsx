@@ -27,17 +27,39 @@ import {
     DevicePermission,
 } from '@/lib/permissions';
 
-const triggerTypes: TriggerType[] = ['NATIVE_BATTERY', 'NETWORK', 'GEOLOCATION', 'DEEP_LINK', 'MANUAL'];
-const actionTypes: ActionType[] = ['WEBHOOK', 'NOTIFICATION', 'LOG'];
+const triggerTypes: TriggerType[] = ['NATIVE_BATTERY', 'NETWORK', 'GEOLOCATION', 'DEEP_LINK', 'MANUAL', 'IDLE', 'DEVICE_MOTION', 'SCREEN_ORIENTATION'];
+const actionTypes: ActionType[] = ['WEBHOOK', 'NOTIFICATION', 'LOG', 'VIBRATION', 'CLIPBOARD', 'WEB_SHARE', 'WAKE_LOCK', 'SPEECH'];
+
+const TRIGGER_LABELS: Record<TriggerType, string> = {
+    NATIVE_BATTERY: 'Battery',
+    NETWORK: 'Network',
+    GEOLOCATION: 'Geolocation',
+    DEEP_LINK: 'Deep Link',
+    MANUAL: 'Manual',
+    IDLE: 'Idle Detection',
+    DEVICE_MOTION: 'Device Motion',
+    SCREEN_ORIENTATION: 'Screen Orientation',
+};
+
+const ACTION_LABELS: Record<ActionType, string> = {
+    WEBHOOK: 'Webhook',
+    NOTIFICATION: 'Notification',
+    LOG: 'Log',
+    VIBRATION: 'Vibration',
+    CLIPBOARD: 'Copy to Clipboard',
+    WEB_SHARE: 'Share',
+    WAKE_LOCK: 'Wake Lock',
+    SPEECH: 'Text to Speech',
+};
 
 const flowSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     trigger: z.object({
-        type: z.enum(['NATIVE_BATTERY', 'NETWORK', 'GEOLOCATION', 'DEEP_LINK', 'MANUAL']),
+        type: z.enum(['NATIVE_BATTERY', 'NETWORK', 'GEOLOCATION', 'DEEP_LINK', 'MANUAL', 'IDLE', 'DEVICE_MOTION', 'SCREEN_ORIENTATION']),
         details: z.record(z.any()),
     }),
     actions: z.array(z.object({
-        type: z.enum(['WEBHOOK', 'NOTIFICATION', 'LOG']),
+        type: z.enum(['WEBHOOK', 'NOTIFICATION', 'LOG', 'VIBRATION', 'CLIPBOARD', 'WEB_SHARE', 'WAKE_LOCK', 'SPEECH']),
         details: z.record(z.any()),
     })).min(1, 'At least one action is required'),
 });
@@ -167,7 +189,7 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                                     <SelectContent>
                                         {triggerTypes.map((type) => (
                                             <SelectItem key={type} value={type}>
-                                                {type}
+                                                {TRIGGER_LABELS[type]}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -176,6 +198,100 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                             </FormItem>
                         )}
                     />
+
+                    {triggerType === 'IDLE' && (
+                        <div className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="trigger.details.threshold"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Idle Threshold (seconds)</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                min="60"
+                                                placeholder="60"
+                                                {...field}
+                                                onChange={e => field.onChange(parseInt(e.target.value) * 1000)}
+                                                value={field.value ? Math.round(field.value / 1000) : ''}
+                                            />
+                                        </FormControl>
+                                        <FormDescription>
+                                            How long the user must be idle before triggering (min 60s).
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="trigger.details.detectScreen"
+                                render={({ field }) => (
+                                    <FormItem className="flex items-center gap-2">
+                                        <FormControl>
+                                            <input
+                                                type="checkbox"
+                                                checked={field.value || false}
+                                                onChange={field.onChange}
+                                                className="h-4 w-4 rounded border"
+                                            />
+                                        </FormControl>
+                                        <FormLabel className="!mt-0">Also trigger on screen lock</FormLabel>
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                    )}
+
+                    {triggerType === 'DEVICE_MOTION' && (
+                        <FormField
+                            control={form.control}
+                            name="trigger.details.gesture"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Gesture</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value || 'SHAKE'}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select gesture" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="SHAKE">Shake</SelectItem>
+                                            <SelectItem value="FACE_DOWN">Face Down</SelectItem>
+                                            <SelectItem value="FACE_UP">Face Up</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
+
+                    {triggerType === 'SCREEN_ORIENTATION' && (
+                        <FormField
+                            control={form.control}
+                            name="trigger.details.orientation"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Orientation</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value || 'landscape'}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select orientation" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="portrait">Portrait</SelectItem>
+                                            <SelectItem value="landscape">Landscape</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
 
                     {triggerType === 'DEEP_LINK' && (
                         <FormField
@@ -372,7 +488,7 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                                                     <SelectContent>
                                                         {actionTypes.map((type) => (
                                                             <SelectItem key={type} value={type}>
-                                                                {type}
+                                                                {ACTION_LABELS[type]}
                                                             </SelectItem>
                                                         ))}
                                                     </SelectContent>
@@ -470,6 +586,213 @@ function ActionDetails({ index, form }: { index: number, form: UseFormReturn<Flo
                 )}
             />
         )
+    }
+
+    if (type === 'VIBRATION') {
+        return (
+            <FormField
+                control={form.control}
+                name={`actions.${index}.details.duration`}
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Duration (ms)</FormLabel>
+                        <FormControl>
+                            <Input
+                                type="number"
+                                min="50"
+                                placeholder="200"
+                                {...field}
+                                onChange={e => field.onChange(parseInt(e.target.value))}
+                                value={field.value === undefined ? '' : field.value}
+                            />
+                        </FormControl>
+                        <FormDescription>Vibration duration in milliseconds.</FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+        );
+    }
+
+    if (type === 'CLIPBOARD') {
+        return (
+            <FormField
+                control={form.control}
+                name={`actions.${index}.details.text`}
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Text</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Text to copy — supports {{variables}}" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+        );
+    }
+
+    if (type === 'WEB_SHARE') {
+        return (
+            <>
+                <FormField
+                    control={form.control}
+                    name={`actions.${index}.details.title`}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Title</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Share title" {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name={`actions.${index}.details.text`}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Text</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Share text — supports {{variables}}" {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name={`actions.${index}.details.url`}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>URL</FormLabel>
+                            <FormControl>
+                                <Input placeholder="https://example.com" {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </>
+        );
+    }
+
+    if (type === 'WAKE_LOCK') {
+        return (
+            <FormField
+                control={form.control}
+                name={`actions.${index}.details.duration`}
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Duration (seconds, optional)</FormLabel>
+                        <FormControl>
+                            <Input
+                                type="number"
+                                min="1"
+                                placeholder="Leave empty to hold indefinitely"
+                                {...field}
+                                onChange={e => {
+                                    const val = e.target.value ? parseInt(e.target.value) * 1000 : undefined;
+                                    field.onChange(val);
+                                }}
+                                value={field.value ? Math.round(field.value / 1000) : ''}
+                            />
+                        </FormControl>
+                        <FormDescription>Auto-release after this many seconds. Leave empty to hold until page closes.</FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+        );
+    }
+
+    if (type === 'SPEECH') {
+        return (
+            <>
+                <FormField
+                    control={form.control}
+                    name={`actions.${index}.details.text`}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Text</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Text to speak — supports {{variables}}" {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                        control={form.control}
+                        name={`actions.${index}.details.rate`}
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Rate</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        type="number"
+                                        step="0.1"
+                                        min="0.1"
+                                        max="10"
+                                        placeholder="1.0"
+                                        {...field}
+                                        onChange={e => field.onChange(parseFloat(e.target.value))}
+                                        value={field.value === undefined ? '' : field.value}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name={`actions.${index}.details.pitch`}
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Pitch</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        max="2"
+                                        placeholder="1.0"
+                                        {...field}
+                                        onChange={e => field.onChange(parseFloat(e.target.value))}
+                                        value={field.value === undefined ? '' : field.value}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name={`actions.${index}.details.volume`}
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Volume</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        max="1"
+                                        placeholder="1.0"
+                                        {...field}
+                                        onChange={e => field.onChange(parseFloat(e.target.value))}
+                                        value={field.value === undefined ? '' : field.value}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+            </>
+        );
     }
 
     return null;

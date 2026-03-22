@@ -1,0 +1,19 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.action.clipboard",
+  "description": "Copies text to the system clipboard. Supports {{variable}} template syntax.",
+  "defs": {
+    "main": {
+      "type": "object",
+      "description": "Clipboard write action configuration.",
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "Text to copy to the clipboard. Supports {{variable}} template syntax."
+        }
+      },
+      "permissions": ["clipboard-write"]
+    }
+  }
+}

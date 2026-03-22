@@ -54,4 +54,38 @@ export const STARTER_FLOWS: FlowTemplate[] = [
       },
     ],
   },
+  {
+    name: 'Shake to Share',
+    enabled: false,
+    trigger: {
+      type: 'DEVICE_MOTION',
+      details: { gesture: 'SHAKE' },
+    },
+    actions: [
+      {
+        type: 'WEB_SHARE',
+        details: {
+          title: 'Shared via Flow State',
+          text: 'Check this out!',
+        },
+      },
+    ],
+  },
+  {
+    name: 'Idle Screen Alert',
+    enabled: false,
+    trigger: {
+      type: 'IDLE',
+      details: { threshold: 120000, detectScreen: false },
+    },
+    actions: [
+      {
+        type: 'NOTIFICATION',
+        details: {
+          title: 'Still there?',
+          body: 'You\'ve been idle for 2 minutes.',
+        },
+      },
+    ],
+  },
 ];

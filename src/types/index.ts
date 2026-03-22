@@ -1,6 +1,6 @@
 // ── Trigger types (derived from app.flowstate.trigger.* lexicons) ──
 
-export type TriggerType = 'NATIVE_BATTERY' | 'NETWORK' | 'GEOLOCATION' | 'DEEP_LINK' | 'MANUAL';
+export type TriggerType = 'NATIVE_BATTERY' | 'NETWORK' | 'GEOLOCATION' | 'DEEP_LINK' | 'MANUAL' | 'IDLE' | 'DEVICE_MOTION' | 'SCREEN_ORIENTATION';
 
 export interface BatteryTriggerDetails {
   level: number;
@@ -25,9 +25,22 @@ export interface DeepLinkTriggerDetails {
 
 export type ManualTriggerDetails = Record<string, never>;
 
+export interface IdleTriggerDetails {
+  threshold: number; // ms, minimum 60000
+  detectScreen: boolean;
+}
+
+export interface DeviceMotionTriggerDetails {
+  gesture: 'SHAKE' | 'FACE_DOWN' | 'FACE_UP';
+}
+
+export interface ScreenOrientationTriggerDetails {
+  orientation: 'portrait' | 'landscape';
+}
+
 // ── Action types (derived from app.flowstate.action.* lexicons) ──
 
-export type ActionType = 'WEBHOOK' | 'NOTIFICATION' | 'LOG';
+export type ActionType = 'WEBHOOK' | 'NOTIFICATION' | 'LOG' | 'VIBRATION' | 'CLIPBOARD' | 'WEB_SHARE' | 'WAKE_LOCK' | 'SPEECH';
 
 export interface WebhookActionDetails {
   url: string;
@@ -44,6 +57,32 @@ export interface NotificationActionDetails {
 
 export interface LogActionDetails {
   message?: string;
+}
+
+export interface VibrationActionDetails {
+  duration?: number; // ms
+  pattern?: number[]; // alternating vibrate/pause durations
+}
+
+export interface ClipboardActionDetails {
+  text: string;
+}
+
+export interface WebShareActionDetails {
+  title?: string;
+  text?: string;
+  url?: string;
+}
+
+export interface WakeLockActionDetails {
+  duration?: number; // ms, optional auto-release
+}
+
+export interface SpeechActionDetails {
+  text: string;
+  rate?: number; // 0.1-10
+  pitch?: number; // 0-2
+  volume?: number; // 0-1
 }
 
 // ── Flow record (derived from app.flowstate.flow lexicon) ──

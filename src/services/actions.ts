@@ -83,3 +83,121 @@ export async function executeNotification(details: NotificationDetails, data: Re
     };
   }
 }
+
+export async function executeVibration(
+  details: { duration?: number; pattern?: number[] },
+  data: Record<string, any> = {}
+): Promise<ActionResult> {
+  try {
+    if (!navigator.vibrate) {
+      return { success: false, message: 'Vibration API not supported in this environment' };
+    }
+
+    const vibrationInput = details.pattern ? details.pattern : (details.duration || 200);
+    navigator.vibrate(vibrationInput);
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error during vibration execution',
+    };
+  }
+}
+
+export async function executeClipboard(
+  details: { text: string },
+  data: Record<string, any> = {}
+): Promise<ActionResult> {
+  try {
+    const templatedText = templateString(details.text, data);
+    await navigator.clipboard.writeText(templatedText);
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error during clipboard execution',
+    };
+  }
+}
+
+export async function executeShare(
+  details: { title?: string; text?: string; url?: string },
+  data: Record<string, any> = {}
+): Promise<ActionResult> {
+  try {
+    if (!navigator.share) {
+      return { success: false, message: 'Web Share API not supported in this environment' };
+    }
+
+    const templatedTitle = templateString(details.title, data);
+    const templatedText = templateString(details.text, data);
+    const templatedUrl = templateString(details.url, data);
+
+    const shareData: { title?: string; text?: string; url?: string } = {};
+    if (templatedTitle) shareData.title = templatedTitle;
+    if (templatedText) shareData.text = templatedText;
+    if (templatedUrl) shareData.url = templatedUrl;
+
+    await navigator.share(shareData);
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error during share execution',
+    };
+  }
+}
+
+export async function executeWakeLock(
+  details: { duration?: number },
+  data: Record<string, any> = {}
+): Promise<ActionResult> {
+  try {
+    if (!('wakeLock' in navigator)) {
+      return { success: false, message: 'Wake Lock API not supported in this environment' };
+    }
+
+    const sentinel = await (navigator as any).wakeLock.request('screen');
+
+    if (details.duration) {
+      setTimeout(() => sentinel.release(), details.duration);
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error during wake lock execution',
+    };
+  }
+}
+
+export async function executeSpeech(
+  details: { text: string; rate?: number; pitch?: number; volume?: number },
+  data: Record<string, any> = {}
+): Promise<ActionResult> {
+  try {
+    if (typeof speechSynthesis === 'undefined') {
+      return { success: false, message: 'Speech Synthesis API not supported in this environment' };
+    }
+
+    const templatedText = templateString(details.text, data);
+    const utterance = new SpeechSynthesisUtterance(templatedText);
+
+    if (details.rate !== undefined) utterance.rate = details.rate;
+    if (details.pitch !== undefined) utterance.pitch = details.pitch;
+    if (details.volume !== undefined) utterance.volume = details.volume;
+
+    speechSynthesis.speak(utterance);
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error during speech execution',
+    };
+  }
+}

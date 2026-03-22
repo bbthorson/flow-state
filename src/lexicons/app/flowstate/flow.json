@@ -33,7 +33,10 @@
               "app.flowstate.trigger.network",
               "app.flowstate.trigger.geolocation",
               "app.flowstate.trigger.deepLink",
-              "app.flowstate.trigger.manual"
+              "app.flowstate.trigger.manual",
+              "app.flowstate.trigger.idle",
+              "app.flowstate.trigger.motion",
+              "app.flowstate.trigger.orientation"
             ],
             "closed": false
           },
@@ -46,7 +49,12 @@
               "refs": [
                 "app.flowstate.action.webhook",
                 "app.flowstate.action.notification",
-                "app.flowstate.action.log"
+                "app.flowstate.action.log",
+                "app.flowstate.action.vibration",
+                "app.flowstate.action.clipboard",
+                "app.flowstate.action.share",
+                "app.flowstate.action.wakeLock",
+                "app.flowstate.action.speech"
               ],
               "closed": false
             }

@@ -19,6 +19,9 @@ const HINTS: Record<TriggerType, string[]> = {
   GEOLOCATION: ['event', 'latitude', 'longitude', 'distance'],
   DEEP_LINK: ['any custom key passed in URL/payload'],
   MANUAL: [],
+  IDLE: ['userState', 'screenState'],
+  DEVICE_MOTION: ['gesture', 'accelerationX', 'accelerationY', 'accelerationZ'],
+  SCREEN_ORIENTATION: ['orientation', 'angle'],
 };
 
 export function VariableHints({ type }: VariableHintsProps) {

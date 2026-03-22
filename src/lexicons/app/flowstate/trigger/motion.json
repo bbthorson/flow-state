@@ -1,0 +1,20 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.trigger.motion",
+  "description": "Triggers on device motion gestures like shaking or flipping face-down. Uses the DeviceMotion API.",
+  "defs": {
+    "main": {
+      "type": "object",
+      "description": "Device motion trigger configuration.",
+      "required": ["gesture"],
+      "properties": {
+        "gesture": {
+          "type": "string",
+          "description": "The gesture to detect.",
+          "enum": ["SHAKE", "FACE_DOWN", "FACE_UP"]
+        }
+      },
+      "permissions": ["device-motion"]
+    }
+  }
+}

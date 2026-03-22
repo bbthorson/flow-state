@@ -1,0 +1,19 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.action.wakeLock",
+  "description": "Keeps the screen awake. Uses the Screen Wake Lock API.",
+  "defs": {
+    "main": {
+      "type": "object",
+      "description": "Wake Lock action configuration.",
+      "properties": {
+        "duration": {
+          "type": "integer",
+          "description": "Optional duration in milliseconds. If set, the wake lock auto-releases after this time.",
+          "minimum": 1000
+        }
+      },
+      "permissions": ["wake-lock"]
+    }
+  }
+}
