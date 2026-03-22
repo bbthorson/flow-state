@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router';
 import { useAppStore } from '@/store/useAppStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { RefreshCw, Copy, Eye, EyeOff, X } from 'lucide-react';
+import { RefreshCw, Copy, Eye, EyeOff, X, LogOut } from 'lucide-react';
 import { VaultSection } from '@/components/vault-section';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -28,6 +29,66 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+
+function BlueskySection() {
+  const { did, handle, loading, error, signIn, signOut } = useAuthStore();
+  const [handleInput, setHandleInput] = useState('');
+
+  const handleSignIn = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (handleInput.trim()) {
+      signIn(handleInput.trim());
+    }
+  };
+
+  if (did && handle) {
+    return (
+      <div className="space-y-2">
+        <div>
+          <h3 className="text-sm font-semibold">Bluesky Account</h3>
+          <p className="text-xs text-muted-foreground">
+            Connected to the AT Protocol network for sharing and discovering flows.
+          </p>
+        </div>
+        <div className="flex items-center justify-between rounded-md border p-3">
+          <div className="space-y-0.5">
+            <div className="text-sm font-medium">@{handle}</div>
+            <div className="text-[10px] font-mono text-muted-foreground">{did}</div>
+          </div>
+          <Button variant="ghost" size="icon" onClick={signOut} title="Sign out">
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div>
+        <h3 className="text-sm font-semibold">Bluesky Account</h3>
+        <p className="text-xs text-muted-foreground">
+          Sign in with your Bluesky handle to publish and discover flows on the AT Protocol network.
+        </p>
+      </div>
+      <form onSubmit={handleSignIn} className="flex gap-2">
+        <Input
+          placeholder="yourname.bsky.social"
+          value={handleInput}
+          onChange={(e) => setHandleInput(e.target.value)}
+          className="flex-1 text-sm"
+          disabled={loading}
+        />
+        <Button type="submit" variant="outline" disabled={loading || !handleInput.trim()}>
+          {loading ? 'Connecting...' : 'Sign in'}
+        </Button>
+      </form>
+      {error && (
+        <p className="text-xs text-destructive">{error}</p>
+      )}
+    </div>
+  );
+}
 
 function WebhookSecretSection() {
   const webhookSecret = useAppStore((state) => state.webhookSecret);
@@ -191,6 +252,9 @@ export function SettingsPage() {
       <main className="flex-grow overflow-y-auto p-4">
         <div className="divide-y">
           <div className="pb-4">
+            <BlueskySection />
+          </div>
+          <div className="py-4">
             <WebhookSecretSection />
           </div>
           <div className="py-4">

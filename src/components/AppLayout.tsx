@@ -10,11 +10,13 @@ import { useFlowTriggerManager } from '@/hooks/useFlowTriggerManager';
 import { useIdleStatus } from '@/hooks/useIdleStatus';
 import { useDeviceMotion } from '@/hooks/useDeviceMotion';
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export function AppLayout() {
   const initialized = useAppStore((state) => state.initialized);
   const processDeepLink = useAppStore((state) => state.processDeepLink);
   const [searchParams, setSearchParams] = useSearchParams();
+  const initAuth = useAuthStore((state) => state.init);
 
   // Initialize device monitors
   useBatteryStatus();
@@ -25,6 +27,11 @@ export function AppLayout() {
   useDeviceMotion();
   useScreenOrientation();
   useFlowTriggerManager();
+
+  // Initialize AT Protocol auth (restores session or handles OAuth callback)
+  useEffect(() => {
+    initAuth();
+  }, [initAuth]);
 
   // Deep Link Handler
   useEffect(() => {
@@ -40,7 +47,7 @@ export function AppLayout() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground">
+    <div className="flex flex-col h-dvh bg-background text-foreground">
       <AppHeader />
       <main className="flex-grow overflow-y-auto p-4 pb-20">
         <Outlet />

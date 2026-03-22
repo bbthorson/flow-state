@@ -1,0 +1,13 @@
+{
+  "client_id": "https://flow-state.bbthorson.workers.dev/oauth/client-metadata.json",
+  "client_name": "Flow State",
+  "client_uri": "https://flow-state.bbthorson.workers.dev",
+  "logo_uri": "https://flow-state.bbthorson.workers.dev/icons/icon-512x512.png",
+  "redirect_uris": ["https://flow-state.bbthorson.workers.dev/oauth/callback"],
+  "scope": "atproto transition:generic",
+  "grant_types": ["authorization_code", "refresh_token"],
+  "response_types": ["code"],
+  "token_endpoint_auth_method": "none",
+  "application_type": "web",
+  "dpop_bound_access_tokens": true
+}

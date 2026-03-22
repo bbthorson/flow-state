@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Battery, Wifi, MapPin, Link as LinkIcon, Hand, Bell, Globe, FileText, ArrowLeft, ShieldCheck, Timer, Smartphone, RotateCw, Vibrate, Clipboard, Share2, Sun, Volume2 } from 'lucide-react';
+import { Battery, Wifi, MapPin, Link as LinkIcon, Hand, Bell, Globe, FileText, ArrowLeft, Timer, Smartphone, RotateCw, Vibrate, Clipboard, Share2, Sun, Volume2 } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSION_LABELS, DevicePermission, PermissionState } from '@/lib/permissions';
 
@@ -199,123 +199,83 @@ export function HowFlowsWorkPage() {
 
       <div>
         <h3 className="text-lg font-semibold mb-3">Triggers</h3>
-        <div className="space-y-3">
-          {TRIGGERS.map((trigger) => {
-            const Icon = trigger.icon;
-            return (
-              <Card key={trigger.type}>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-md bg-muted p-2 mt-0.5">
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="flex-grow space-y-2">
-                      <div>
-                        <h4 className="font-medium">{trigger.name}</h4>
-                        <p className="text-sm text-muted-foreground">{trigger.description}</p>
-                      </div>
-                      {trigger.permissions.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          <span className="text-[10px] text-muted-foreground mr-1">Requires:</span>
-                          {trigger.permissions.map((p) => (
-                            <PermissionStateBadge key={p} permission={p} state={permissions[p]} />
-                          ))}
-                        </div>
-                      )}
-                      {trigger.variables.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          <span className="text-[10px] text-muted-foreground mr-1">Variables:</span>
-                          {trigger.variables.map((v) => (
-                            <Badge key={v} variant="secondary" className="text-[10px] py-0 px-1 font-mono">
-                              {`{{${v}}}`}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                      <p className="text-[10px] font-mono text-muted-foreground/60">{trigger.lexicon}</p>
-                    </div>
+        <Card>
+          <div className="divide-y">
+            {TRIGGERS.map((trigger) => {
+              const Icon = trigger.icon;
+              return (
+                <div key={trigger.type} className="flex items-start gap-3 p-4">
+                  <div className="rounded-md bg-muted p-2 mt-0.5">
+                    <Icon className="h-4 w-4" />
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                  <div className="flex-grow space-y-2">
+                    <div>
+                      <h4 className="font-medium">{trigger.name}</h4>
+                      <p className="text-sm text-muted-foreground">{trigger.description}</p>
+                    </div>
+                    {trigger.permissions.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        <span className="text-[10px] text-muted-foreground mr-1">Requires:</span>
+                        {trigger.permissions.map((p) => (
+                          <PermissionStateBadge key={p} permission={p} state={permissions[p]} />
+                        ))}
+                      </div>
+                    )}
+                    {trigger.variables.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        <span className="text-[10px] text-muted-foreground mr-1">Variables:</span>
+                        {trigger.variables.map((v) => (
+                          <Badge key={v} variant="secondary" className="text-[10px] py-0 px-1 font-mono">
+                            {`{{${v}}}`}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-[10px] font-mono text-muted-foreground/60">{trigger.lexicon}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
       </div>
 
       <div>
         <h3 className="text-lg font-semibold mb-3">Actions</h3>
-        <div className="space-y-3">
-          {ACTIONS.map((action) => {
-            const Icon = action.icon;
-            return (
-              <Card key={action.type}>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-md bg-muted p-2 mt-0.5">
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="flex-grow space-y-2">
-                      <div>
-                        <h4 className="font-medium">{action.name}</h4>
-                        <p className="text-sm text-muted-foreground">{action.description}</p>
-                      </div>
-                      {action.permissions.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          <span className="text-[10px] text-muted-foreground mr-1">Requires:</span>
-                          {action.permissions.map((p) => (
-                            <PermissionStateBadge key={p} permission={p} state={permissions[p]} />
-                          ))}
-                        </div>
-                      )}
-                      <p className="text-[10px] font-mono text-muted-foreground/60">{action.lexicon}</p>
-                    </div>
+        <Card>
+          <div className="divide-y">
+            {ACTIONS.map((action) => {
+              const Icon = action.icon;
+              return (
+                <div key={action.type} className="flex items-start gap-3 p-4">
+                  <div className="rounded-md bg-muted p-2 mt-0.5">
+                    <Icon className="h-4 w-4" />
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                  <div className="flex-grow space-y-2">
+                    <div>
+                      <h4 className="font-medium">{action.name}</h4>
+                      <p className="text-sm text-muted-foreground">{action.description}</p>
+                    </div>
+                    {action.permissions.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        <span className="text-[10px] text-muted-foreground mr-1">Requires:</span>
+                        {action.permissions.map((p) => (
+                          <PermissionStateBadge key={p} permission={p} state={permissions[p]} />
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-[10px] font-mono text-muted-foreground/60">{action.lexicon}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5" />
-            <CardTitle className="text-lg">Your Permissions</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Some triggers and actions need browser permissions to work. Here's your current status:
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {(Object.entries(permissions) as [DevicePermission, PermissionState][]).map(([perm, state]) => (
-              <div key={perm} className="flex items-center justify-between rounded-md border p-2">
-                <span className="text-xs font-medium">{PERMISSION_LABELS[perm]}</span>
-                <Badge
-                  variant="outline"
-                  className={`text-[10px] ${
-                    state === 'granted'
-                      ? 'text-green-600'
-                      : state === 'prompt'
-                        ? 'text-yellow-600'
-                        : 'text-red-600'
-                  }`}
-                >
-                  {state}
-                </Badge>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Permissions set to "denied" can be re-enabled in your browser's site settings.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Sharing Flows (Coming Soon)</CardTitle>
+          <CardTitle className="text-lg">Sharing Flows</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>
@@ -324,9 +284,18 @@ export function HowFlowsWorkPage() {
             schema that specifies what the flow needs and how it works.
           </p>
           <p>
-            In the future, you'll be able to publish flows to the AT Protocol network
-            and discover automations shared by other users — like an app store for on-device
-            automations.
+            When you <strong className="text-foreground">publish</strong> a flow, its definition
+            is written to your personal data repository on the AT Protocol network, tied to your
+            Bluesky identity. Other users can browse published flows and install them locally.
+          </p>
+          <p>
+            <strong className="text-foreground">Installing</strong> a flow creates a local copy
+            on your device. You own it completely — edit, disable, or delete it at any time. An
+            install record is written to the network so authors can see how popular their flows are.
+          </p>
+          <p>
+            Your data stays yours. Flows run entirely on-device, and your Bluesky account is only
+            used for identity and publishing — never for accessing your personal data.
           </p>
         </CardContent>
       </Card>

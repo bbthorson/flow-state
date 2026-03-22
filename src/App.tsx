@@ -26,6 +26,7 @@ export function App() {
             <Route path="discover" element={<DiscoverPage />} />
             <Route path="docs/flows" element={<HowFlowsWorkPage />} />
             <Route path="settings" element={null} />
+            <Route path="oauth/callback" element={<Navigate to="/flows" replace />} />
             <Route path="*" element={<Navigate to="/flows" replace />} />
           </Route>
         </Routes>
