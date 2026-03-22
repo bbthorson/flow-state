@@ -1,0 +1,27 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.install",
+  "description": "A record indicating a user installed a published flow. Used for popularity tracking.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "An install record linking an installer to a published flow.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["flowUri", "installedAt"],
+        "properties": {
+          "flowUri": {
+            "type": "string",
+            "description": "AT URI of the published flow record (at://did/app.flowstate.flow/rkey)."
+          },
+          "installedAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "ISO 8601 timestamp of when the flow was installed."
+          }
+        }
+      }
+    }
+  }
+}

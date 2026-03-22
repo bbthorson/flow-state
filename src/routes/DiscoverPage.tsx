@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { StarterPacks } from '@/components/starter-packs';
+import { NetworkFlows } from '@/components/network-flows';
 import { BookOpen } from 'lucide-react';
 
 export function DiscoverPage() {
@@ -11,6 +12,7 @@ export function DiscoverPage() {
           Pre-built automations you can install with one tap.
         </p>
       </div>
+      <NetworkFlows />
       <StarterPacks />
       <div className="text-center pt-2">
         <Link

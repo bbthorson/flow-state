@@ -109,4 +109,13 @@ export interface LogEntry {
   status: 'success' | 'failure';
   message: string;
 }
+
+// ── AT Protocol publishing (derived from app.flowstate.install lexicon) ──
+
+export interface PublishedFlowRef {
+  /** AT URI of the published record */
+  uri: string;
+  /** Record key on the PDS */
+  rkey: string;
+}
   
