@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { WebhookConfig, Flow, TriggerType, ActionType, LogEntry } from '@/types';
+import { Flow, TriggerType, ActionType, LogEntry } from '@/types';
 import { executeWebhook, executeNotification } from '@/services/actions';
 
 export type { Flow, TriggerType, ActionType } from '@/types';
@@ -15,13 +15,8 @@ interface AppState {
   lastBackupTimestamp: number | null;
   initialized: boolean; // To track if the store has been hydrated from localStorage
 
-  // Legacy/Compatibility state for Webhooks and Device Status
-  webhooks: WebhookConfig[];
-  isCharging: boolean;
-  isFaceDown: boolean;
-  isOnline: boolean;
-  networkType: string | null;
-  visibilityState: DocumentVisibilityState;
+  // Legacy webhook data (kept for vault import/export compatibility)
+  webhooks: unknown[];
 }
 
 // 3. Actions Interface
@@ -40,13 +35,6 @@ interface AppActions {
   setInitialized: (initialized: boolean) => void;
   updateLastBackupTimestamp: () => void;
 
-  // Legacy/Compatibility actions
-  setWebhooks: (webhooks: WebhookConfig[] | ((prev: WebhookConfig[]) => WebhookConfig[])) => void;
-  setCharging: (charging: boolean) => void;
-  setFaceDown: (faceDown: boolean) => void;
-  setOnlineStatus: (isOnline: boolean) => void;
-  setNetworkType: (networkType: string | null) => void;
-  setVisibilityState: (visibilityState: DocumentVisibilityState) => void;
 }
 
 // 4. Store Implementation
@@ -62,11 +50,6 @@ export const useAppStore = create<AppState & AppActions>()(
       initialized: false,
 
       webhooks: [],
-      isCharging: false,
-      isFaceDown: false,
-      isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
-      networkType: null,
-      visibilityState: typeof document !== 'undefined' ? document.visibilityState : 'visible',
 
       // Actions
       setInitialized: (initialized) => set({ initialized }),
@@ -246,30 +229,14 @@ export const useAppStore = create<AppState & AppActions>()(
         }
       },
 
-      setWebhooks: (webhooksOrFn) => set((state) => ({
-        webhooks: typeof webhooksOrFn === 'function' ? webhooksOrFn(state.webhooks) : webhooksOrFn
-      })),
-      setCharging: (charging) => set({ isCharging: charging }),
-      setFaceDown: (faceDown) => set({ isFaceDown: faceDown }),
-      setOnlineStatus: (isOnline) => set({ isOnline }),
-      setNetworkType: (networkType) => set({ networkType }),
-      setVisibilityState: (visibilityState) => set({ visibilityState }),
     }),
     {
       name: 'flow-state-v2', // New storage name
       // Persist the entire state except for the 'initialized' flag and transient device status
       partialize: (state) =>
         Object.fromEntries(Object.entries(state).filter(([key]) =>
-          key !== 'initialized' &&
-          key !== 'isCharging' &&
-          key !== 'isFaceDown' &&
-          key !== 'isOnline' &&
-          key !== 'networkType' &&
-          key !== 'visibilityState'
-        )) as Omit<
-          AppState,
-          'initialized' | 'isCharging' | 'isFaceDown' | 'isOnline' | 'networkType' | 'visibilityState'
-        >,
+          key !== 'initialized'
+        )) as Omit<AppState, 'initialized'>,
       // Set 'initialized' flag once hydration is complete
       onRehydrateStorage: () => (state) => {
         state?.setInitialized(true);

@@ -42,16 +42,6 @@ export function AppLayout() {
       <nav className="border-t bg-background p-2">
         <div className="grid w-full grid-cols-3 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
           <NavLink
-            to="/status"
-            className={({ isActive }) =>
-              `inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                isActive ? 'bg-background text-foreground shadow-sm' : ''
-              }`
-            }
-          >
-            Status
-          </NavLink>
-          <NavLink
             to="/flows"
             className={({ isActive }) =>
               `inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
@@ -62,14 +52,24 @@ export function AppLayout() {
             Flows
           </NavLink>
           <NavLink
-            to="/library"
+            to="/activity"
             className={({ isActive }) =>
               `inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                 isActive ? 'bg-background text-foreground shadow-sm' : ''
               }`
             }
           >
-            Library
+            Activity
+          </NavLink>
+          <NavLink
+            to="/discover"
+            className={({ isActive }) =>
+              `inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                isActive ? 'bg-background text-foreground shadow-sm' : ''
+              }`
+            }
+          >
+            Discover
           </NavLink>
         </div>
       </nav>

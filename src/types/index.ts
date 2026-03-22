@@ -1,16 +1,3 @@
-export type WebhookConfig = {
-    id: string;
-    name: string;
-    url: string;
-    charging: boolean;
-    orientation: boolean;
-    enabled: boolean;
-  };
-  
-  export interface SettingsSectionProps {
-    onWebhookSent: (success: boolean, url: string) => Promise<void>;
-  }
-
 export type TriggerType = 'NATIVE_BATTERY' | 'NETWORK' | 'GEOLOCATION' | 'DEEP_LINK' | 'MANUAL';
 export type ActionType = 'WEBHOOK' | 'NOTIFICATION' | 'LOG';
 
