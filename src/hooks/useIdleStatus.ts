@@ -47,7 +47,7 @@ export function useIdleStatus() {
 
     return () => {
       if (detector) {
-        detector.stop();
+        try { detector.stop(); } catch { /* detector may not have started */ }
       }
     };
   }, [updateIdle]);
