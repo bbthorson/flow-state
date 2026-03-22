@@ -16,6 +16,7 @@ import {
     FormMessage,
 } from '@/components/ui/form';
 import { Trash2, PlusCircle, ShieldAlert, Sparkles, Loader2, ArrowLeft } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { VariableHints } from './variable-hints';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useLanguageModel, generateFlow } from '@/hooks/useLanguageModel';
@@ -220,45 +221,49 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                     }} />
                 )}
 
-                <div className="space-y-4">
-                    <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Flow Name</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="My Automation Flow" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Flow Name</FormLabel>
+                            <FormControl>
+                                <Input placeholder="My Automation Flow" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
 
+                <Accordion type="multiple" defaultValue={['trigger', 'actions']}>
+                  <AccordionItem value="trigger">
+                    <AccordionTrigger className="text-sm">
+                      When this happens — <span className="text-muted-foreground ml-1">{TRIGGER_LABELS[triggerType as TriggerType] || 'Select'}</span>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4">
                     <FormField
                         control={form.control}
                         name="trigger.type"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>When this happens...</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select a trigger" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            {triggerTypes.map((type) => (
-                                                <SelectItem key={type} value={type}>
-                                                    {TRIGGER_LABELS[type]}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a trigger" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {triggerTypes.map((type) => (
+                                            <SelectItem key={type} value={type}>
+                                                {TRIGGER_LABELS[type]}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
 
                     {triggerType === 'IDLE' && (
                         <div className="space-y-4">
@@ -499,18 +504,14 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                             </Button>
                         </div>
                     )}
-                </div>
+                    </AccordionContent>
+                  </AccordionItem>
 
-                <PermissionWarning unmet={unmetPerms} permissions={permissions} />
-
-                <div className="space-y-4 border-t pt-4">
-                    <div className="flex items-center justify-between">
-                        <FormLabel className="text-base">...do this</FormLabel>
-                            <Button type="button" variant="outline" size="sm" onClick={() => append({ type: 'LOG', details: {} })}>
-                                <PlusCircle className="mr-2 h-4 w-4" /> Add Action
-                            </Button>
-                        </div>
-
+                  <AccordionItem value="actions">
+                    <AccordionTrigger className="text-sm">
+                      ...do this — <span className="text-muted-foreground ml-1">{fields.length} action{fields.length !== 1 ? 's' : ''}</span>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4">
                         <VariableHints type={triggerType} />
 
                         {fields.map((field, index) => (
@@ -560,7 +561,15 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                                 <ActionDetails index={index} form={form} />
                             </div>
                         ))}
-                </div>
+
+                        <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => append({ type: 'LOG', details: {} })}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add Action
+                        </Button>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+
+                <PermissionWarning unmet={unmetPerms} permissions={permissions} />
 
                 <Button type="submit" className="w-full" disabled={!isValid}>
                     Save Flow

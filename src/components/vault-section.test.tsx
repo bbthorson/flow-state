@@ -22,9 +22,9 @@ describe('VaultSection', () => {
 
   it('renders correctly', () => {
     render(<VaultSection />);
-    expect(screen.getByText('Vault Management')).toBeInTheDocument();
-    expect(screen.getByText('Export Vault')).toBeInTheDocument();
-    expect(screen.getByText('Import Vault')).toBeInTheDocument();
+    expect(screen.getByText('Backup')).toBeInTheDocument();
+    expect(screen.getByText('Export')).toBeInTheDocument();
+    expect(screen.getByText('Import')).toBeInTheDocument();
   });
 
   it('triggers export flow', () => {
@@ -32,7 +32,7 @@ describe('VaultSection', () => {
     useAppStore.setState({ exportVault: mockExportVault });
 
     render(<VaultSection />);
-    fireEvent.click(screen.getByText('Export Vault'));
+    fireEvent.click(screen.getByText('Export'));
 
     expect(mockExportVault).toHaveBeenCalled();
     expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({

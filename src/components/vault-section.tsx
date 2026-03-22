@@ -1,8 +1,7 @@
 import React, { useRef } from 'react';
 import { useAppStore } from '@/store/useAppStore';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Upload, Trash2 } from 'lucide-react';
+import { Download, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export function VaultSection() {
@@ -75,39 +74,35 @@ export function VaultSection() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Vault Management</CardTitle>
-        <CardDescription>
+    <div className="space-y-2">
+      <div>
+        <h3 className="text-sm font-semibold">Backup</h3>
+        <p className="text-xs text-muted-foreground">
           Export or import your local configuration. Your data never leaves your device.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div className="flex gap-2">
-          <Button onClick={handleExport} className="flex-1" variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            Export Vault
-          </Button>
-          
-          <div className="relative flex-1">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImport}
-              accept=".json"
-              className="hidden"
-            />
-            <Button onClick={() => fileInputRef.current?.click()} className="w-full">
-              <Upload className="mr-2 h-4 w-4" />
-              Import Vault
-            </Button>
-          </div>
-        </div>
-        
-        <p className="text-xs text-muted-foreground italic">
-          Tip: Download a backup regularly to prevent data loss if you clear your browser cache.
         </p>
-      </CardContent>
-    </Card>
+      </div>
+      <div className="flex gap-2">
+        <Button onClick={handleExport} className="flex-1" variant="outline">
+          <Download className="mr-2 h-4 w-4" />
+          Export
+        </Button>
+        <div className="relative flex-1">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImport}
+            accept=".json"
+            className="hidden"
+          />
+          <Button onClick={() => fileInputRef.current?.click()} className="w-full" variant="outline">
+            <Upload className="mr-2 h-4 w-4" />
+            Import
+          </Button>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground italic">
+        Download a backup regularly to prevent data loss if you clear your browser cache.
+      </p>
+    </div>
   );
 }

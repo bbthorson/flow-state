@@ -15,7 +15,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Flow, TriggerType } from '@/types';
-import { Link, Trash2, Pencil, PlusCircle, Play, Zap, ShieldAlert } from 'lucide-react';
+import { Link, Trash2, Pencil, Plus, Play, Zap, ShieldAlert } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { FlowForm } from '@/components/flow-form';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -138,15 +138,9 @@ export function FlowList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Flows</h2>
-          <p className="text-muted-foreground">Create and manage your automations.</p>
-        </div>
-        <Button onClick={() => setIsCreating(true)}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Create Flow
-        </Button>
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">Flows</h2>
+        <p className="text-muted-foreground">Create and manage your automations.</p>
       </div>
 
       {flows.length === 0 ? (
@@ -161,15 +155,9 @@ export function FlowList() {
                 Flows connect device events like battery level or network changes to actions like webhooks and notifications.
               </p>
             </div>
-            <div className="flex flex-col gap-2 w-full max-w-xs">
-              <Button onClick={() => setIsCreating(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Create Your First Flow
-              </Button>
-              <Button variant="outline" onClick={() => navigate('/discover')}>
-                Browse Starter Templates
-              </Button>
-            </div>
+            <Button variant="outline" onClick={() => navigate('/discover')}>
+              Browse Starter Templates
+            </Button>
           </div>
         </Card>
       ) : (
@@ -186,6 +174,14 @@ export function FlowList() {
           </div>
         </Card>
       )}
+
+      <Button
+        onClick={() => setIsCreating(true)}
+        size="icon"
+        className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg z-40"
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
     </div>
   );
 }
