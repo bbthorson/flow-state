@@ -1,0 +1,33 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.trigger.geolocation",
+  "description": "Triggers when the device enters or exits a geographic zone. Requires Geolocation API permission.",
+  "defs": {
+    "main": {
+      "type": "object",
+      "description": "Geolocation trigger configuration.",
+      "required": ["latitude", "longitude", "radius", "event"],
+      "properties": {
+        "latitude": {
+          "type": "number",
+          "description": "Center latitude of the geofence zone."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Center longitude of the geofence zone."
+        },
+        "radius": {
+          "type": "integer",
+          "description": "Radius of the geofence zone in meters.",
+          "minimum": 1
+        },
+        "event": {
+          "type": "string",
+          "description": "Whether to trigger on entering or exiting the zone.",
+          "enum": ["ENTER", "EXIT"]
+        }
+      },
+      "permissions": ["geolocation"]
+    }
+  }
+}

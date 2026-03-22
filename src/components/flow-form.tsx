@@ -16,8 +16,16 @@ import {
     FormMessage,
 } from '@/components/ui/form';
 import { Card, CardContent } from '@/components/ui/card';
-import { Trash2, PlusCircle } from 'lucide-react';
+import { Trash2, PlusCircle, ShieldAlert } from 'lucide-react';
 import { VariableHints } from './variable-hints';
+import { usePermissions } from '@/hooks/usePermissions';
+import {
+    TRIGGER_PERMISSIONS,
+    ACTION_PERMISSIONS,
+    PERMISSION_LABELS,
+    requestPermission,
+    DevicePermission,
+} from '@/lib/permissions';
 
 const triggerTypes: TriggerType[] = ['NATIVE_BATTERY', 'NETWORK', 'GEOLOCATION', 'DEEP_LINK', 'MANUAL'];
 const actionTypes: ActionType[] = ['WEBHOOK', 'NOTIFICATION', 'LOG'];
@@ -42,7 +50,47 @@ interface FlowFormProps {
     onCancel: () => void;
 }
 
+function PermissionWarning({ unmet, permissions }: {
+    unmet: DevicePermission[];
+    permissions: Record<DevicePermission, string>;
+}) {
+    if (unmet.length === 0) return null;
+
+    const handleRequest = async (perm: DevicePermission) => {
+        await requestPermission(perm);
+    };
+
+    return (
+        <div className="flex items-start gap-2 rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 text-sm">
+            <ShieldAlert className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
+            <div className="space-y-1">
+                <p className="font-medium text-yellow-700 dark:text-yellow-400">Missing permissions</p>
+                {unmet.map((perm) => {
+                    const state = permissions[perm];
+                    return (
+                        <div key={perm} className="text-xs text-muted-foreground">
+                            {PERMISSION_LABELS[perm]}
+                            {state === 'prompt' && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleRequest(perm)}
+                                    className="ml-2 text-blue-500 hover:underline"
+                                >
+                                    Grant
+                                </button>
+                            )}
+                            {state === 'denied' && ' — enable in browser settings'}
+                            {state === 'unavailable' && ' — not supported on this device'}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
+    const permissions = usePermissions();
     const defaultValues: Partial<FlowFormValues> = flow
         ? {
             name: flow.name,
@@ -66,6 +114,15 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
     });
 
     const triggerType = form.watch('trigger.type');
+    const watchedActions = form.watch('actions');
+
+    // Compute unmet permissions for current form state
+    const allPerms = new Set<DevicePermission>();
+    for (const p of TRIGGER_PERMISSIONS[triggerType as TriggerType] || []) allPerms.add(p);
+    for (const action of watchedActions || []) {
+        for (const p of ACTION_PERMISSIONS[action.type as ActionType] || []) allPerms.add(p);
+    }
+    const unmetPerms = Array.from(allPerms).filter((p) => permissions[p] !== 'granted');
 
     function onSubmit(data: FlowFormValues) {
         onSave({
@@ -266,6 +323,8 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                         </div>
                     )}
                 </div>
+
+                <PermissionWarning unmet={unmetPerms} permissions={permissions} />
 
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">

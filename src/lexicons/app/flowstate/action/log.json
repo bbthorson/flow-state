@@ -1,0 +1,18 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.action.log",
+  "description": "Records a message to the activity log. No special permissions required.",
+  "defs": {
+    "main": {
+      "type": "object",
+      "description": "Log action configuration.",
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "The message to log. Supports {{variable}} template syntax."
+        }
+      },
+      "permissions": []
+    }
+  }
+}

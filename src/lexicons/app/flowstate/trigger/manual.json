@@ -1,0 +1,13 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.trigger.manual",
+  "description": "Triggered manually by the user from the flow list. No special permissions required.",
+  "defs": {
+    "main": {
+      "type": "object",
+      "description": "Manual trigger configuration. Has no configurable properties.",
+      "properties": {},
+      "permissions": []
+    }
+  }
+}

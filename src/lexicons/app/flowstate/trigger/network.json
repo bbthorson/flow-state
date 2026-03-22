@@ -1,0 +1,22 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.trigger.network",
+  "description": "Triggers on network connectivity changes. Uses the Network Information API for detailed connection info.",
+  "defs": {
+    "main": {
+      "type": "object",
+      "description": "Network trigger configuration.",
+      "properties": {
+        "online": {
+          "type": "boolean",
+          "description": "Expected online/offline state."
+        },
+        "ssid": {
+          "type": "string",
+          "description": "Optional Wi-Fi network name to match. If set, only triggers when connected to this specific network."
+        }
+      },
+      "permissions": ["network-information"]
+    }
+  }
+}

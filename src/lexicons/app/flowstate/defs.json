@@ -1,0 +1,39 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.defs",
+  "description": "Shared definitions for the Flow State automation platform.",
+  "defs": {
+    "permission": {
+      "type": "string",
+      "description": "A browser permission or API capability required by a trigger or action.",
+      "knownValues": [
+        "battery-status",
+        "network-information",
+        "geolocation",
+        "notifications"
+      ]
+    },
+    "triggerInput": {
+      "type": "union",
+      "description": "All supported trigger types.",
+      "refs": [
+        "app.flowstate.trigger.battery",
+        "app.flowstate.trigger.network",
+        "app.flowstate.trigger.geolocation",
+        "app.flowstate.trigger.deepLink",
+        "app.flowstate.trigger.manual"
+      ],
+      "closed": false
+    },
+    "actionInput": {
+      "type": "union",
+      "description": "All supported action types.",
+      "refs": [
+        "app.flowstate.action.webhook",
+        "app.flowstate.action.notification",
+        "app.flowstate.action.log"
+      ],
+      "closed": false
+    }
+  }
+}

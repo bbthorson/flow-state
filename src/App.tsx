@@ -5,6 +5,7 @@ import { FlowsPage } from '@/routes/FlowsPage';
 import { ActivityPage } from '@/routes/ActivityPage';
 import { DiscoverPage } from '@/routes/DiscoverPage';
 import { SettingsPage } from '@/routes/SettingsPage';
+import { HowFlowsWorkPage } from '@/routes/HowFlowsWorkPage';
 import { Toaster } from '@/components/ui/toaster';
 
 export function App() {
@@ -18,6 +19,7 @@ export function App() {
             <Route path="activity" element={<ActivityPage />} />
             <Route path="discover" element={<DiscoverPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="docs/flows" element={<HowFlowsWorkPage />} />
             <Route path="*" element={<Navigate to="/flows" replace />} />
           </Route>
         </Routes>

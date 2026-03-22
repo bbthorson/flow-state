@@ -1,0 +1,58 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.flow",
+  "description": "An on-device automation that connects a trigger to one or more actions.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A Flow State automation record.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["name", "enabled", "trigger", "actions"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Human-readable name for the flow.",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether the flow is active and should respond to triggers."
+          },
+          "securityKey": {
+            "type": "string",
+            "description": "Optional secret used to authenticate deep link triggers. Falls back to the global webhook secret if not set."
+          },
+          "trigger": {
+            "type": "union",
+            "description": "The event that activates this flow.",
+            "refs": [
+              "app.flowstate.trigger.battery",
+              "app.flowstate.trigger.network",
+              "app.flowstate.trigger.geolocation",
+              "app.flowstate.trigger.deepLink",
+              "app.flowstate.trigger.manual"
+            ],
+            "closed": false
+          },
+          "actions": {
+            "type": "array",
+            "description": "Actions to execute when the trigger fires.",
+            "minLength": 1,
+            "items": {
+              "type": "union",
+              "refs": [
+                "app.flowstate.action.webhook",
+                "app.flowstate.action.notification",
+                "app.flowstate.action.log"
+              ],
+              "closed": false
+            }
+          }
+        }
+      }
+    }
+  }
+}

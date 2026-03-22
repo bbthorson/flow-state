@@ -15,9 +15,11 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Flow, TriggerType } from '@/types';
-import { Link, Trash2, Pencil, PlusCircle, Play, Zap } from 'lucide-react';
+import { Link, Trash2, Pencil, PlusCircle, Play, Zap, ShieldAlert } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { FlowForm } from '@/components/flow-form';
+import { usePermissions } from '@/hooks/usePermissions';
+import { getFlowPermissions, PERMISSION_LABELS } from '@/lib/permissions';
 
 const MOCK_DATA: Record<TriggerType, any> = {
   NATIVE_BATTERY: { level: 0.5, charging: true },
@@ -27,8 +29,11 @@ const MOCK_DATA: Record<TriggerType, any> = {
   MANUAL: {},
 };
 
-function FlowListItem({ flow, onEdit }: { flow: Flow, onEdit: () => void }) {
+function FlowListItem({ flow, onEdit, permissions }: { flow: Flow, onEdit: () => void, permissions: Record<string, string> }) {
   const { updateFlow, deleteFlow, triggerFlows } = useAppStore();
+
+  const requiredPerms = getFlowPermissions(flow);
+  const unmetPerms = requiredPerms.filter((p) => permissions[p] !== 'granted');
 
   const handleToggle = (enabled: boolean) => {
     updateFlow({ ...flow, enabled });
@@ -46,7 +51,15 @@ function FlowListItem({ flow, onEdit }: { flow: Flow, onEdit: () => void }) {
     <div className="flex items-center justify-between p-4">
       <div className="flex items-center gap-4">
         <Link className="h-5 w-5 text-muted-foreground" />
-        <span className="font-medium">{flow.name}</span>
+        <div>
+          <span className="font-medium">{flow.name}</span>
+          {unmetPerms.length > 0 && (
+            <div className="flex items-center gap-1 text-[10px] text-yellow-600 dark:text-yellow-400">
+              <ShieldAlert className="h-3 w-3" />
+              Needs {unmetPerms.map((p) => PERMISSION_LABELS[p]).join(', ')}
+            </div>
+          )}
+        </div>
       </div>
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={handleTest} title="Test Flow">
@@ -84,6 +97,7 @@ export function FlowList() {
   const flows = useAppStore((state) => state.flows);
   const addFlow = useAppStore((state) => state.addFlow);
   const updateFlow = useAppStore((state) => state.updateFlow);
+  const permissions = usePermissions();
 
   const navigate = useNavigate();
   const [isCreating, setIsCreating] = useState(false);
@@ -181,6 +195,7 @@ export function FlowList() {
                 key={flow.id}
                 flow={flow}
                 onEdit={() => setEditingFlowId(flow.id)}
+                permissions={permissions}
               />
             ))}
           </div>

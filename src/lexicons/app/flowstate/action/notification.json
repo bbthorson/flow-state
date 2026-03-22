@@ -1,0 +1,27 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.action.notification",
+  "description": "Shows a browser notification. Requires the Notifications API permission.",
+  "defs": {
+    "main": {
+      "type": "object",
+      "description": "Notification action configuration.",
+      "required": ["title"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Notification title. Supports {{variable}} template syntax."
+        },
+        "body": {
+          "type": "string",
+          "description": "Optional notification body text. Supports {{variable}} template syntax."
+        },
+        "icon": {
+          "type": "string",
+          "description": "Optional URL to a notification icon image."
+        }
+      },
+      "permissions": ["notifications"]
+    }
+  }
+}
