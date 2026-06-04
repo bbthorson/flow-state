@@ -16,7 +16,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Flow, TriggerType } from '@/types';
-import { Link, Trash2, Pencil, Plus, Play, Zap, ShieldAlert, Globe, GlobeLock } from 'lucide-react';
+import { Link, Trash2, Pencil, Play, Zap, ShieldAlert, Globe, GlobeLock } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { FlowForm } from '@/components/flow-form';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -225,13 +225,6 @@ export function FlowList() {
         </Card>
       )}
 
-      <Button
-        onClick={() => setIsCreating(true)}
-        size="icon"
-        className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg z-40"
-      >
-        <Plus className="h-6 w-6" />
-      </Button>
     </div>
   );
 }

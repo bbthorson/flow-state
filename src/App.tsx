@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppLayout } from '@/components/AppLayout';
 import { FlowsPage } from '@/routes/FlowsPage';
@@ -12,6 +12,7 @@ import { TimelinePage } from '@/routes/TimelinePage';
 import { TriagePage } from '@/routes/TriagePage';
 import { Toaster } from '@/components/ui/toaster';
 import { useAuthStore } from '@/store/useAuthStore';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 function IndexRedirect() {
   const { did, loading, onboardingSkipped } = useAuthStore();
@@ -20,10 +21,23 @@ function IndexRedirect() {
   return <Navigate to="/timeline" replace />;
 }
 
-function SettingsOverlay() {
+function SettingsDrawer() {
   const location = useLocation();
-  if (location.pathname !== '/settings') return null;
-  return <SettingsPage />;
+  const navigate = useNavigate();
+  const isOpen = location.pathname === '/settings';
+
+  return (
+    <Sheet open={isOpen} onOpenChange={(open) => { if (!open) navigate(-1); }}>
+      <SheetContent side="top" className="h-[85vh] flex flex-col p-0">
+        <SheetHeader className="px-6 py-4 border-b">
+          <SheetTitle>Settings</SheetTitle>
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <SettingsPage />
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
 }
 
 export function App() {
@@ -46,7 +60,7 @@ export function App() {
             <Route path="*" element={<Navigate to="/timeline" replace />} />
           </Route>
         </Routes>
-        <SettingsOverlay />
+        <SettingsDrawer />
         <Toaster />
       </BrowserRouter>
     </ErrorBoundary>
