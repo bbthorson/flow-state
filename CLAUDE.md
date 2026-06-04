@@ -12,11 +12,15 @@ An Android-first PWA for on-device automations. Connects device triggers (batter
 
 ## Commands
 
-- `npm run dev` — local dev server
+- `npm run dev` — local dev server (port 9002)
 - `npm run build` — production build
 - `npm run typecheck` — TypeScript check
 - `npm test` — Vitest test suite
-- `npm run deploy` — deploy to Cloudflare
+- `npm run lint` — ESLint
+
+## Deployment
+
+Deploys are handled by Cloudflare's GitHub integration — pushing to `master` triggers a build and deploy automatically. There is no local `wrangler` config or `deploy` script.
 
 ## Architecture
 
