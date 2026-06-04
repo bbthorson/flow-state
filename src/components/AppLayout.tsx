@@ -11,6 +11,14 @@ import { useIdleStatus } from '@/hooks/useIdleStatus';
 import { useDeviceMotion } from '@/hooks/useDeviceMotion';
 import { useScreenOrientation } from '@/hooks/useScreenOrientation';
 import { useAuthStore } from '@/store/useAuthStore';
+import { CalendarDays, Zap, Activity, Compass } from 'lucide-react';
+
+const NAV_ITEMS = [
+  { to: '/timeline', label: 'Timeline', Icon: CalendarDays },
+  { to: '/flows', label: 'Flows', Icon: Zap },
+  { to: '/activity', label: 'Activity', Icon: Activity },
+  { to: '/discover', label: 'Discover', Icon: Compass },
+];
 
 export function AppLayout() {
   const initialized = useAppStore((state) => state.initialized);
@@ -18,7 +26,6 @@ export function AppLayout() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initAuth = useAuthStore((state) => state.init);
 
-  // Initialize device monitors
   useBatteryStatus();
   useNetworkStatus();
   useVisibilityStatus();
@@ -28,12 +35,10 @@ export function AppLayout() {
   useScreenOrientation();
   useFlowTriggerManager();
 
-  // Initialize AT Protocol auth (restores session or handles OAuth callback)
   useEffect(() => {
     initAuth();
   }, [initAuth]);
 
-  // Deep Link Handler
   useEffect(() => {
     if (searchParams.toString().length > 0) {
       processDeepLink(searchParams);
@@ -52,38 +57,28 @@ export function AppLayout() {
       <main className="flex-grow overflow-y-auto p-4 pb-20">
         <Outlet />
       </main>
-      <nav className="border-t bg-background p-2">
-        <div className="grid w-full grid-cols-3 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
-          <NavLink
-            to="/flows"
-            className={({ isActive }) =>
-              `inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                isActive ? 'bg-background text-foreground shadow-sm' : ''
-              }`
-            }
-          >
-            Flows
-          </NavLink>
-          <NavLink
-            to="/activity"
-            className={({ isActive }) =>
-              `inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                isActive ? 'bg-background text-foreground shadow-sm' : ''
-              }`
-            }
-          >
-            Activity
-          </NavLink>
-          <NavLink
-            to="/discover"
-            className={({ isActive }) =>
-              `inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                isActive ? 'bg-background text-foreground shadow-sm' : ''
-              }`
-            }
-          >
-            Discover
-          </NavLink>
+      <nav className="border-t bg-background">
+        <div className="flex items-center justify-around py-1">
+          {NAV_ITEMS.map(({ to, label, Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `flex flex-col items-center gap-0.5 px-4 py-2 rounded-md transition-colors ${
+                  isActive
+                    ? 'text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon className={`h-5 w-5 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.5]'}`} />
+                  <span className="text-[10px] font-medium">{label}</span>
+                </>
+              )}
+            </NavLink>
+          ))}
         </div>
       </nav>
     </div>

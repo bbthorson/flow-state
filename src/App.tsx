@@ -6,7 +6,17 @@ import { ActivityPage } from '@/routes/ActivityPage';
 import { DiscoverPage } from '@/routes/DiscoverPage';
 import { SettingsPage } from '@/routes/SettingsPage';
 import { HowFlowsWorkPage } from '@/routes/HowFlowsWorkPage';
+import { WelcomePage } from '@/routes/WelcomePage';
+import { TimelinePage } from '@/routes/TimelinePage';
 import { Toaster } from '@/components/ui/toaster';
+import { useAuthStore } from '@/store/useAuthStore';
+
+function IndexRedirect() {
+  const { did, loading, onboardingSkipped } = useAuthStore();
+  if (loading) return null;
+  if (!did && !onboardingSkipped) return <Navigate to="/welcome" replace />;
+  return <Navigate to="/flows" replace />;
+}
 
 function SettingsOverlay() {
   const location = useLocation();
@@ -19,9 +29,11 @@ export function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <Routes>
+          <Route path="welcome" element={<WelcomePage />} />
           <Route element={<AppLayout />}>
-            <Route index element={<Navigate to="/flows" replace />} />
+            <Route index element={<IndexRedirect />} />
             <Route path="flows" element={<FlowsPage />} />
+            <Route path="timeline" element={<TimelinePage />} />
             <Route path="activity" element={<ActivityPage />} />
             <Route path="discover" element={<DiscoverPage />} />
             <Route path="docs/flows" element={<HowFlowsWorkPage />} />

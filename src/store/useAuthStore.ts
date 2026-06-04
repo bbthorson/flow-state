@@ -20,6 +20,8 @@ interface AuthState {
   handle: string | null;
   /** Map of local flow ID → published AT URI — persisted */
   publishedFlows: Record<string, { uri: string; rkey: string }>;
+  /** Whether the user has explicitly chosen to skip onboarding — persisted */
+  onboardingSkipped: boolean;
   /** Whether auth is currently initializing */
   loading: boolean;
   /** Current error message, if any */
@@ -37,6 +39,7 @@ interface AuthState {
   init: () => Promise<void>;
   signIn: (handle: string) => Promise<void>;
   signOut: () => Promise<void>;
+  skipOnboarding: () => void;
   publishFlow: (flow: Flow) => Promise<void>;
   unpublishFlow: (flowId: string) => Promise<void>;
   installFromNetwork: (published: PublishedFlow) => Promise<void>;
@@ -49,6 +52,7 @@ export const useAuthStore = create<AuthState>()(
       did: null,
       handle: null,
       publishedFlows: {},
+      onboardingSkipped: false,
       loading: false,
       error: null,
       session: null,
@@ -101,6 +105,10 @@ export const useAuthStore = create<AuthState>()(
             error: err instanceof Error ? err.message : 'Sign-in failed',
           });
         }
+      },
+
+      skipOnboarding: () => {
+        set({ onboardingSkipped: true });
       },
 
       signOut: async () => {
@@ -186,6 +194,7 @@ export const useAuthStore = create<AuthState>()(
         did: state.did,
         handle: state.handle,
         publishedFlows: state.publishedFlows,
+        onboardingSkipped: state.onboardingSkipped,
       }),
     },
   ),
