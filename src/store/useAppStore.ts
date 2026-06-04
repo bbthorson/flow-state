@@ -22,7 +22,7 @@ interface AppState {
 // 3. Actions Interface
 
 interface AppActions {
-  addFlow: (flow: Omit<Flow, 'id'>) => void;
+  addFlow: (flow: Omit<Flow, 'id'>) => string;
   addFlowFromTemplate: (template: Omit<Flow, 'id'>) => void;
   updateFlow: (flow: Flow) => void;
   deleteFlow: (flowId: string) => void;
@@ -53,7 +53,11 @@ export const useAppStore = create<AppState & AppActions>()(
 
       // Actions
       setInitialized: (initialized) => set({ initialized }),
-      addFlow: (flow) => set((state) => ({ flows: [...state.flows, { ...flow, id: uuidv4() }] })),
+      addFlow: (flow) => {
+        const id = uuidv4();
+        set((state) => ({ flows: [...state.flows, { ...flow, id }] }));
+        return id;
+      },
       addFlowFromTemplate: (template) => {
         const newFlow = { ...template, id: uuidv4() };
         set((state) => ({ flows: [...state.flows, newFlow] }));
