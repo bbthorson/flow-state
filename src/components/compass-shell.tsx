@@ -41,8 +41,8 @@ export function CompassShell() {
   };
 
   return (
-    <div className="flex flex-1 min-h-0 flex-col">
-      <header className="flex items-center justify-between border-b px-2 py-2">
+    <div className="relative h-dvh overflow-hidden">
+      <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between border-b bg-background/80 px-2 py-2 backdrop-blur">
         <PassiveShroud />
         <nav className="flex items-center gap-1">
           {PANES.map((pane, i) => (
@@ -75,12 +75,12 @@ export function CompassShell() {
         ref={scrollerRef}
         onScroll={handleScroll}
         style={{ scrollbarWidth: 'none' }}
-        className="flex flex-1 min-h-0 snap-x snap-mandatory overflow-x-auto [&::-webkit-scrollbar]:hidden"
+        className="flex h-full snap-x snap-mandatory overflow-x-auto [&::-webkit-scrollbar]:hidden"
       >
         {PANES.map(({ key, Pane }) => (
           <section
             key={key}
-            className="w-full shrink-0 snap-center overflow-y-auto p-4 pb-24"
+            className="h-full w-full shrink-0 snap-center overflow-y-auto px-4 pb-24 pt-16"
           >
             <Pane />
           </section>
