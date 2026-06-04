@@ -1,16 +1,24 @@
 import { Link } from 'react-router';
 import { StarterPacks } from '@/components/starter-packs';
 import { NetworkFlows } from '@/components/network-flows';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export function DiscoverPage() {
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Discover</h2>
-        <p className="text-muted-foreground">
-          Pre-built automations you can install with one tap.
-        </p>
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="icon" asChild>
+          <Link to="/">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Discover</h2>
+          <p className="text-muted-foreground">
+            Pre-built automations you can install with one tap.
+          </p>
+        </div>
       </div>
       <NetworkFlows />
       <StarterPacks />

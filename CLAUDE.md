@@ -30,8 +30,11 @@ An Android-first PWA for on-device automations. Connects device triggers (batter
 - `src/services/atproto.ts` — AT Protocol operations: publish/unpublish flows, record installs, discover flows from follows
 - `src/lib/atproto.ts` — BrowserOAuthClient singleton (handles PKCE/PAR/DPoP automatically)
 - `src/lib/permissions.ts` — Permission registry mapping trigger/action types to browser capabilities
-- `src/components/AppLayout.tsx` — Main shell with header, content area, bottom tab nav. All device hooks and auth init here. Uses `h-dvh` for mobile viewport.
-- `src/routes/` — Page components rendered via React Router
+- `src/components/AppLayout.tsx` — Persistent shell. Mounts all device hooks and auth init once and keeps them alive across navigation; renders the routed `<Outlet />`. Uses `h-dvh` for mobile viewport.
+- `src/components/compass-shell.tsx` — The home surface (`/`): the Kairos compass. A CSS scroll-snap container of three horizontal panes (Triage ◄ Timeline ► Execution), centered on Timeline at mount. Header has the pane indicator, the Passive Shroud trigger, and the settings gear. Swipe is the primary navigation; the pane labels are a tappable secondary affordance.
+- `src/components/flows-sheet.tsx` — Swipe-up "booking drawer": a bottom bar (branded `bg-primary`) that opens a Sheet listing flows. Lives inside the compass only. Create-new and the Discover link live here.
+- `src/components/passive-shroud.tsx` — Swipe-down eyes-free utility layer (media/transit/wallet). Placeholder.
+- `src/routes/` — Page components. Triage/Timeline/Execution render as compass panes (not routes). Secondary surfaces (Discover, Settings, flow detail, docs) are drill-in routes rendered in a `ScrollFrame` with a back arrow → parent.
 
 ## AT Protocol Integration
 
@@ -71,12 +74,17 @@ An Android-first PWA for on-device automations. Connects device triggers (batter
 - Use accordions for collapsible sections (trigger config, actions) with summary labels in the trigger text
 - Action items: inline row layout with `#N [select] [trash]`
 
-### Overlays
-- Settings and similar secondary pages render as `fixed inset-0 z-50` overlays with their own header and X close button
+### Secondary surfaces (drill-in routes)
+- Discover, Settings, flow detail, and docs are routes rendered inside `ScrollFrame` (`flex-1 min-h-0 overflow-y-auto p-4`)
+- Each starts with a back row: ghost icon button with ArrowLeft → parent route (use `<Link to="/">`, not `navigate(-1)`)
 - AppLayout stays mounted underneath (keeps device hooks alive)
 
+### Drawers (Sheets)
+- Swipe-up = Flows (bottom Sheet, branded `bg-primary` trigger bar); swipe-down = Passive Shroud (top Sheet)
+- Both live inside `compass-shell` and only appear on the home surface
+
 ### Buttons
-- Primary create actions: floating action button (`fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg z-40`)
+- Create-new lives in the Flows drawer header, not a floating action button
 - Don't put primary action buttons in page headers — keep headers stable
 
 ### Permissions
