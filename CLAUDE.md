@@ -26,7 +26,7 @@ Deploys are handled by Cloudflare's GitHub integration — pushing to `master` t
 
 - `src/types/` — Core types derived from lexicon schemas
 - `src/lexicons/` — AT Protocol lexicon JSON files (app.flowstate.flow, app.flowstate.install, triggers, actions)
-- `src/store/useAppStore.ts` — Zustand store for flows, logs, vault import/export (persisted to localStorage)
+- `src/store/useAppStore.ts` — Zustand store for flows, day-plan blocks, logs, vault import/export (persisted to localStorage). `blocks` is the recurring daily Focus/Care/Triage plan.
 - `src/store/useDeviceStore.ts` — Zustand store for device sensor state
 - `src/store/useAuthStore.ts` — Zustand store for AT Protocol OAuth (did, handle, published flows map, network discovery)
 - `src/hooks/` — Device sensor hooks (battery, network, geo, idle, motion, orientation), useFlowTriggerManager connects sensor data to flow execution
@@ -36,6 +36,7 @@ Deploys are handled by Cloudflare's GitHub integration — pushing to `master` t
 - `src/lib/permissions.ts` — Permission registry mapping trigger/action types to browser capabilities
 - `src/components/AppLayout.tsx` — Persistent shell. Mounts all device hooks and auth init once and keeps them alive across navigation; renders the routed `<Outlet />`. Uses `h-dvh` for mobile viewport.
 - `src/components/compass-shell.tsx` — The home surface (`/`): a single Timeline day view under a stable header (brand on the left, Control drawer trigger on the right) plus the swipe-up Flows drawer. Reads `?panel=control` to deep-link the Control drawer open. (The earlier three-pane Triage ◄ Timeline ► Execution compass was collapsed to just Timeline; Triage/Execution are parked in `src/routes/` for reintroduction once the native shell makes them real.)
+- `src/components/day-timeline.tsx` — The day-plan surface rendered at the top of `TimelinePage`: a time-sorted list of Focus/Care/Triage blocks with a live "now" marker and an add/edit/delete dialog. Blocks are a recurring daily template (time-of-day, no dates); kind styling lives in `src/lib/blocks.ts`, time helpers in `src/lib/schedule.ts`.
 - `src/components/flows-sheet.tsx` — Swipe-up "booking drawer": a bottom bar (branded `bg-primary`) that opens a Sheet listing flows. Lives inside the compass only. Create-new and the Discover link live here.
 - `src/components/control-drawer.tsx` — Gear-triggered / swipe-down top Sheet holding the eyes-free utility layer (media/transit/wallet placeholder) and the embedded `SettingsPanel`. The gear shows a green dot when signed in.
 - `src/components/settings-panel.tsx` — `SettingsPanel`: account, webhook secret, permissions, vault, about. Rendered inside the Control drawer, not as its own route.
