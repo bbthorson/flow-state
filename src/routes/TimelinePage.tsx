@@ -1,5 +1,6 @@
 import { useAppStore } from '@/store/useAppStore';
 import { DeviceStatusPanel } from '@/components/DeviceStatusPanel';
+import { DayTimeline } from '@/components/day-timeline';
 import { CheckCircle2, XCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -43,16 +44,14 @@ function RecentActivity() {
 
 export function TimelinePage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Today</h2>
-        <p className="text-muted-foreground text-sm">Live device state and recent activity.</p>
+        <p className="text-muted-foreground text-sm">Your day, live device state, and recent activity.</p>
       </div>
+      <DayTimeline />
       <DeviceStatusPanel />
       <RecentActivity />
-      <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
-        The full 12-hour Timeline view arrives in Phase 2. Swipe to Triage and Execution, or pull up Flows below.
-      </div>
     </div>
   );
 }

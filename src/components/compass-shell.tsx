@@ -1,90 +1,36 @@
-import { useLayoutEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
-import { Settings } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useAuthStore } from '@/store/useAuthStore';
-import { TriagePage } from '@/routes/TriagePage';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { TimelinePage } from '@/routes/TimelinePage';
-import { ExecutionPage } from '@/routes/ExecutionPage';
 import { FlowsSheet } from '@/components/flows-sheet';
-import { PassiveShroud } from '@/components/passive-shroud';
+import { ControlDrawer } from '@/components/control-drawer';
 
-const PANES = [
-  { key: 'triage', label: 'Triage', Pane: TriagePage },
-  { key: 'timeline', label: 'Timeline', Pane: TimelinePage },
-  { key: 'execution', label: 'Execution', Pane: ExecutionPage },
-];
-
-const CENTER = 1;
-
+/**
+ * The home surface: the Timeline day view, framed by a stable header (brand +
+ * Control drawer) and the swipe-up Flows drawer. Secondary surfaces (Discover,
+ * flow detail, docs) are drill-in routes; Settings lives in the Control drawer.
+ */
 export function CompassShell() {
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState(CENTER);
-  const did = useAuthStore((s) => s.did);
+  const [controlOpen, setControlOpen] = useState(false);
+  const [params, setParams] = useSearchParams();
 
-  // Open on the center (Timeline) pane.
-  useLayoutEffect(() => {
-    const el = scrollerRef.current;
-    if (el) el.scrollLeft = el.clientWidth * CENTER;
-  }, []);
-
-  const handleScroll = () => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    const idx = Math.round(el.scrollLeft / el.clientWidth);
-    setActive((prev) => (prev === idx ? prev : idx));
-  };
-
-  const goTo = (idx: number) => {
-    const el = scrollerRef.current;
-    if (el) el.scrollTo({ left: idx * el.clientWidth, behavior: 'smooth' });
-  };
+  // Allow other surfaces to deep-link the Control drawer open via `?panel=control`.
+  useEffect(() => {
+    if (params.get('panel') === 'control') {
+      setControlOpen(true);
+      params.delete('panel');
+      setParams(params, { replace: true });
+    }
+  }, [params, setParams]);
 
   return (
     <div className="relative h-dvh overflow-hidden">
-      <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between border-b bg-background/80 px-2 py-2 backdrop-blur">
-        <PassiveShroud />
-        <nav className="flex items-center gap-1">
-          {PANES.map((pane, i) => (
-            <button
-              key={pane.key}
-              onClick={() => goTo(i)}
-              className={cn(
-                'rounded px-2.5 py-1 text-xs transition-colors',
-                active === i
-                  ? 'font-semibold text-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {pane.label}
-            </button>
-          ))}
-        </nav>
-        <Link
-          to="/settings"
-          className="relative inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
-        >
-          <Settings className="h-4 w-4" />
-          {did && (
-            <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-green-500" />
-          )}
-        </Link>
+      <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between border-b bg-background/80 px-3 py-2 backdrop-blur">
+        <span className="text-sm font-semibold tracking-tight">Flow State</span>
+        <ControlDrawer open={controlOpen} onOpenChange={setControlOpen} />
       </header>
 
-      <div
-        ref={scrollerRef}
-        onScroll={handleScroll}
-        style={{ scrollbarWidth: 'none' }}
-        className="flex h-full snap-x snap-mandatory overflow-x-auto [&::-webkit-scrollbar]:hidden"
-      >
-        {PANES.map(({ key, Pane }) => (
-          <section
-            key={key}
-            className="h-full w-full shrink-0 snap-center overflow-y-auto px-4 pb-24 pt-16"
-          >
-            <Pane />
-          </section>
-        ))}
+      <div className="h-full overflow-y-auto px-4 pb-24 pt-16">
+        <TimelinePage />
       </div>
 
       <FlowsSheet />

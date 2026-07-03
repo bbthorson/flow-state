@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Battery, Wifi, MapPin, Link as LinkIcon, Hand, Bell, Globe, FileText, ArrowLeft, Timer, Smartphone, RotateCw, Vibrate, Clipboard, Share2, Sun, Volume2 } from 'lucide-react';
+import { Battery, Wifi, MapPin, Link as LinkIcon, Hand, Bell, Globe, FileText, ArrowLeft, Timer, Smartphone, RotateCw, Vibrate, Clipboard, Share2, Sun, Volume2, CalendarClock } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSION_LABELS, DevicePermission, PermissionState } from '@/lib/permissions';
 
@@ -51,6 +51,15 @@ const TRIGGERS = [
     description: 'Fires when you tap the play button on a flow.',
     permissions: [] as DevicePermission[],
     variables: [],
+  },
+  {
+    type: 'TIME',
+    name: 'Schedule',
+    lexicon: 'app.flowstate.trigger.schedule',
+    icon: CalendarClock,
+    description: 'Fires at a set time on chosen days — while the app is open. A PWA cannot wake in the background, so if the app is closed at the scheduled minute the flow waits for the next occurrence.',
+    permissions: [] as DevicePermission[],
+    variables: ['time', 'date', 'day'],
   },
   {
     type: 'IDLE',

@@ -1,6 +1,6 @@
 # Flow State
 
-An Android-first PWA for on-device automations. Connects device triggers (battery, network, geolocation, idle, motion, orientation) to actions (webhooks, notifications, vibration, clipboard, share, wake lock, speech). Everything runs locally — no server unless the user adds a webhook action.
+An Android-first PWA for on-device automations. Connects device triggers (battery, network, geolocation, idle, motion, orientation, schedule) to actions (webhooks, notifications, vibration, clipboard, share, wake lock, speech). Everything runs locally — no server unless the user adds a webhook action. The `TIME`/schedule trigger fires while the app is foregrounded only — a PWA cannot wake in the background.
 
 ## Stack
 
@@ -20,13 +20,13 @@ An Android-first PWA for on-device automations. Connects device triggers (batter
 
 ## Deployment
 
-Deploys are handled by Cloudflare's GitHub integration — pushing to `master` triggers a build and deploy automatically. Cloudflare runs `npm run build` then `npx wrangler versions upload`; the latter reads `wrangler.jsonc` (static-assets-only Worker named `flow-state`, serving `./dist` with SPA fallback). There is no local `deploy` script.
+Deploys are handled by Cloudflare's GitHub integration — pushing to `master` triggers a build and deploy automatically. Cloudflare runs `npm run build` then `npx wrangler versions upload`, which reads `wrangler.jsonc` (a static-assets Worker named `flow-state` with SPA fallback). The `@cloudflare/vite-plugin` wires the build output to the Worker. There is no local `deploy` script.
 
 ## Architecture
 
 - `src/types/` — Core types derived from lexicon schemas
 - `src/lexicons/` — AT Protocol lexicon JSON files (app.flowstate.flow, app.flowstate.install, triggers, actions)
-- `src/store/useAppStore.ts` — Zustand store for flows, logs, vault import/export (persisted to localStorage)
+- `src/store/useAppStore.ts` — Zustand store for flows, day-plan blocks, logs, vault import/export (persisted to localStorage). `blocks` is the recurring daily Focus/Care/Triage plan.
 - `src/store/useDeviceStore.ts` — Zustand store for device sensor state
 - `src/store/useAuthStore.ts` — Zustand store for AT Protocol OAuth (did, handle, published flows map, network discovery)
 - `src/hooks/` — Device sensor hooks (battery, network, geo, idle, motion, orientation), useFlowTriggerManager connects sensor data to flow execution
@@ -35,10 +35,12 @@ Deploys are handled by Cloudflare's GitHub integration — pushing to `master` t
 - `src/lib/atproto.ts` — BrowserOAuthClient singleton (handles PKCE/PAR/DPoP automatically)
 - `src/lib/permissions.ts` — Permission registry mapping trigger/action types to browser capabilities
 - `src/components/AppLayout.tsx` — Persistent shell. Mounts all device hooks and auth init once and keeps them alive across navigation; renders the routed `<Outlet />`. Uses `h-dvh` for mobile viewport.
-- `src/components/compass-shell.tsx` — The home surface (`/`): the Kairos compass. A CSS scroll-snap container of three horizontal panes (Triage ◄ Timeline ► Execution), centered on Timeline at mount. Header has the pane indicator, the Passive Shroud trigger, and the settings gear. Swipe is the primary navigation; the pane labels are a tappable secondary affordance.
+- `src/components/compass-shell.tsx` — The home surface (`/`): a single Timeline day view under a stable header (brand on the left, Control drawer trigger on the right) plus the swipe-up Flows drawer. Reads `?panel=control` to deep-link the Control drawer open. (The earlier three-pane Triage ◄ Timeline ► Execution compass was collapsed to just Timeline; Triage/Execution are parked in `src/routes/` for reintroduction once the native shell makes them real.)
+- `src/components/day-timeline.tsx` — The day-plan surface rendered at the top of `TimelinePage`: a time-sorted list of Focus/Care/Triage blocks with a live "now" marker and an add/edit/delete dialog. Blocks are a recurring daily template (time-of-day, no dates); kind styling lives in `src/lib/blocks.ts`, time helpers in `src/lib/schedule.ts`.
 - `src/components/flows-sheet.tsx` — Swipe-up "booking drawer": a bottom bar (branded `bg-primary`) that opens a Sheet listing flows. Lives inside the compass only. Create-new and the Discover link live here.
-- `src/components/passive-shroud.tsx` — Swipe-down eyes-free utility layer (media/transit/wallet). Placeholder.
-- `src/routes/` — Page components. Triage/Timeline/Execution render as compass panes (not routes). Secondary surfaces (Discover, Settings, flow detail, docs) are drill-in routes rendered in a `ScrollFrame` with a back arrow → parent.
+- `src/components/control-drawer.tsx` — Gear-triggered / swipe-down top Sheet holding the eyes-free utility layer (media/transit/wallet placeholder) and the embedded `SettingsPanel`. The gear shows a green dot when signed in.
+- `src/components/settings-panel.tsx` — `SettingsPanel`: account, webhook secret, permissions, vault, about. Rendered inside the Control drawer, not as its own route.
+- `src/routes/` — Page components. Timeline is the home surface (rendered by `compass-shell`). Secondary surfaces (Discover, flow detail, docs) are drill-in routes rendered in a `ScrollFrame` with a back arrow → parent. Settings is not a route — it lives in the Control drawer. `TriagePage`/`ExecutionPage` are parked (not currently routed or rendered).
 
 ## AT Protocol Integration
 
@@ -79,12 +81,12 @@ Deploys are handled by Cloudflare's GitHub integration — pushing to `master` t
 - Action items: inline row layout with `#N [select] [trash]`
 
 ### Secondary surfaces (drill-in routes)
-- Discover, Settings, flow detail, and docs are routes rendered inside `ScrollFrame` (`flex-1 min-h-0 overflow-y-auto p-4`)
+- Discover, flow detail, and docs are routes rendered inside `ScrollFrame` (`flex-1 min-h-0 overflow-y-auto p-4`). Settings is not a route — it lives in the Control drawer.
 - Each starts with a back row: ghost icon button with ArrowLeft → parent route (use `<Link to="/">`, not `navigate(-1)`)
 - AppLayout stays mounted underneath (keeps device hooks alive)
 
 ### Drawers (Sheets)
-- Swipe-up = Flows (bottom Sheet, branded `bg-primary` trigger bar); swipe-down = Passive Shroud (top Sheet)
+- Swipe-up = Flows (bottom Sheet, branded `bg-primary` trigger bar); the Control drawer = gear-triggered top Sheet (utility layer + Settings)
 - Both live inside `compass-shell` and only appear on the home surface
 
 ### Buttons

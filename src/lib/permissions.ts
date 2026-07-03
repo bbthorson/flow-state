@@ -55,6 +55,7 @@ export const TRIGGER_PERMISSIONS: Record<TriggerType, DevicePermission[]> = {
   IDLE: ['idle-detection'],
   DEVICE_MOTION: ['device-motion'],
   SCREEN_ORIENTATION: ['screen-orientation'],
+  TIME: [],
 };
 
 export const ACTION_PERMISSIONS: Record<ActionType, DevicePermission[]> = {

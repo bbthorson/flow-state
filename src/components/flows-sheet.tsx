@@ -5,6 +5,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Zap, ChevronRight, Plus, ChevronUp, Compass } from 'lucide-react';
+import { EmptyState } from '@/components/empty-state';
 
 export function FlowsSheet() {
   const [open, setOpen] = useState(false);
@@ -59,17 +60,11 @@ export function FlowsSheet() {
 
         <div className="flex-1 overflow-y-auto -mx-6 px-6">
           {flows.length === 0 ? (
-            <div className="flex flex-col items-center text-center py-10 gap-3">
-              <div className="rounded-full bg-muted p-4">
-                <Zap className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium">No flows yet</p>
-                <p className="text-xs text-muted-foreground">
-                  Create your first automation to get started.
-                </p>
-              </div>
-            </div>
+            <EmptyState
+              icon={Zap}
+              title="No flows yet"
+              description="Create your first automation to get started."
+            />
           ) : (
             <div className="divide-y">
               {flows.map((flow) => (
