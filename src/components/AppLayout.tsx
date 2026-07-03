@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { Outlet, useSearchParams } from 'react-router';
 import { useAppStore } from '@/store/useAppStore';
 import { useBatteryStatus } from '@/hooks/useBatteryStatus';
@@ -49,7 +49,9 @@ export function AppLayout() {
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
-      <Outlet />
+      <Suspense fallback={<div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">Loading…</div>}>
+        <Outlet />
+      </Suspense>
     </div>
   );
 }

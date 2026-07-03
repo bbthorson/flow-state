@@ -72,6 +72,7 @@ export function FlowsSheet() {
                   <Switch
                     checked={flow.enabled}
                     onCheckedChange={(enabled) => updateFlow({ ...flow, enabled })}
+                    aria-label={`Enable ${flow.name}`}
                   />
                   <button
                     className="flex min-w-0 flex-1 items-center justify-between text-left"

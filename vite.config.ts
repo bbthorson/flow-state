@@ -40,11 +40,11 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (!id.includes('node_modules')) return;
           // The AT Protocol client is large and only needed once auth is used —
-          // keep it in its own long-lived cache chunk, separate from app vendor.
-          if (id.includes('@atproto')) return 'atproto';
-          return 'vendor';
+          // keep it in its own long-lived cache chunk. Everything else is left to
+          // Rollup's automatic splitting so deps only used by lazy routes land in
+          // those route chunks instead of the initial load.
+          if (id.includes('node_modules/@atproto')) return 'atproto';
         },
       },
     },
