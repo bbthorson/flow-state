@@ -89,7 +89,7 @@ export function NetworkFlows() {
                 Sign in with your Bluesky account to discover flows published by people you follow.
               </p>
             </div>
-            <Button variant="outline" onClick={() => navigate('/settings')}>
+            <Button variant="outline" onClick={() => navigate('/?panel=control')}>
               Sign in with Bluesky
             </Button>
           </div>

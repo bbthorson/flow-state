@@ -43,7 +43,7 @@ function RecentActivity() {
 
 export function TimelinePage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Today</h2>
         <p className="text-muted-foreground text-sm">Live device state and recent activity.</p>
@@ -51,7 +51,7 @@ export function TimelinePage() {
       <DeviceStatusPanel />
       <RecentActivity />
       <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
-        The full 12-hour Timeline view arrives in Phase 2. Swipe to Triage and Execution, or pull up Flows below.
+        A full day timeline — focus, care, and triage blocks — is coming here. Pull up Flows below to build automations.
       </div>
     </div>
   );

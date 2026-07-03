@@ -19,7 +19,7 @@ export function WelcomePage() {
 
   const handleSkip = () => {
     skipOnboarding();
-    navigate('/flows', { replace: true });
+    navigate('/', { replace: true });
   };
 
   return (

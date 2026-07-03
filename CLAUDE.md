@@ -35,10 +35,11 @@ Deploys are handled by Cloudflare's GitHub integration — pushing to `master` t
 - `src/lib/atproto.ts` — BrowserOAuthClient singleton (handles PKCE/PAR/DPoP automatically)
 - `src/lib/permissions.ts` — Permission registry mapping trigger/action types to browser capabilities
 - `src/components/AppLayout.tsx` — Persistent shell. Mounts all device hooks and auth init once and keeps them alive across navigation; renders the routed `<Outlet />`. Uses `h-dvh` for mobile viewport.
-- `src/components/compass-shell.tsx` — The home surface (`/`): the Kairos compass. A CSS scroll-snap container of three horizontal panes (Triage ◄ Timeline ► Execution), centered on Timeline at mount. Header has the pane indicator, the Passive Shroud trigger, and the settings gear. Swipe is the primary navigation; the pane labels are a tappable secondary affordance.
+- `src/components/compass-shell.tsx` — The home surface (`/`): a single Timeline day view under a stable header (brand on the left, Control drawer trigger on the right) plus the swipe-up Flows drawer. Reads `?panel=control` to deep-link the Control drawer open. (The earlier three-pane Triage ◄ Timeline ► Execution compass was collapsed to just Timeline; Triage/Execution are parked in `src/routes/` for reintroduction once the native shell makes them real.)
 - `src/components/flows-sheet.tsx` — Swipe-up "booking drawer": a bottom bar (branded `bg-primary`) that opens a Sheet listing flows. Lives inside the compass only. Create-new and the Discover link live here.
-- `src/components/passive-shroud.tsx` — Swipe-down eyes-free utility layer (media/transit/wallet). Placeholder.
-- `src/routes/` — Page components. Triage/Timeline/Execution render as compass panes (not routes). Secondary surfaces (Discover, Settings, flow detail, docs) are drill-in routes rendered in a `ScrollFrame` with a back arrow → parent.
+- `src/components/control-drawer.tsx` — Gear-triggered / swipe-down top Sheet holding the eyes-free utility layer (media/transit/wallet placeholder) and the embedded `SettingsPanel`. The gear shows a green dot when signed in.
+- `src/components/settings-panel.tsx` — `SettingsPanel`: account, webhook secret, permissions, vault, about. Rendered inside the Control drawer, not as its own route.
+- `src/routes/` — Page components. Timeline is the home surface (rendered by `compass-shell`). Secondary surfaces (Discover, flow detail, docs) are drill-in routes rendered in a `ScrollFrame` with a back arrow → parent. Settings is not a route — it lives in the Control drawer. `TriagePage`/`ExecutionPage` are parked (not currently routed or rendered).
 
 ## AT Protocol Integration
 
@@ -79,12 +80,12 @@ Deploys are handled by Cloudflare's GitHub integration — pushing to `master` t
 - Action items: inline row layout with `#N [select] [trash]`
 
 ### Secondary surfaces (drill-in routes)
-- Discover, Settings, flow detail, and docs are routes rendered inside `ScrollFrame` (`flex-1 min-h-0 overflow-y-auto p-4`)
+- Discover, flow detail, and docs are routes rendered inside `ScrollFrame` (`flex-1 min-h-0 overflow-y-auto p-4`). Settings is not a route — it lives in the Control drawer.
 - Each starts with a back row: ghost icon button with ArrowLeft → parent route (use `<Link to="/">`, not `navigate(-1)`)
 - AppLayout stays mounted underneath (keeps device hooks alive)
 
 ### Drawers (Sheets)
-- Swipe-up = Flows (bottom Sheet, branded `bg-primary` trigger bar); swipe-down = Passive Shroud (top Sheet)
+- Swipe-up = Flows (bottom Sheet, branded `bg-primary` trigger bar); the Control drawer = gear-triggered top Sheet (utility layer + Settings)
 - Both live inside `compass-shell` and only appear on the home surface
 
 ### Buttons
