@@ -20,7 +20,7 @@ An Android-first PWA for on-device automations. Connects device triggers (batter
 
 ## Deployment
 
-Deploys are handled by Cloudflare's GitHub integration — pushing to `master` triggers a build and deploy automatically. There is no local `wrangler` config or `deploy` script.
+Deploys are handled by Cloudflare's GitHub integration — pushing to `master` triggers a build and deploy automatically. Cloudflare runs `npm run build` then `npx wrangler versions upload`, which reads `wrangler.jsonc` (a static-assets Worker named `flow-state` with SPA fallback). The `@cloudflare/vite-plugin` wires the build output to the Worker. There is no local `deploy` script.
 
 ## Architecture
 
