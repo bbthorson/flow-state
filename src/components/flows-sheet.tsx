@@ -68,21 +68,20 @@ export function FlowsSheet() {
           ) : (
             <div className="divide-y">
               {flows.map((flow) => (
-                <button
-                  key={flow.id}
-                  className="w-full flex items-center justify-between py-3 text-left"
-                  onClick={() => handleFlowTap(flow.id)}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Switch
-                      checked={flow.enabled}
-                      onCheckedChange={(enabled) => updateFlow({ ...flow, enabled })}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+                <div key={flow.id} className="flex items-center gap-3 py-3">
+                  <Switch
+                    checked={flow.enabled}
+                    onCheckedChange={(enabled) => updateFlow({ ...flow, enabled })}
+                    aria-label={`Enable ${flow.name}`}
+                  />
+                  <button
+                    className="flex min-w-0 flex-1 items-center justify-between text-left"
+                    onClick={() => handleFlowTap(flow.id)}
+                  >
                     <span className="text-sm font-medium truncate">{flow.name}</span>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
-                </button>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
+                  </button>
+                </div>
               ))}
             </div>
           )}

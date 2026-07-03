@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { Flow, TriggerType, ActionType, LogEntry, TimeBlock } from '@/types';
+import { Flow, TriggerType, LogEntry, TimeBlock } from '@/types';
 import { executeWebhook, executeNotification, executeVibration, executeClipboard, executeShare, executeWakeLock, executeSpeech } from '@/services/actions';
 
 export type { Flow, TriggerType, ActionType, TimeBlock } from '@/types';
@@ -118,7 +118,7 @@ export const useAppStore = create<AppState & AppActions>()(
 
           set(updates);
           return { success: true, message: 'Vault successfully imported.' };
-        } catch (error) {
+        } catch {
           return { success: false, message: 'Failed to parse vault file.' };
         }
       },
@@ -137,7 +137,7 @@ export const useAppStore = create<AppState & AppActions>()(
             const parsed = JSON.parse(jsonPayload);
             details = { ...details, ...parsed };
             delete details.payload;
-          } catch (e) {
+          } catch {
             addLog({
               flowId: 'SYSTEM',
               status: 'failure',
