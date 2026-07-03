@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useParams, useNavigate, Navigate } from 'react-router';
+import { useParams, useNavigate, Navigate, Link } from 'react-router';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { usePermissions } from '@/hooks/usePermissions';
 import { getFlowPermissions, PERMISSION_LABELS } from '@/lib/permissions';
-import { Flow, TriggerType, ActionType } from '@/types';
+import { TRIGGER_LABELS, ACTION_LABELS } from '@/lib/flow-constants';
+import { Flow, TriggerType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { FlowForm } from '@/components/flow-form';
@@ -30,28 +31,6 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-const TRIGGER_LABELS: Record<TriggerType, string> = {
-  NATIVE_BATTERY: 'Battery',
-  NETWORK: 'Network',
-  GEOLOCATION: 'Geolocation',
-  DEEP_LINK: 'Deep Link',
-  MANUAL: 'Manual',
-  IDLE: 'Idle Detection',
-  DEVICE_MOTION: 'Device Motion',
-  SCREEN_ORIENTATION: 'Screen Orientation',
-};
-
-const ACTION_LABELS: Record<ActionType, string> = {
-  WEBHOOK: 'Webhook',
-  NOTIFICATION: 'Notification',
-  LOG: 'Log',
-  VIBRATION: 'Vibration',
-  CLIPBOARD: 'Clipboard',
-  WEB_SHARE: 'Web Share',
-  WAKE_LOCK: 'Wake Lock',
-  SPEECH: 'Speech',
-};
 
 const MOCK_DATA: Record<TriggerType, Record<string, any>> = {
   NATIVE_BATTERY: { level: 0.5, charging: true },
@@ -109,7 +88,7 @@ export function FlowDetailPage() {
 
   const flow = flows.find((f) => f.id === flowId);
 
-  if (!flow) return <Navigate to="/timeline" replace />;
+  if (!flow) return <Navigate to="/" replace />;
 
   if (isEditing) {
     return (
@@ -137,7 +116,7 @@ export function FlowDetailPage() {
 
   const handleDelete = () => {
     deleteFlow(flow.id);
-    navigate(-1);
+    navigate('/');
   };
 
   const handlePublishToggle = async () => {
@@ -164,8 +143,10 @@ export function FlowDetailPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4" />
+        <Button variant="ghost" size="icon" asChild>
+          <Link to="/">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
         </Button>
         <h2 className="text-2xl font-bold tracking-tight flex-1 truncate">{flow.name}</h2>
         <Switch checked={flow.enabled} onCheckedChange={handleToggle} />

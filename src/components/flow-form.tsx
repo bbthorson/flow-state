@@ -23,35 +23,12 @@ import { useLanguageModel, generateFlow } from '@/hooks/useLanguageModel';
 import {
     TRIGGER_PERMISSIONS,
     ACTION_PERMISSIONS,
-    PERMISSION_LABELS,
     requestPermission,
     DevicePermission,
+    PermissionState,
 } from '@/lib/permissions';
-
-const triggerTypes: TriggerType[] = ['NATIVE_BATTERY', 'NETWORK', 'GEOLOCATION', 'DEEP_LINK', 'MANUAL', 'IDLE', 'DEVICE_MOTION', 'SCREEN_ORIENTATION'];
-const actionTypes: ActionType[] = ['WEBHOOK', 'NOTIFICATION', 'LOG', 'VIBRATION', 'CLIPBOARD', 'WEB_SHARE', 'WAKE_LOCK', 'SPEECH'];
-
-const TRIGGER_LABELS: Record<TriggerType, string> = {
-    NATIVE_BATTERY: 'Battery',
-    NETWORK: 'Network',
-    GEOLOCATION: 'Geolocation',
-    DEEP_LINK: 'Deep Link',
-    MANUAL: 'Manual',
-    IDLE: 'Idle Detection',
-    DEVICE_MOTION: 'Device Motion',
-    SCREEN_ORIENTATION: 'Screen Orientation',
-};
-
-const ACTION_LABELS: Record<ActionType, string> = {
-    WEBHOOK: 'Webhook',
-    NOTIFICATION: 'Notification',
-    LOG: 'Log',
-    VIBRATION: 'Vibration',
-    CLIPBOARD: 'Copy to Clipboard',
-    WEB_SHARE: 'Share',
-    WAKE_LOCK: 'Wake Lock',
-    SPEECH: 'Text to Speech',
-};
+import { TRIGGER_LABELS, ACTION_LABELS, TRIGGER_TYPES, ACTION_TYPES } from '@/lib/flow-constants';
+import { PermissionHint } from '@/components/permission-hint';
 
 const flowSchema = z.object({
     name: z.string().min(1, 'Name is required'),
@@ -75,7 +52,7 @@ interface FlowFormProps {
 
 function PermissionWarning({ unmet, permissions }: {
     unmet: DevicePermission[];
-    permissions: Record<DevicePermission, string>;
+    permissions: Record<DevicePermission, PermissionState>;
 }) {
     if (unmet.length === 0) return null;
 
@@ -88,25 +65,11 @@ function PermissionWarning({ unmet, permissions }: {
             <ShieldAlert className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
             <div className="space-y-1">
                 <p className="font-medium text-yellow-700 dark:text-yellow-400">Missing permissions</p>
-                {unmet.map((perm) => {
-                    const state = permissions[perm];
-                    return (
-                        <div key={perm} className="text-xs text-muted-foreground">
-                            {PERMISSION_LABELS[perm]}
-                            {state === 'prompt' && (
-                                <button
-                                    type="button"
-                                    onClick={() => handleRequest(perm)}
-                                    className="ml-2 text-blue-500 hover:underline"
-                                >
-                                    Grant
-                                </button>
-                            )}
-                            {state === 'denied' && ' — enable in browser settings'}
-                            {state === 'unavailable' && ' — not supported on this device'}
-                        </div>
-                    );
-                })}
+                {unmet.map((perm) => (
+                    <div key={perm}>
+                        <PermissionHint permission={perm} state={permissions[perm]} onRequest={handleRequest} />
+                    </div>
+                ))}
             </div>
         </div>
     );
@@ -253,7 +216,7 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                        {triggerTypes.map((type) => (
+                                        {TRIGGER_TYPES.map((type) => (
                                             <SelectItem key={type} value={type}>
                                                 {TRIGGER_LABELS[type]}
                                             </SelectItem>
@@ -536,7 +499,7 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
-                                                        {actionTypes.map((type) => (
+                                                        {ACTION_TYPES.map((type) => (
                                                             <SelectItem key={type} value={type}>
                                                                 {ACTION_LABELS[type]}
                                                             </SelectItem>

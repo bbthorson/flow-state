@@ -1,12 +1,14 @@
 import { useEffect } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAppStore } from '@/store/useAppStore';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Globe, Users, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { PublishedFlow } from '@/services/atproto';
 import { useNavigate } from 'react-router';
+import { FlowCard } from '@/components/flow-card';
+import { EmptyState } from '@/components/empty-state';
 
 function NetworkFlowCard({ flow }: { flow: PublishedFlow }) {
   const addFlowFromTemplate = useAppStore((s) => s.addFlowFromTemplate);
@@ -28,36 +30,19 @@ function NetworkFlowCard({ flow }: { flow: PublishedFlow }) {
   };
 
   return (
-    <Card className="flex flex-col">
-      <CardHeader>
-        <div className="flex items-center gap-2 mb-1">
-          <Globe className="h-3 w-3 text-muted-foreground" />
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            {flow.trigger.type.replace(/_/g, ' ')}
-          </span>
-        </div>
-        <CardTitle className="text-lg">{flow.name}</CardTitle>
-        <CardDescription className="text-xs">
-          by {flow.did.slice(0, 20)}...
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex-grow">
-        <div className="space-y-2">
-          {flow.actions.map((action, i) => (
-            <div key={i} className="text-xs text-muted-foreground flex items-center gap-1">
-              <span className="font-semibold text-primary/80">{action.type}:</span>
-              <span className="truncate">{action.details.title || action.details.url || action.details.text || 'Execution'}</span>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-      <CardFooter>
+    <FlowCard
+      icon={Globe}
+      triggerType={flow.trigger.type}
+      title={flow.name}
+      subtitle={`by ${flow.did.slice(0, 20)}...`}
+      actions={flow.actions}
+      footer={
         <Button onClick={handleInstall} variant="secondary" size="sm" className="w-full">
           <Plus className="mr-2 h-3 w-3" />
           Install
         </Button>
-      </CardFooter>
-    </Card>
+      }
+    />
   );
 }
 
@@ -79,20 +64,17 @@ export function NetworkFlows() {
       <div className="space-y-2">
         <h3 className="text-lg font-semibold">From Your Network</h3>
         <Card>
-          <div className="flex flex-col items-center text-center p-10 space-y-4">
-            <div className="rounded-full bg-muted p-4">
-              <Users className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-lg font-semibold">Connect your identity</h3>
-              <p className="text-sm text-muted-foreground max-w-xs">
-                Sign in with your Bluesky account to discover flows published by people you follow.
-              </p>
-            </div>
-            <Button variant="outline" onClick={() => navigate('/?panel=control')}>
-              Sign in with Bluesky
-            </Button>
-          </div>
+          <EmptyState
+            icon={Users}
+            size="lg"
+            title="Connect your identity"
+            description="Sign in with your Bluesky account to discover flows published by people you follow."
+            action={
+              <Button variant="outline" onClick={() => navigate('/?panel=control')}>
+                Sign in with Bluesky
+              </Button>
+            }
+          />
         </Card>
       </div>
     );
