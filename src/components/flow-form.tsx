@@ -360,7 +360,7 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                                     <FormItem>
                                         <FormLabel>Time</FormLabel>
                                         <FormControl>
-                                            <Input type="time" {...field} value={field.value || '09:00'} />
+                                            <Input type="time" {...field} value={field.value ?? '09:00'} />
                                         </FormControl>
                                         <FormDescription>
                                             Runs while the app is open. If it's closed at the scheduled minute, the flow waits until the next occurrence — a PWA can't wake in the background.
@@ -373,7 +373,7 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                                 control={form.control}
                                 name="trigger.details.days"
                                 render={({ field }) => {
-                                    const days: number[] = field.value || [];
+                                    const days: number[] = Array.isArray(field.value) ? field.value : [];
                                     const toggle = (d: number) =>
                                         field.onChange(
                                             days.includes(d)

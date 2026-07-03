@@ -23,10 +23,19 @@ export function DayTimeline() {
   const [editing, setEditing] = useState<EditorTarget>(null);
   const [now, setNow] = useState(() => new Date());
 
-  // Advance the "now" marker each minute while mounted.
+  // Advance the "now" marker aligned to the minute boundary so it never lags
+  // the system clock by up to a minute, and re-renders at most once per minute.
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(id);
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+    const delay = 60_000 - (Date.now() % 60_000);
+    const timeoutId = setTimeout(() => {
+      setNow(new Date());
+      intervalId = setInterval(() => setNow(new Date()), 60_000);
+    }, delay);
+    return () => {
+      clearTimeout(timeoutId);
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
 
   const sorted = [...blocks].sort((a, b) => toMinutes(a.start) - toMinutes(b.start));
@@ -82,7 +91,7 @@ function NowMarker({ time }: { time: string }) {
 }
 
 function BlockRow({ block, current, onClick }: { block: TimeBlock; current: boolean; onClick: () => void }) {
-  const kind = BLOCK_KINDS[block.kind];
+  const kind = BLOCK_KINDS[block.kind] || BLOCK_KINDS.focus;
   return (
     <button
       onClick={onClick}
@@ -134,7 +143,7 @@ function BlockEditor({ target, onClose }: { target: EditorTarget; onClose: () =>
     }
   }, [target]);
 
-  const valid = title.trim().length > 0 && toMinutes(end) > toMinutes(start);
+  const valid = title.trim().length > 0 && !!start && !!end && toMinutes(end) > toMinutes(start);
 
   const handleSave = () => {
     if (!valid) return;

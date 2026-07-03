@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 type ActionSummary = { type: ActionType | string; details: Record<string, any> };
 
 function actionPreview(details: Record<string, any>): string {
-  return details.title || details.url || details.text || details.message || 'Execution';
+  return details?.title || details?.url || details?.text || details?.message || 'Execution';
 }
 
 /**
