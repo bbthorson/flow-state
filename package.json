@@ -56,7 +56,7 @@
     "node": ">=22.0.0"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.40.0",
+    "@cloudflare/vite-plugin": "^1.43.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
     "@types/node": "^22",
@@ -74,6 +74,6 @@
     "vite": "^6.3.0",
     "vite-plugin-pwa": "^1.0.0",
     "vitest": "^4.0.16",
-    "wrangler": "^4.98.0"
+    "wrangler": "^4.107.0"
   }
 }
