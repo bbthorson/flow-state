@@ -7,7 +7,6 @@ import { Flow } from '@/types';
 import {
   publishFlow as publishFlowToNetwork,
   unpublishFlow as unpublishFlowFromNetwork,
-  listPublishedFlows,
   recordInstall,
   discoverFlowsFromFollows,
   PublishedFlow,

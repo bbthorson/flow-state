@@ -22,7 +22,7 @@ export async function getPermissionStatus(name: PermissionNameWithExtra): Promis
   try {
     const status = await navigator.permissions.query({ name: name as any });
     return status.state;
-  } catch (error) {
+  } catch {
     return 'unsupported';
   }
 }

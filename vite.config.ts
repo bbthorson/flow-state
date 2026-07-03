@@ -36,4 +36,17 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          // The AT Protocol client is large and only needed once auth is used —
+          // keep it in its own long-lived cache chunk, separate from app vendor.
+          if (id.includes('@atproto')) return 'atproto';
+          return 'vendor';
+        },
+      },
+    },
+  },
 });

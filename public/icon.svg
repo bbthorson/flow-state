@@ -7,7 +7,7 @@
   </defs>
   <!-- Rounded tile -->
   <rect width="512" height="512" rx="112" fill="url(#tile)"/>
-  <!-- Kairos compass needle, leaning to catch the moment -->
+  <!-- Compass needle, leaning to catch the moment -->
   <g transform="rotate(24 256 256)">
     <polygon points="256,82 205,256 307,256" fill="#F8F6F2"/>
     <polygon points="256,430 205,256 307,256" fill="#F8F6F2" opacity="0.5"/>
