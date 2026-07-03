@@ -107,6 +107,18 @@ export interface Flow {
   }>;
 }
 
+// ── Day timeline (local, recurring daily plan) ──
+
+export type BlockKind = 'focus' | 'care' | 'triage';
+
+export interface TimeBlock {
+  id: string;
+  title: string;
+  kind: BlockKind;
+  start: string; // 'HH:MM' 24-hour
+  end: string; // 'HH:MM' 24-hour
+}
+
 export interface LogEntry {
   id: string;
   flowId: string; // or 'SYSTEM'

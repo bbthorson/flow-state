@@ -1,15 +1,16 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { Flow, TriggerType, ActionType, LogEntry } from '@/types';
+import { Flow, TriggerType, ActionType, LogEntry, TimeBlock } from '@/types';
 import { executeWebhook, executeNotification, executeVibration, executeClipboard, executeShare, executeWakeLock, executeSpeech } from '@/services/actions';
 
-export type { Flow, TriggerType, ActionType } from '@/types';
+export type { Flow, TriggerType, ActionType, TimeBlock } from '@/types';
 
 // 2. State Interface
 
 interface AppState {
   flows: Flow[];
+  blocks: TimeBlock[]; // recurring daily plan (Focus/Care/Triage)
   logs: LogEntry[];
   webhookSecret: string;
   lastBackupTimestamp: number | null;
@@ -26,6 +27,9 @@ interface AppActions {
   addFlowFromTemplate: (template: Omit<Flow, 'id'>) => void;
   updateFlow: (flow: Flow) => void;
   deleteFlow: (flowId: string) => void;
+  addBlock: (block: Omit<TimeBlock, 'id'>) => string;
+  updateBlock: (block: TimeBlock) => void;
+  deleteBlock: (blockId: string) => void;
   addLog: (log: Omit<LogEntry, 'id' | 'timestamp'>) => void;
   processDeepLink: (params: URLSearchParams) => void;
   triggerFlows: (type: TriggerType, details: Record<string, any>, specificFlowId?: string) => void;
@@ -44,6 +48,7 @@ export const useAppStore = create<AppState & AppActions>()(
     (set, get) => ({
       // Initial State
       flows: [],
+      blocks: [],
       logs: [],
       webhookSecret: uuidv4(),
       lastBackupTimestamp: null,
@@ -73,6 +78,16 @@ export const useAppStore = create<AppState & AppActions>()(
           flows: state.flows.map((flow) => (flow.id === updatedFlow.id ? updatedFlow : flow)),
         })),
       deleteFlow: (flowId) => set((state) => ({ flows: state.flows.filter((flow) => flow.id !== flowId) })),
+      addBlock: (block) => {
+        const id = uuidv4();
+        set((state) => ({ blocks: [...state.blocks, { ...block, id }] }));
+        return id;
+      },
+      updateBlock: (updatedBlock) =>
+        set((state) => ({
+          blocks: state.blocks.map((block) => (block.id === updatedBlock.id ? updatedBlock : block)),
+        })),
+      deleteBlock: (blockId) => set((state) => ({ blocks: state.blocks.filter((block) => block.id !== blockId) })),
       addLog: (log) => {
         const newLog: LogEntry = {
           ...log,
@@ -84,19 +99,20 @@ export const useAppStore = create<AppState & AppActions>()(
       updateLastBackupTimestamp: () => set({ lastBackupTimestamp: Date.now() }),
 
       exportVault: () => {
-        const { flows, logs, webhooks } = get();
+        const { flows, blocks, logs, webhooks } = get();
         get().updateLastBackupTimestamp();
         // Export webhooks as well for compatibility
-        return JSON.stringify({ flows, logs, webhooks }, null, 2);
+        return JSON.stringify({ flows, blocks, logs, webhooks }, null, 2);
       },
 
       importVault: (json: string) => {
         try {
-          const { flows, logs, webhooks } = JSON.parse(json);
+          const { flows, blocks, logs, webhooks } = JSON.parse(json);
           // Allow partial imports or legacy imports
           const updates: Partial<AppState> = { lastBackupTimestamp: Date.now() };
 
           if (Array.isArray(flows)) updates.flows = flows;
+          if (Array.isArray(blocks)) updates.blocks = blocks;
           if (Array.isArray(logs)) updates.logs = logs;
           if (Array.isArray(webhooks)) updates.webhooks = webhooks;
 

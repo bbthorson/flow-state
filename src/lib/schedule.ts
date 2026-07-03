@@ -2,6 +2,17 @@ import { ScheduleTriggerDetails } from '@/types';
 
 export const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+/** Minutes since midnight for a 'HH:MM' string (NaN-safe: returns 0 on bad input). */
+export function toMinutes(time: string): number {
+  const [h, m] = (time || '').split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+/** Current local time as 'HH:MM'. */
+export function nowHHMM(now: Date = new Date()): string {
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+}
+
 const WEEKDAYS = [1, 2, 3, 4, 5];
 const WEEKEND = [0, 6];
 
