@@ -2,6 +2,10 @@ import { useEffect, useRef } from 'react';
 import { useDeviceStore } from '@/store/useDeviceStore';
 import { useAppStore } from '@/store/useAppStore';
 import { calculateDistance } from '@/lib/utils';
+import { DAY_LABELS } from '@/lib/schedule';
+
+/** How often to check schedule triggers while the app is foregrounded. */
+const SCHEDULE_CHECK_MS = 30_000;
 
 /**
  * Hook that monitors the debounced device status and triggers relevant flows.
@@ -27,6 +31,10 @@ export function useFlowTriggerManager() {
   // Track "inside/outside" state for each geolocation flow
   // Map<flowId, isInside>
   const zoneStates = useRef<Map<string, boolean>>(new Map());
+
+  // Track the last schedule occurrence fired per flow (Map<flowId, "date time">)
+  // so a flow fires at most once per scheduled minute.
+  const scheduleFired = useRef<Map<string, string>>(new Map());
 
   // Trigger for battery charging status
   useEffect(() => {
@@ -106,6 +114,41 @@ export function useFlowTriggerManager() {
     }
     lastMotionGesture.current = motion.gesture;
   }, [motion.gesture, motion.supported, triggerFlows]);
+
+  // Trigger for scheduled (TIME) flows. PWA constraint: this only fires while
+  // the app is open. If the app is closed at the scheduled minute, the flow
+  // does not run until the next matching occurrence — no background wakeups.
+  useEffect(() => {
+    const check = () => {
+      const now = new Date();
+      const current = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const dow = now.getDay();
+      const dateKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+
+      flows.forEach((flow) => {
+        if (!flow.enabled || flow.trigger.type !== 'TIME') return;
+        const { time, days } = flow.trigger.details as { time?: string; days?: number[] };
+        if (!time || time !== current) return;
+
+        const dayOk = !days || days.length === 0 || days.includes(dow);
+        if (!dayOk) return;
+
+        const occurrence = `${dateKey} ${time}`;
+        if (scheduleFired.current.get(flow.id) === occurrence) return;
+        scheduleFired.current.set(flow.id, occurrence);
+
+        triggerFlows(
+          'TIME',
+          { time, date: now.toLocaleDateString(), day: DAY_LABELS[dow], timestamp: now.getTime() },
+          flow.id,
+        );
+      });
+    };
+
+    check();
+    const id = setInterval(check, SCHEDULE_CHECK_MS);
+    return () => clearInterval(id);
+  }, [flows, triggerFlows]);
 
   // Trigger for screen orientation changes
   useEffect(() => {

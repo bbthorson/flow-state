@@ -4,7 +4,6 @@ import { AppLayout } from '@/components/AppLayout';
 import { CompassShell } from '@/components/compass-shell';
 import { FlowDetailPage } from '@/routes/FlowDetailPage';
 import { DiscoverPage } from '@/routes/DiscoverPage';
-import { SettingsPage } from '@/routes/SettingsPage';
 import { HowFlowsWorkPage } from '@/routes/HowFlowsWorkPage';
 import { WelcomePage } from '@/routes/WelcomePage';
 import { Toaster } from '@/components/ui/toaster';
@@ -32,7 +31,6 @@ export function App() {
             <Route index element={<IndexGate />} />
             <Route path="flows/:flowId" element={<ScrollFrame><FlowDetailPage /></ScrollFrame>} />
             <Route path="discover" element={<ScrollFrame><DiscoverPage /></ScrollFrame>} />
-            <Route path="settings" element={<ScrollFrame><SettingsPage /></ScrollFrame>} />
             <Route path="docs/flows" element={<ScrollFrame><HowFlowsWorkPage /></ScrollFrame>} />
             <Route path="oauth/callback" element={<Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />

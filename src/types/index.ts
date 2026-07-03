@@ -1,6 +1,6 @@
 // ── Trigger types (derived from app.flowstate.trigger.* lexicons) ──
 
-export type TriggerType = 'NATIVE_BATTERY' | 'NETWORK' | 'GEOLOCATION' | 'DEEP_LINK' | 'MANUAL' | 'IDLE' | 'DEVICE_MOTION' | 'SCREEN_ORIENTATION';
+export type TriggerType = 'NATIVE_BATTERY' | 'NETWORK' | 'GEOLOCATION' | 'DEEP_LINK' | 'MANUAL' | 'IDLE' | 'DEVICE_MOTION' | 'SCREEN_ORIENTATION' | 'TIME';
 
 export interface BatteryTriggerDetails {
   level: number;
@@ -36,6 +36,11 @@ export interface DeviceMotionTriggerDetails {
 
 export interface ScreenOrientationTriggerDetails {
   orientation: 'portrait' | 'landscape';
+}
+
+export interface ScheduleTriggerDetails {
+  time: string; // 'HH:MM' 24-hour
+  days: number[]; // 0-6 (Sun-Sat); empty = every day
 }
 
 // ── Action types (derived from app.flowstate.action.* lexicons) ──
@@ -100,6 +105,18 @@ export interface Flow {
     type: ActionType;
     details: Record<string, any>;
   }>;
+}
+
+// ── Day timeline (local, recurring daily plan) ──
+
+export type BlockKind = 'focus' | 'care' | 'triage';
+
+export interface TimeBlock {
+  id: string;
+  title: string;
+  kind: BlockKind;
+  start: string; // 'HH:MM' 24-hour
+  end: string; // 'HH:MM' 24-hour
 }
 
 export interface LogEntry {

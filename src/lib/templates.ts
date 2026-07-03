@@ -72,6 +72,23 @@ export const STARTER_FLOWS: FlowTemplate[] = [
     ],
   },
   {
+    name: 'Morning Kickoff',
+    enabled: false,
+    trigger: {
+      type: 'TIME',
+      details: { time: '09:00', days: [1, 2, 3, 4, 5] },
+    },
+    actions: [
+      {
+        type: 'NOTIFICATION',
+        details: {
+          title: 'Start your day',
+          body: 'It\'s {{time}} on {{day}} — time to get into flow.',
+        },
+      },
+    ],
+  },
+  {
     name: 'Idle Screen Alert',
     enabled: false,
     trigger: {

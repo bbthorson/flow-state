@@ -1,13 +1,12 @@
-import { Link } from 'react-router';
+import { useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { RefreshCw, Copy, Eye, EyeOff, LogOut, ArrowLeft } from 'lucide-react';
+import { RefreshCw, Copy, Eye, EyeOff, LogOut } from 'lucide-react';
 import { VaultSection } from '@/components/vault-section';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
 import {
   ALL_PERMISSIONS,
@@ -236,18 +235,13 @@ function AboutSection() {
   );
 }
 
-export function SettingsPage() {
+/**
+ * The full Settings surface — account, webhook secret, permissions, vault, about.
+ * Rendered inside the Control drawer (see control-drawer.tsx), not as its own route.
+ */
+export function SettingsPanel() {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" asChild>
-          <Link to="/">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
-      </div>
-      <div className="divide-y">
+    <div className="divide-y">
       <div className="pb-4">
         <BlueskySection />
       </div>
@@ -262,7 +256,6 @@ export function SettingsPage() {
       </div>
       <div className="pt-4">
         <AboutSection />
-      </div>
       </div>
     </div>
   );
