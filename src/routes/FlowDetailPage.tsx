@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { usePermissions } from '@/hooks/usePermissions';
 import { getFlowPermissions, PERMISSION_LABELS } from '@/lib/permissions';
 import { TRIGGER_LABELS, ACTION_LABELS } from '@/lib/flow-constants';
+import { formatSchedule } from '@/lib/schedule';
 import { Flow, TriggerType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -41,6 +42,7 @@ const MOCK_DATA: Record<TriggerType, Record<string, any>> = {
   IDLE: { userState: 'idle', screenState: 'unlocked' },
   DEVICE_MOTION: { gesture: 'SHAKE', accelerationX: 0, accelerationY: 0, accelerationZ: 15 },
   SCREEN_ORIENTATION: { orientation: 'landscape', angle: 90 },
+  TIME: { time: '09:00', date: 'Jan 1, 2026', day: 'Mon' },
 };
 
 function triggerSummary(flow: Flow): string {
@@ -62,6 +64,8 @@ function triggerSummary(flow: Flow): string {
       return `Orientation: ${d.orientation ?? 'any'}`;
     case 'MANUAL':
       return 'Triggered manually';
+    case 'TIME':
+      return formatSchedule(d);
     default:
       return '';
   }

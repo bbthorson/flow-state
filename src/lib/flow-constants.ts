@@ -7,6 +7,7 @@ import {
   Clock,
   Smartphone,
   RotateCw,
+  CalendarClock,
   Zap,
   type LucideIcon,
 } from 'lucide-react';
@@ -27,6 +28,7 @@ export const TRIGGER_TYPES: TriggerType[] = [
   'IDLE',
   'DEVICE_MOTION',
   'SCREEN_ORIENTATION',
+  'TIME',
 ];
 
 export const ACTION_TYPES: ActionType[] = [
@@ -49,6 +51,7 @@ export const TRIGGER_LABELS: Record<TriggerType, string> = {
   IDLE: 'Idle Detection',
   DEVICE_MOTION: 'Device Motion',
   SCREEN_ORIENTATION: 'Screen Orientation',
+  TIME: 'Schedule',
 };
 
 export const ACTION_LABELS: Record<ActionType, string> = {
@@ -71,6 +74,7 @@ export const TRIGGER_ICONS: Record<TriggerType, LucideIcon> = {
   IDLE: Clock,
   DEVICE_MOTION: Smartphone,
   SCREEN_ORIENTATION: RotateCw,
+  TIME: CalendarClock,
 };
 
 /** Icon for a trigger type, falling back to a generic bolt for unknown values. */

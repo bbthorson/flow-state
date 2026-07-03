@@ -22,6 +22,7 @@ const HINTS: Record<TriggerType, string[]> = {
   IDLE: ['userState', 'screenState'],
   DEVICE_MOTION: ['gesture', 'accelerationX', 'accelerationY', 'accelerationZ'],
   SCREEN_ORIENTATION: ['orientation', 'angle'],
+  TIME: ['time', 'date', 'day'],
 };
 
 export function VariableHints({ type }: VariableHintsProps) {

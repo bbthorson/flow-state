@@ -1,6 +1,6 @@
 # Flow State
 
-An Android-first PWA for on-device automations. Connects device triggers (battery, network, geolocation, idle, motion, orientation) to actions (webhooks, notifications, vibration, clipboard, share, wake lock, speech). Everything runs locally — no server unless the user adds a webhook action.
+An Android-first PWA for on-device automations. Connects device triggers (battery, network, geolocation, idle, motion, orientation, schedule) to actions (webhooks, notifications, vibration, clipboard, share, wake lock, speech). Everything runs locally — no server unless the user adds a webhook action. The `TIME`/schedule trigger fires while the app is foregrounded only — a PWA cannot wake in the background.
 
 ## Stack
 

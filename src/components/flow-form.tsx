@@ -29,11 +29,13 @@ import {
 } from '@/lib/permissions';
 import { TRIGGER_LABELS, ACTION_LABELS, TRIGGER_TYPES, ACTION_TYPES } from '@/lib/flow-constants';
 import { PermissionHint } from '@/components/permission-hint';
+import { DAY_LABELS } from '@/lib/schedule';
+import { cn } from '@/lib/utils';
 
 const flowSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     trigger: z.object({
-        type: z.enum(['NATIVE_BATTERY', 'NETWORK', 'GEOLOCATION', 'DEEP_LINK', 'MANUAL', 'IDLE', 'DEVICE_MOTION', 'SCREEN_ORIENTATION']),
+        type: z.enum(['NATIVE_BATTERY', 'NETWORK', 'GEOLOCATION', 'DEEP_LINK', 'MANUAL', 'IDLE', 'DEVICE_MOTION', 'SCREEN_ORIENTATION', 'TIME']),
         details: z.record(z.any()),
     }),
     actions: z.array(z.object({
@@ -209,7 +211,15 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                         name="trigger.type"
                         render={({ field }) => (
                             <FormItem>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select
+                                    onValueChange={(value) => {
+                                        field.onChange(value);
+                                        if (value === 'TIME' && !form.getValues('trigger.details.time')) {
+                                            form.setValue('trigger.details', { time: '09:00', days: [] });
+                                        }
+                                    }}
+                                    defaultValue={field.value}
+                                >
                                     <FormControl>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select a trigger" />
@@ -339,6 +349,63 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                                 </FormItem>
                             )}
                         />
+                    )}
+
+                    {triggerType === 'TIME' && (
+                        <div className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="trigger.details.time"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Time</FormLabel>
+                                        <FormControl>
+                                            <Input type="time" {...field} value={field.value || '09:00'} />
+                                        </FormControl>
+                                        <FormDescription>
+                                            Runs while the app is open. If it's closed at the scheduled minute, the flow waits until the next occurrence — a PWA can't wake in the background.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="trigger.details.days"
+                                render={({ field }) => {
+                                    const days: number[] = field.value || [];
+                                    const toggle = (d: number) =>
+                                        field.onChange(
+                                            days.includes(d)
+                                                ? days.filter((x) => x !== d)
+                                                : [...days, d].sort((a, b) => a - b),
+                                        );
+                                    return (
+                                        <FormItem>
+                                            <FormLabel>Days</FormLabel>
+                                            <div className="flex gap-1">
+                                                {DAY_LABELS.map((label, d) => (
+                                                    <button
+                                                        type="button"
+                                                        key={d}
+                                                        onClick={() => toggle(d)}
+                                                        className={cn(
+                                                            'h-9 w-9 rounded-md border text-xs font-medium transition-colors',
+                                                            days.includes(d)
+                                                                ? 'border-primary bg-primary text-primary-foreground'
+                                                                : 'text-muted-foreground hover:bg-muted',
+                                                        )}
+                                                    >
+                                                        {label[0]}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <FormDescription>Leave all off to run every day.</FormDescription>
+                                        </FormItem>
+                                    );
+                                }}
+                            />
+                        </div>
                     )}
 
                     {triggerType === 'NETWORK' && (
