@@ -136,3 +136,7 @@ export interface PublishedFlowRef {
   rkey: string;
 }
   
+/** Injected from package.json by Vite's `define` — see vite.config.ts. */
+declare global {
+  const __APP_VERSION__: string;
+}

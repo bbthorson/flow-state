@@ -2,9 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useAppStore, MAX_LOGS, writePersisted } from './useAppStore';
 import * as actions from '@/services/actions';
 
+// Every executor must be present: the store builds its dispatch table at module
+// load, so a missing one is a TypeError rather than a quiet no-op.
 vi.mock('@/services/actions', () => ({
   executeWebhook: vi.fn().mockResolvedValue({ success: true }),
-  executeNotification: vi.fn().mockResolvedValue(undefined),
+  executeNotification: vi.fn().mockResolvedValue({ success: true }),
+  executeVibration: vi.fn().mockResolvedValue({ success: true }),
+  executeClipboard: vi.fn().mockResolvedValue({ success: true }),
+  executeShare: vi.fn().mockResolvedValue({ success: true }),
+  executeWakeLock: vi.fn().mockResolvedValue({ success: true }),
+  executeSpeech: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 describe('useAppStore', () => {
@@ -308,5 +315,70 @@ describe('writePersisted (quota resilience)', () => {
     expect(setItem).toHaveBeenCalledTimes(1); // nothing to retry with
     expect(error).toHaveBeenCalled();
     error.mockRestore();
+  });
+});
+
+describe('action execution', () => {
+  beforeEach(() => {
+    useAppStore.setState({ flows: [], logs: [] });
+    vi.clearAllMocks();
+  });
+
+  const runFlowWith = (action: { type: string; details: Record<string, unknown> }) => {
+    useAppStore.getState().addFlow({
+      name: 'Test Flow',
+      enabled: true,
+      trigger: { type: 'MANUAL', details: {} },
+      actions: [action],
+    } as never);
+    const flowId = useAppStore.getState().flows[0].id;
+    useAppStore.getState().triggerFlows('MANUAL', {}, flowId);
+    return flowId;
+  };
+
+  it('runs an action whose details are valid', () => {
+    runFlowWith({ type: 'WEBHOOK', details: { url: 'https://example.com' } });
+
+    expect(actions.executeWebhook).toHaveBeenCalledOnce();
+  });
+
+  it('skips an action with invalid details instead of calling the executor', () => {
+    // A webhook with no url reached executeWebhook as `{} as any` before, and
+    // failed somewhere inside fetch with a far less useful message.
+    runFlowWith({ type: 'WEBHOOK', details: { method: 'POST' } });
+
+    expect(actions.executeWebhook).not.toHaveBeenCalled();
+    const logs = useAppStore.getState().logs;
+    expect(logs.some((l) => l.status === 'failure' && /invalid settings/.test(l.message))).toBe(true);
+  });
+
+  it('names the offending field when it skips', () => {
+    runFlowWith({ type: 'SPEECH', details: {} });
+
+    const failure = useAppStore.getState().logs.find((l) => l.status === 'failure');
+    expect(failure?.message).toContain('Speech');
+    expect(failure?.message).toContain('text');
+  });
+
+  it('logs a rejection from an executor that previously had no catch', async () => {
+    // Only WEBHOOK and NOTIFICATION used to have a .catch — a throw from any of
+    // the other five became an unhandled rejection with nothing logged.
+    vi.mocked(actions.executeVibration).mockRejectedValueOnce(new Error('motor on fire'));
+
+    runFlowWith({ type: 'VIBRATION', details: { duration: 100 } });
+    await vi.waitFor(() => {
+      const logs = useAppStore.getState().logs;
+      expect(logs.some((l) => l.message.includes('motor on fire'))).toBe(true);
+    });
+  });
+
+  it('logs a failed result from an executor that previously had no catch', async () => {
+    vi.mocked(actions.executeClipboard).mockResolvedValueOnce({ success: false, message: 'denied' });
+
+    runFlowWith({ type: 'CLIPBOARD', details: { text: 'hi' } });
+    await vi.waitFor(() => {
+      const logs = useAppStore.getState().logs;
+      expect(logs.some((l) => l.message === 'Clipboard failed: denied')).toBe(true);
+    });
   });
 });

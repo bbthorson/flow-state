@@ -2,6 +2,10 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
+import { createRequire } from 'module';
+
+// Read the version at build time so the About panel can't drift from package.json.
+const { version } = createRequire(import.meta.url)('./package.json');
 
 import { cloudflare } from "@cloudflare/vite-plugin";
 
@@ -31,6 +35,9 @@ export default defineConfig({
       navigateFallback: '/index.html',
     },
   }), cloudflare()],
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

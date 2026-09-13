@@ -27,7 +27,7 @@ const bag = z.object({}).passthrough();
  * shape here follows `ScheduleTriggerDetails` in `src/types/`. Worth closing
  * that drift, since CLAUDE.md makes the lexicons the source of truth.
  */
-const TRIGGER_DETAILS: Record<TriggerType, z.ZodTypeAny> = {
+const TRIGGER_DETAILS = {
   NATIVE_BATTERY: bag.extend({
     level: z.number().min(0).max(1).optional(),
     charging: z.boolean().optional(),
@@ -54,10 +54,10 @@ const TRIGGER_DETAILS: Record<TriggerType, z.ZodTypeAny> = {
     time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'expected HH:MM'),
     days: z.array(z.number().int().min(0).max(6)).optional(),
   }),
-};
+} satisfies Record<TriggerType, z.ZodTypeAny>;
 
 /** Per-type action detail shapes, from the action lexicons' `required` lists. */
-const ACTION_DETAILS: Record<ActionType, z.ZodTypeAny> = {
+const ACTION_DETAILS = {
   WEBHOOK: bag.extend({
     url: z.string().url(),
     method: z.string().optional(),
@@ -87,7 +87,7 @@ const ACTION_DETAILS: Record<ActionType, z.ZodTypeAny> = {
     pitch: z.number().min(0).max(2).optional(),
     volume: z.number().min(0).max(1).optional(),
   }),
-};
+} satisfies Record<ActionType, z.ZodTypeAny>;
 
 /**
  * The lexicon leaves the trigger/action unions open (`"closed": false`) for
@@ -139,6 +139,31 @@ export function parseFlowRecord(
 ): { ok: true; record: FlowRecord } | { ok: false; reason: string } {
   const result = flowRecordSchema.safeParse(value);
   if (result.success) return { ok: true, record: result.data };
+
+  const first = result.error.issues[0];
+  const path = first.path.length ? first.path.join('.') : '(root)';
+  return { ok: false, reason: `${path}: ${first.message}` };
+}
+
+/** The validated shape of one action's details, keyed by its type. */
+export type ActionDetailsFor<T extends ActionType> = z.infer<(typeof ACTION_DETAILS)[T]>;
+
+/**
+ * Validate one action's details against its own type.
+ *
+ * Executors need concrete shapes (`executeWebhook` wants a `url`), and
+ * `Record<string, any>` is not assignable to those — the call sites used to
+ * paper over that with `as any`. Locally stored flows reach the executors
+ * without ever passing through `parseFlowRecord` (vault imports, and anything
+ * saved before that check existed), so the shape genuinely has to be checked
+ * here rather than asserted.
+ */
+export function parseActionDetails<T extends ActionType>(
+  type: T,
+  details: Record<string, unknown>,
+): { ok: true; details: ActionDetailsFor<T> } | { ok: false; reason: string } {
+  const result = ACTION_DETAILS[type].safeParse(details ?? {});
+  if (result.success) return { ok: true, details: result.data as ActionDetailsFor<T> };
 
   const first = result.error.issues[0];
   const path = first.path.length ? first.path.join('.') : '(root)';

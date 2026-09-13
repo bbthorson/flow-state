@@ -223,11 +223,11 @@ function AboutSection() {
       <div className="space-y-2 text-sm text-muted-foreground">
         <div className="flex justify-between">
           <span>Version</span>
-          <span className="font-mono">0.2.0</span>
+          <span className="font-mono">{__APP_VERSION__}</span>
         </div>
         <div className="flex justify-between">
           <span>Storage</span>
-          <span>Local only (IndexedDB)</span>
+          <span>Local only (localStorage)</span>
         </div>
         <p className="pt-2 text-xs">
           Flow State runs entirely on your device. No data is sent to any server unless you configure a webhook action.

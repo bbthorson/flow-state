@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { Flow, TriggerType, LogEntry, TimeBlock } from '@/types';
-import { executeWebhook, executeNotification, executeVibration, executeClipboard, executeShare, executeWakeLock, executeSpeech } from '@/services/actions';
+import { Flow, TriggerType, ActionType, LogEntry, TimeBlock } from '@/types';
+import { parseActionDetails, type ActionDetailsFor } from '@/lib/flow-schema';
+import { executeWebhook, executeNotification, executeVibration, executeClipboard, executeShare, executeWakeLock, executeSpeech, type ActionResult } from '@/services/actions';
 
 export type { Flow, TriggerType, ActionType, TimeBlock } from '@/types';
 
@@ -88,6 +89,87 @@ interface AppActions {
   setInitialized: (initialized: boolean) => void;
   updateLastBackupTimestamp: () => void;
 
+}
+
+/**
+ * Binds one action type to its executor.
+ *
+ * The parse happens *inside* here, where `T` is concrete, so the validated
+ * details line up with what the executor expects and no cast is needed. Doing
+ * it at the call site instead forces one, because TypeScript can't correlate a
+ * union-indexed executor with the schema output for that same key.
+ */
+function bindExecutor<T extends ActionType>(
+  type: T,
+  label: string,
+  exec: (details: ActionDetailsFor<T>, data: Record<string, any>) => Promise<ActionResult>,
+) {
+  return {
+    label,
+    run(details: Record<string, unknown>, data: Record<string, any>) {
+      const parsed = parseActionDetails(type, details);
+      if (!parsed.ok) return { ok: false as const, reason: parsed.reason };
+      return { ok: true as const, result: exec(parsed.details, data) };
+    },
+  };
+}
+
+/**
+ * Action executors, keyed by type. LOG has no executor — the "Flow triggered by"
+ * entry written alongside already is the log.
+ */
+const ACTION_EXECUTORS = {
+  WEBHOOK: bindExecutor('WEBHOOK', 'Webhook', executeWebhook),
+  NOTIFICATION: bindExecutor('NOTIFICATION', 'Notification', executeNotification),
+  VIBRATION: bindExecutor('VIBRATION', 'Vibration', executeVibration),
+  CLIPBOARD: bindExecutor('CLIPBOARD', 'Clipboard', executeClipboard),
+  WEB_SHARE: bindExecutor('WEB_SHARE', 'Share', executeShare),
+  WAKE_LOCK: bindExecutor('WAKE_LOCK', 'Wake Lock', executeWakeLock),
+  SPEECH: bindExecutor('SPEECH', 'Speech', executeSpeech),
+};
+
+/**
+ * Run one action and log anything that goes wrong.
+ *
+ * This replaces an if/else chain that cast every `action.details` to `any`. The
+ * executors need concrete shapes and `Record<string, any>` does not provide
+ * them, so details are validated (see `@/lib/flow-schema`) rather than asserted
+ * — locally stored flows never pass through the network validation, so this is
+ * the only check they get.
+ *
+ * It also makes failure handling uniform: previously only WEBHOOK and
+ * NOTIFICATION had a `.catch`, so a throw from any of the other five became an
+ * unhandled rejection with nothing written to the log.
+ */
+function runAction(
+  flowId: string,
+  action: { type: ActionType; details: Record<string, any> },
+  data: Record<string, any>,
+  addLog: AppActions['addLog'],
+): void {
+  const executor = ACTION_EXECUTORS[action.type as keyof typeof ACTION_EXECUTORS];
+  if (!executor) return; // LOG, or a type this build doesn't run.
+
+  const outcome = executor.run(action.details ?? {}, data);
+  if (!outcome.ok) {
+    addLog({
+      flowId,
+      status: 'failure',
+      message: `${executor.label} skipped — invalid settings (${outcome.reason})`,
+    });
+    return;
+  }
+
+  outcome.result
+    .then((result) => {
+      if (!result.success) {
+        addLog({ flowId, status: 'failure', message: `${executor.label} failed: ${result.message}` });
+      }
+    })
+    .catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      addLog({ flowId, status: 'failure', message: `${executor.label} error: ${message}` });
+    });
 }
 
 // 4. Store Implementation
@@ -265,60 +347,8 @@ export const useAppStore = create<AppState & AppActions>()(
           });
 
           // Execute actions
-          flow.actions.forEach(action => {
-            if (action.type === 'WEBHOOK') {
-              executeWebhook(action.details as any, details).then(result => {
-                if (!result.success) {
-                  addLog({
-                    flowId: flow.id,
-                    status: 'failure',
-                    message: `Webhook failed: ${result.message}`,
-                  });
-                }
-              }).catch(err => {
-                addLog({
-                  flowId: flow.id,
-                  status: 'failure',
-                  message: `Webhook error: ${err.message}`,
-                });
-              });
-            } else if (action.type === 'NOTIFICATION') {
-              executeNotification(action.details as any, details).then(result => {
-                if (!result.success) {
-                  addLog({
-                    flowId: flow.id,
-                    status: 'failure',
-                    message: `Notification failed: ${result.message}`,
-                  });
-                }
-              }).catch(err => {
-                addLog({
-                  flowId: flow.id,
-                  status: 'failure',
-                  message: `Notification error: ${err.message}`,
-                });
-              });
-            } else if (action.type === 'VIBRATION') {
-              executeVibration(action.details as any, details).then(result => {
-                if (!result.success) addLog({ flowId: flow.id, status: 'failure', message: `Vibration failed: ${result.message}` });
-              });
-            } else if (action.type === 'CLIPBOARD') {
-              executeClipboard(action.details as any, details).then(result => {
-                if (!result.success) addLog({ flowId: flow.id, status: 'failure', message: `Clipboard failed: ${result.message}` });
-              });
-            } else if (action.type === 'WEB_SHARE') {
-              executeShare(action.details as any, details).then(result => {
-                if (!result.success) addLog({ flowId: flow.id, status: 'failure', message: `Share failed: ${result.message}` });
-              });
-            } else if (action.type === 'WAKE_LOCK') {
-              executeWakeLock(action.details as any, details).then(result => {
-                if (!result.success) addLog({ flowId: flow.id, status: 'failure', message: `Wake Lock failed: ${result.message}` });
-              });
-            } else if (action.type === 'SPEECH') {
-              executeSpeech(action.details as any, details).then(result => {
-                if (!result.success) addLog({ flowId: flow.id, status: 'failure', message: `Speech failed: ${result.message}` });
-              });
-            }
+          flow.actions.forEach((action) => {
+            runAction(flow.id, action, details, addLog);
           });
         }
       },
