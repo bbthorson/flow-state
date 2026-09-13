@@ -48,3 +48,16 @@ describe('getPermissionStatus', () => {
     Object.defineProperty(navigator, 'permissions', { value: originalPermissions, configurable: true });
   });
 });
+describe('getSupportedTriggers().connectionType', () => {
+  it('is true when navigator.connection holds an object', () => {
+    Object.defineProperty(navigator, 'connection', { value: { effectiveType: '4g' }, configurable: true });
+    expect(getSupportedTriggers().connectionType).toBe(true);
+  });
+
+  it('is false when the property exists but holds undefined', () => {
+    // `'connection' in navigator` would say true here, which would leave the UI
+    // waiting forever for a reading that can never arrive.
+    Object.defineProperty(navigator, 'connection', { value: undefined, configurable: true });
+    expect(getSupportedTriggers().connectionType).toBe(false);
+  });
+});

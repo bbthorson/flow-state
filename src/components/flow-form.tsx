@@ -170,7 +170,7 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="flex items-center gap-3">
-                    <Button type="button" variant="ghost" size="icon" className="shrink-0 -ml-2" onClick={onCancel}>
+                    <Button type="button" variant="ghost" size="icon" className="shrink-0 -ml-2" onClick={onCancel} aria-label="Back">
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
                     <h2 className="text-2xl font-bold tracking-tight">{flow ? 'Edit Flow' : 'Create Flow'}</h2>
@@ -583,6 +583,7 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                                         className="shrink-0 text-destructive h-8 w-8"
                                         onClick={() => remove(index)}
                                         disabled={fields.length === 1}
+                                        aria-label={`Remove action ${index + 1}`}
                                     >
                                         <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
