@@ -1,4 +1,4 @@
-import { Agent } from '@atproto/api';
+import type { Agent } from '@atproto/api';
 import { Flow } from '@/types';
 
 const FLOW_COLLECTION = 'app.flowstate.flow';

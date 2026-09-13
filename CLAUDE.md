@@ -35,7 +35,14 @@ Deploys are handled by Cloudflare's GitHub integration — pushing to `master` t
 - `src/hooks/` — Device sensor hooks (battery, network, geo, idle, motion, orientation), useFlowTriggerManager connects sensor data to flow execution
 - `src/services/actions.ts` — Action executors, all return ActionResult
 - `src/services/atproto.ts` — AT Protocol operations: publish/unpublish flows, record installs, discover flows from follows
-- `src/lib/atproto.ts` — BrowserOAuthClient singleton (handles PKCE/PAR/DPoP automatically)
+- `src/lib/atproto.ts` — BrowserOAuthClient singleton (handles PKCE/PAR/DPoP automatically).
+  **Loaded via dynamic `import()` and deliberately off the initial load path** — the client
+  is ~1.1 MB raw / ~242 kB gzip, more than React and the app combined. `useAuthStore.init()`
+  decides whether it's needed using `bootedOnOAuthCallback()` and `hasOAuthSessionToRestore()`,
+  which are plain URL/localStorage reads, so a signed-out user never downloads it. Don't add a
+  static import of `@atproto/*` outside a dynamic `import()` or an `import type`, and don't
+  put `@atproto` back into a `manualChunks` group — forcing the chunk makes Rollup hoist
+  shared helpers into it and reintroduces a static edge from the entry chunk.
 - `src/lib/permissions.ts` — Permission registry mapping trigger/action types to browser capabilities
 - `src/components/AppLayout.tsx` — Persistent shell. Mounts all device hooks and auth init once and keeps them alive across navigation; renders the routed `<Outlet />`. Uses `h-dvh` for mobile viewport.
 - `src/components/compass-shell.tsx` — The home surface (`/`): a single Timeline day view under a stable header (brand on the left, Control drawer trigger on the right) plus the swipe-up Flows drawer. Reads `?panel=control` to deep-link the Control drawer open. (The earlier three-pane Triage ◄ Timeline ► Execution compass was collapsed to just Timeline; Triage/Execution are parked in `src/routes/` for reintroduction once the native shell makes them real.)
@@ -53,7 +60,12 @@ Deploys are handled by Cloudflare's GitHub integration — pushing to `master` t
 - Flows are published to the user's PDS as `app.flowstate.flow` records
 - Installs are recorded as `app.flowstate.install` records (AT URI reference + timestamp)
 - Discovery crawls the user's follow list client-side — no backend indexer
-- OAuth callback route at `/oauth/callback`, processed by `BrowserOAuthClient.init()` on app load
+- OAuth callback route at `/oauth/callback`, processed by `BrowserOAuthClient.init()` on app load.
+  The response comes back in the **URL fragment** (`responseMode` defaults to `'fragment'`), and
+  the client matches `location.pathname` against its registered `redirect_uris` — so the route must
+  NOT navigate away until init settles. `App.tsx`'s `OAuthCallback` holds position while
+  `useAuthStore.loading` is true, and the store starts in the loading state on a callback boot so
+  this works from the first render rather than depending on effect ordering.
 - Auth state persists `did`, `handle`, and `publishedFlows` map; session/agent are runtime-only
 
 ## UI/Styling Conventions
