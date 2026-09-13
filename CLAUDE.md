@@ -35,6 +35,15 @@ Deploys are handled by Cloudflare's GitHub integration — pushing to `master` t
 - `src/hooks/` — Device sensor hooks (battery, network, geo, idle, motion, orientation), useFlowTriggerManager connects sensor data to flow execution
 - `src/services/actions.ts` — Action executors, all return ActionResult
 - `src/services/atproto.ts` — AT Protocol operations: publish/unpublish flows, record installs, discover flows from follows
+- `src/lib/flow-schema.ts` — **Trust boundary.** Zod validation for `app.flowstate.flow`
+  records, mirroring `src/lexicons/`. Discovery reads records off other people's PDSes, so
+  everything arriving from the network goes through `parseFlowRecord` before it reaches the
+  store or the UI; invalid records are skipped (with a console warning) rather than failing
+  the whole crawl. This is load-bearing: `FlowCard` calls `triggerType.replace(...)` and
+  `actions.map(...)`, so one malformed record used to take out the entire Discover surface.
+  Detail objects use `passthrough()` — don't switch to strict/stripping, since `DEEP_LINK`
+  matching compares every key of `trigger.details`. Vault import is *not* yet validated
+  through this.
 - `src/lib/atproto.ts` — BrowserOAuthClient singleton (handles PKCE/PAR/DPoP automatically).
   **Loaded via dynamic `import()` and deliberately off the initial load path** — the client
   is ~1.1 MB raw / ~242 kB gzip, more than React and the app combined. `useAuthStore.init()`
@@ -59,7 +68,9 @@ Deploys are handled by Cloudflare's GitHub integration — pushing to `master` t
 - Handle resolution through Bluesky's public API (`https://bsky.social`)
 - Flows are published to the user's PDS as `app.flowstate.flow` records
 - Installs are recorded as `app.flowstate.install` records (AT URI reference + timestamp)
-- Discovery crawls the user's follow list client-side — no backend indexer
+- Discovery crawls the user's follow list client-side — no backend indexer. Records are
+  validated against `src/lib/flow-schema.ts` on the way in; unknown trigger/action types are
+  rejected even though the lexicon unions are open, because this build can't represent them
 - OAuth callback route at `/oauth/callback`, processed by `BrowserOAuthClient.init()` on app load.
   The response comes back in the **URL fragment** (`responseMode` defaults to `'fragment'`), and
   the client matches `location.pathname` against its registered `redirect_uris` — so the route must

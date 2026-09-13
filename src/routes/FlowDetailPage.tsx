@@ -4,9 +4,8 @@ import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { usePermissions } from '@/hooks/usePermissions';
 import { getFlowPermissions, PERMISSION_LABELS } from '@/lib/permissions';
-import { TRIGGER_LABELS, ACTION_LABELS } from '@/lib/flow-constants';
-import { formatSchedule } from '@/lib/schedule';
-import { Flow, TriggerType } from '@/types';
+import { TRIGGER_LABELS, ACTION_LABELS, triggerSummary } from '@/lib/flow-constants';
+import { TriggerType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { FlowForm } from '@/components/flow-form';
@@ -44,32 +43,6 @@ const MOCK_DATA: Record<TriggerType, Record<string, any>> = {
   SCREEN_ORIENTATION: { orientation: 'landscape', angle: 90 },
   TIME: { time: '09:00', date: 'Jan 1, 2026', day: 'Mon' },
 };
-
-function triggerSummary(flow: Flow): string {
-  const d = flow.trigger.details;
-  switch (flow.trigger.type) {
-    case 'NATIVE_BATTERY':
-      return `Battery ${d.charging ? 'charging' : 'discharging'} at ${Math.round((d.level ?? 0) * 100)}%`;
-    case 'NETWORK':
-      return d.ssid ? `Connected to ${d.ssid}` : d.online ? 'Network online' : 'Network offline';
-    case 'GEOLOCATION':
-      return `${d.event === 'ENTER' ? 'Enter' : 'Exit'} zone (${d.radius ?? 0}m radius)`;
-    case 'DEEP_LINK':
-      return `Deep link: ${d.event ?? 'any'}`;
-    case 'IDLE':
-      return `Idle after ${Math.round((d.threshold ?? 60000) / 1000)}s`;
-    case 'DEVICE_MOTION':
-      return `Gesture: ${d.gesture ?? 'any'}`;
-    case 'SCREEN_ORIENTATION':
-      return `Orientation: ${d.orientation ?? 'any'}`;
-    case 'MANUAL':
-      return 'Triggered manually';
-    case 'TIME':
-      return formatSchedule(d);
-    default:
-      return '';
-  }
-}
 
 export function FlowDetailPage() {
   const { flowId } = useParams<{ flowId: string }>();
@@ -167,7 +140,7 @@ export function FlowDetailPage() {
         <div className="p-4 space-y-0.5">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Trigger</p>
           <p className="text-sm font-medium">{TRIGGER_LABELS[flow.trigger.type]}</p>
-          <p className="text-xs text-muted-foreground">{triggerSummary(flow)}</p>
+          <p className="text-xs text-muted-foreground">{triggerSummary(flow.trigger)}</p>
         </div>
 
         <div className="p-4 space-y-2">
