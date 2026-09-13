@@ -1,10 +1,56 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { Flow, TriggerType, LogEntry, TimeBlock } from '@/types';
 import { executeWebhook, executeNotification, executeVibration, executeClipboard, executeShare, executeWakeLock, executeSpeech } from '@/services/actions';
 
 export type { Flow, TriggerType, ActionType, TimeBlock } from '@/types';
+
+/**
+ * How many execution log entries to keep.
+ *
+ * The whole store is serialised to one localStorage string on every write, so an
+ * uncapped history makes each flow execution progressively slower and eventually
+ * blows the ~5 MB quota — at which point *nothing* persists any more, flows
+ * included. Only the most recent handful is ever displayed.
+ */
+export const MAX_LOGS = 200;
+
+/**
+ * localStorage, but a quota failure drops the execution history and retries
+ * instead of silently losing the whole write. History is the disposable part of
+ * the store; flows and the day plan are not.
+ */
+export function writePersisted(
+  backend: Pick<Storage, 'setItem'>,
+  name: string,
+  value: string,
+): void {
+  try {
+    backend.setItem(name, value);
+  } catch (err) {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed?.state?.logs?.length) {
+        parsed.state.logs = [];
+        backend.setItem(name, JSON.stringify(parsed));
+        console.warn(
+          '[flow-state] Storage quota exceeded — execution history was dropped so flows stay saved.',
+        );
+        return;
+      }
+    } catch {
+      // Retry failed (or there was no history to drop) — report the original error.
+    }
+    console.error('[flow-state] Failed to persist state:', err);
+  }
+}
+
+const resilientStorage = createJSONStorage<PersistedState>(() => ({
+  getItem: (name) => localStorage.getItem(name),
+  removeItem: (name) => localStorage.removeItem(name),
+  setItem: (name, value) => writePersisted(localStorage, name, value),
+}));
 
 // 2. State Interface
 
@@ -19,6 +65,9 @@ interface AppState {
   // Legacy webhook data (kept for vault import/export compatibility)
   webhooks: unknown[];
 }
+
+/** What actually goes to storage — everything but the hydration flag. */
+type PersistedState = Omit<AppState, 'initialized'>;
 
 // 3. Actions Interface
 
@@ -94,7 +143,7 @@ export const useAppStore = create<AppState & AppActions>()(
           id: uuidv4(),
           timestamp: Date.now(),
         };
-        set((state) => ({ logs: [newLog, ...state.logs] }));
+        set((state) => ({ logs: [newLog, ...state.logs].slice(0, MAX_LOGS) }));
       },
       updateLastBackupTimestamp: () => set({ lastBackupTimestamp: Date.now() }),
 
@@ -113,7 +162,7 @@ export const useAppStore = create<AppState & AppActions>()(
 
           if (Array.isArray(flows)) updates.flows = flows;
           if (Array.isArray(blocks)) updates.blocks = blocks;
-          if (Array.isArray(logs)) updates.logs = logs;
+          if (Array.isArray(logs)) updates.logs = logs.slice(0, MAX_LOGS);
           if (Array.isArray(webhooks)) updates.webhooks = webhooks;
 
           set(updates);
@@ -178,7 +227,12 @@ export const useAppStore = create<AppState & AppActions>()(
           triggerFlows('DEEP_LINK', details, flow.id);
         }
 
-        if (!foundAnyFlow) {
+        // Only report a miss for something that was actually trying to trigger a
+        // flow. A deep link can never fire without a secret, so a query string
+        // without one is just an ordinary URL parameter — `?panel=control` (our
+        // own Control drawer link) and tracking params like `?utm_source=...`
+        // used to write a failure entry on every app open.
+        if (!foundAnyFlow && secret !== null) {
           addLog({
             flowId: 'SYSTEM',
             status: 'failure',
@@ -272,11 +326,12 @@ export const useAppStore = create<AppState & AppActions>()(
     }),
     {
       name: 'flow-state-v2', // New storage name
+      storage: resilientStorage,
       // Persist the entire state except for the 'initialized' flag and transient device status
       partialize: (state) =>
         Object.fromEntries(Object.entries(state).filter(([key]) =>
           key !== 'initialized'
-        )) as Omit<AppState, 'initialized'>,
+        )) as PersistedState,
       // Set 'initialized' flag once hydration is complete
       onRehydrateStorage: () => (state) => {
         state?.setInitialized(true);

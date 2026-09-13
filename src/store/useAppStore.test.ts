@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useAppStore } from './useAppStore';
+import { useAppStore, MAX_LOGS, writePersisted } from './useAppStore';
 import * as actions from '@/services/actions';
 
 vi.mock('@/services/actions', () => ({
@@ -196,5 +196,117 @@ describe('useAppStore', () => {
     const logs = useAppStore.getState().logs;
     expect(logs).toHaveLength(1);
     expect(logs[0].message).toContain('Installed flow template: Template Flow');
+  });
+});
+
+describe('log retention', () => {
+  beforeEach(() => {
+    useAppStore.setState({ flows: [], logs: [] });
+  });
+
+  it('caps the history at MAX_LOGS, keeping the newest', () => {
+    const { addLog } = useAppStore.getState();
+    for (let i = 0; i < MAX_LOGS + 50; i++) {
+      addLog({ flowId: 'SYSTEM', status: 'success', message: `entry ${i}` });
+    }
+
+    const { logs } = useAppStore.getState();
+    expect(logs).toHaveLength(MAX_LOGS);
+    // addLog prepends, so the most recent write is first and the oldest are gone.
+    expect(logs[0].message).toBe(`entry ${MAX_LOGS + 49}`);
+    expect(logs.some((l) => l.message === 'entry 0')).toBe(false);
+  });
+
+  it('caps logs coming in from a vault import', () => {
+    const logs = Array.from({ length: MAX_LOGS + 100 }, (_, i) => ({
+      id: `l${i}`, flowId: 'SYSTEM', timestamp: i, status: 'success' as const, message: `m${i}`,
+    }));
+
+    const result = useAppStore.getState().importVault(JSON.stringify({ flows: [], blocks: [], logs }));
+
+    expect(result.success).toBe(true);
+    expect(useAppStore.getState().logs).toHaveLength(MAX_LOGS);
+  });
+});
+
+describe('processDeepLink logging', () => {
+  beforeEach(() => {
+    useAppStore.setState({ flows: [], logs: [] });
+  });
+
+  const run = (query: string) => {
+    useAppStore.getState().processDeepLink(new URLSearchParams(query));
+    return useAppStore.getState().logs;
+  };
+
+  it('stays quiet for the app\'s own ?panel=control link', () => {
+    expect(run('panel=control')).toHaveLength(0);
+  });
+
+  it('stays quiet for unrelated tracking params', () => {
+    expect(run('utm_source=twitter&utm_campaign=launch')).toHaveLength(0);
+  });
+
+  it('still reports a miss when a secret was supplied', () => {
+    const logs = run('event=typo&secret=whatever');
+
+    expect(logs).toHaveLength(1);
+    expect(logs[0].status).toBe('failure');
+    expect(logs[0].message).toContain('No flow found for deep link');
+  });
+
+  it('still reports a bad secret against a matching flow', () => {
+    useAppStore.setState({
+      flows: [{
+        id: 'f1', name: 'Deep', enabled: true,
+        trigger: { type: 'DEEP_LINK', details: { event: 'go' } },
+        actions: [{ type: 'LOG', details: {} }],
+      }] as never,
+    });
+
+    const logs = run('event=go&secret=wrong');
+
+    expect(logs.some((l) => l.message.includes('Invalid security key'))).toBe(true);
+  });
+});
+
+describe('writePersisted (quota resilience)', () => {
+  const quotaError = () => {
+    const err = new Error('QuotaExceededError');
+    err.name = 'QuotaExceededError';
+    return err;
+  };
+
+  it('writes straight through when there is room', () => {
+    const setItem = vi.fn();
+    writePersisted({ setItem }, 'k', '{"state":{"logs":[1]}}');
+    expect(setItem).toHaveBeenCalledExactlyOnceWith('k', '{"state":{"logs":[1]}}');
+  });
+
+  it('drops history and retries when the quota is exceeded, keeping flows', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const setItem = vi.fn()
+      .mockImplementationOnce(() => { throw quotaError(); })
+      .mockImplementationOnce(() => undefined);
+
+    writePersisted({ setItem }, 'k', JSON.stringify({ state: { flows: [{ id: 'f1' }], logs: [{ id: 'l1' }] } }));
+
+    expect(setItem).toHaveBeenCalledTimes(2);
+    const retried = JSON.parse(setItem.mock.calls[1][1]);
+    expect(retried.state.logs).toEqual([]);
+    expect(retried.state.flows).toEqual([{ id: 'f1' }]); // the irreplaceable part survives
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('reports the failure when there is no history left to drop', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const setItem = vi.fn(() => { throw quotaError(); });
+
+    writePersisted({ setItem }, 'k', JSON.stringify({ state: { flows: [], logs: [] } }));
+
+    expect(setItem).toHaveBeenCalledTimes(1); // nothing to retry with
+    expect(error).toHaveBeenCalled();
+    error.mockRestore();
   });
 });
