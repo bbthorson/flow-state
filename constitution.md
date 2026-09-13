@@ -27,7 +27,7 @@ We acknowledge the constraints of the mobile web (specifically iOS) and turn the
 
 **The user must know *why* an action triggered.**
 
-* **Visual Execution:** When Flow State is triggered via URL, it opens, logs the event in the "History" tab, and executes the logic visibly.  
+* **Visual Execution:** When Flow State is triggered via URL, it opens, appends to the execution log (surfaced on the Timeline surface), and executes the logic visibly.  
 * "Magic" is forbidden.
 
 ## **3\. Product Specification: The Automation Engine**
@@ -41,7 +41,7 @@ Structure: Trigger \+ Conditions (Optional) \-\> Action
 
 **1\. Native Web Observers (Android/Desktop)**
 
-* **Battery/Network:** Direct polling via Service Worker (where supported).
+* **Battery/Network:** Event-driven listeners (`navigator.getBattery()`, `navigator.connection`) mounted in the persistent app shell, **in the foreground only**. There is no Service Worker polling \- the Workbox service worker handles offline caching, not triggers.
 
 **2\. Deep Link Handlers (iOS/Universal)**
 
@@ -52,7 +52,7 @@ Structure: Trigger \+ Conditions (Optional) \-\> Action
 **3\. User Intents**
 
 * **Manual Button:** Large UI triggers.  
-* **Schedule:** Handled via external OS timers (Shortcuts Automations) that open the App URL.
+* **Schedule:** A native `TIME` trigger fires on a time-of-day schedule \- **but only while the app is foregrounded.** For scheduling that must survive backgrounding, external OS timers (Shortcuts Automations) still open the App URL.
 
 ### **B. The Integration Marketplace ("Shortcut Store")**
 
@@ -63,33 +63,42 @@ To bridge the gap on iOS, Flow State hosts a library of "Trigger Packs."
 
 ### **C. Actions (The Outputs)**
 
-* **Network:** Webhook (POST/GET) to external APIs (Home Assistant, etc).  
-* **Data:** Append to internal Log.  
-* **Device:** Play Sound, Vibrate (requires user interaction, which Deep Links provide).
+* **Network:** Webhook (POST/GET) to external APIs (Home Assistant, etc), with data templating.  
+* **Data:** Append to internal Log; copy to Clipboard; Web Share.  
+* **Device:** Vibrate, Speech, Wake Lock, Notification (each gated on a browser permission
+  or a user gesture, which Deep Links provide).
 
-## **4\. Technical Architecture Refactor**
+## **4\. Technical Architecture (As Built)**
+
+This section describes the code as it stands. Earlier revisions of this document proposed a
+Next.js App Router layout; that was superseded. The superseded refactor spec is archived at
+`docs/archive/refactor-ui-and-data-model.md`.
+
+### **The Shell (src/components/AppLayout.tsx)**
+
+A single persistent shell mounts every device sensor hook and the AT Protocol auth init
+**once**, and keeps them alive across navigation. Routes render into its `<Outlet />`.
+This is load-bearing: a full page navigation would tear down sensor subscriptions, drop
+the in-memory OAuth session, and re-prompt for permissions. Any future routing change must
+preserve it.
 
 ### **The Store (src/store)**
 
-**Proposed State Shape:**
+Three Zustand stores, persisted to localStorage:
 
-interface Flow {  
-  id: string;  
-  name: string;  
-  trigger: {  
-    type: 'DEEP\_LINK' | 'NATIVE\_OBSERVER';  
-    config: { paramKey: string; expectedValue?: string };  
-  };  
-  actions: Action\[\];  
-}
+* `useAppStore` \- flows, day-plan blocks, logs, webhook secret, vault import/export.
+* `useDeviceStore` \- live sensor state.
+* `useAuthStore` \- AT Protocol DID, handle, published flows. The session and agent are
+  runtime-only and deliberately **not** persisted.
 
-### **The Router (src/app)**
+Flow and action types live in `src/types/`, derived from the lexicon JSON in
+`src/lexicons/`. The lexicons are the source of truth for the flow format.
 
-The application entry point must include a **Deep Link Listener**:
+### **The Deep Link Listener (src/components/AppLayout.tsx)**
 
-* On mount, check window.location.search.  
-* Verify the secret key (security against malicious links).  
-* If match found: Log event \-\> Run Flow \-\> Clear URL params.
+On mount, the shell reads the query string, hands it to `processDeepLink`, and clears the
+params with a replacing navigation so the trigger does not re-fire on reload. The webhook
+secret guards against unauthorized triggering.
 
 ## **5\. Critical Challenges & Risks**
 
@@ -101,4 +110,7 @@ The application entry point must include a **Deep Link Listener**:
 **2\. Data Persistence**
 
 * *Risk:* iOS deletes data after 7 days of non-use.  
-* *Mitigation:* The "Vault" feature. A red warning indicator appears if a backup hasn't been downloaded in 6 days.
+* *Mitigation:* The "Vault" feature.
+* *Gap:* The staleness warning is **not implemented.** `useAppStore` records
+  `lastBackupTimestamp`, but no UI reads it, so a user is never warned that their backup is
+  old. The intent was a red indicator after 6 days.

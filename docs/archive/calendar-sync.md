@@ -1,3 +1,7 @@
+> **ARCHIVED — never implemented.** No `src/lib/sync/heat-engine.ts` exists. Calendar
+> sync is now scoped as Phase 3.4 of [`../kairos-roadmap.md`](../kairos-roadmap.md),
+> which assumes the native Android shell rather than the PWA.
+
 # Calendar Sync Specification: The Heat Engine
 
 ## Overview

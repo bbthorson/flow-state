@@ -10,7 +10,6 @@ vi.mock('@/services/actions', () => ({
 describe('useAppStore', () => {
   beforeEach(() => {
     // Reset the store state before each test
-    const store = useAppStore.getState();
     // We can't easily reset a persisted store without reaching into internals
     // but we can clear the flows.
     useAppStore.setState({ flows: [], logs: [] });

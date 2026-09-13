@@ -5,7 +5,9 @@ An Android-first PWA for on-device automations. Connects device triggers (batter
 ## Stack
 
 - Vite + React 19 + React Router
-- Shadcn/ui components (Radix primitives + Tailwind)
+- Shadcn/ui components (Radix primitives + Tailwind). Only the primitives actually in use
+  are vendored under `src/components/ui/` — unused ones were removed. Re-add any you need
+  with `npx shadcn@latest add <name>` rather than hand-writing one.
 - Zustand for state (persisted to localStorage)
 - Deployed to Cloudflare Workers
 - AT Protocol lexicon schemas define the flow format
@@ -24,7 +26,8 @@ Deploys are handled by Cloudflare's GitHub integration — pushing to `master` t
 
 ## Architecture
 
-- `src/types/` — Core types derived from lexicon schemas
+- `src/types/` — Core types derived from lexicon schemas. `battery.d.ts` is an ambient
+  declaration picked up via tsconfig, not imported anywhere — don't "clean it up".
 - `src/lexicons/` — AT Protocol lexicon JSON files (app.flowstate.flow, app.flowstate.install, triggers, actions)
 - `src/store/useAppStore.ts` — Zustand store for flows, day-plan blocks, logs, vault import/export (persisted to localStorage). `blocks` is the recurring daily Focus/Care/Triage plan.
 - `src/store/useDeviceStore.ts` — Zustand store for device sensor state

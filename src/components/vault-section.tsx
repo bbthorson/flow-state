@@ -26,7 +26,7 @@ export function VaultSection() {
         title: 'Vault Exported',
         description: 'Your configuration has been downloaded successfully.',
       });
-    } catch (error) {
+    } catch {
       toast({
         title: 'Export Failed',
         description: 'An error occurred while exporting your vault.',
@@ -57,7 +57,7 @@ export function VaultSection() {
             variant: 'destructive',
           });
         }
-      } catch (error) {
+      } catch {
         toast({
           title: 'Import Error',
           description: 'The selected file is not a valid vault format.',

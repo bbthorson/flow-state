@@ -86,7 +86,7 @@ export async function executeNotification(details: NotificationDetails, data: Re
 
 export async function executeVibration(
   details: { duration?: number; pattern?: number[] },
-  data: Record<string, any> = {}
+  _data: Record<string, any> = {}
 ): Promise<ActionResult> {
   try {
     if (!navigator.vibrate) {
@@ -153,7 +153,7 @@ export async function executeShare(
 
 export async function executeWakeLock(
   details: { duration?: number },
-  data: Record<string, any> = {}
+  _data: Record<string, any> = {}
 ): Promise<ActionResult> {
   try {
     if (!('wakeLock' in navigator)) {

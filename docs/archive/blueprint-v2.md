@@ -1,3 +1,7 @@
+> **ARCHIVED — superseded.** Written for the Next.js build of Flow State. The
+> asymmetric Android/iOS strategy below still holds; the stack and UI sections do not.
+> See [`../../README.md`](../../README.md) for the current system.
+
 # **Flow State v2.0: System Blueprint**
 
 ## **1\. Product Identity**
