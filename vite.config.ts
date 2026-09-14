@@ -2,6 +2,10 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
+import { createRequire } from 'module';
+
+// Read the version at build time so the About panel can't drift from package.json.
+const { version } = createRequire(import.meta.url)('./package.json');
 
 import { cloudflare } from "@cloudflare/vite-plugin";
 
@@ -31,22 +35,17 @@ export default defineConfig({
       navigateFallback: '/index.html',
     },
   }), cloudflare()],
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          // The AT Protocol client is large and only needed once auth is used —
-          // keep it in its own long-lived cache chunk. Everything else is left to
-          // Rollup's automatic splitting so deps only used by lazy routes land in
-          // those route chunks instead of the initial load.
-          if (id.includes('node_modules/@atproto')) return 'atproto';
-        },
-      },
-    },
-  },
+  // Chunking is left entirely to Rollup. The AT Protocol client is pulled in via
+  // dynamic import (see src/lib/atproto.ts), so it splits into its own async
+  // chunk on its own. Forcing it into a manualChunk actively hurt: Rollup hoisted
+  // shared helpers (including Vite's preload helper) into the forced chunk, which
+  // put a *static* edge from the entry chunk back to it and defeated the lazy load.
 });

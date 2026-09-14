@@ -1,25 +1,68 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDeviceStore } from '@/store/useDeviceStore';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Battery, Wifi, WifiOff, Eye, EyeOff, AlertTriangle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { getPermissionStatus } from '@/lib/device';
+import { Battery, BatteryCharging, Wifi, WifiOff, AlertTriangle, type LucideIcon } from 'lucide-react';
+import { getPermissionStatus, getSupportedTriggers, type PermissionNameWithExtra } from '@/lib/device';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
+import type { NetworkState } from '@/types/device';
+
+type StatProps = {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  detail?: string;
+  /** Dims the whole chip — used when the browser can't report this at all. */
+  muted?: boolean;
+  iconClassName?: string;
+};
+
+function Stat({ icon: Icon, label, value, detail, muted, iconClassName }: StatProps) {
+  return (
+    <div className={cn('flex items-center gap-2.5 rounded-md border p-2.5', muted && 'opacity-60')}>
+      <Icon aria-hidden="true" className={cn('h-4 w-4 shrink-0 text-muted-foreground', iconClassName)} />
+      <div className="min-w-0">
+        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="truncate text-sm font-medium">{value}</p>
+        {detail && <p className="truncate text-[10px] text-muted-foreground">{detail}</p>}
+      </div>
+    </div>
+  );
+}
+
+/** A connection field is only worth printing if it actually says something. */
+function meaningful(value?: string): string | undefined {
+  return value && value !== 'unknown' && value !== 'none' ? value : undefined;
+}
+
+function networkDetail(network: NetworkState, canReportType: boolean): string | undefined {
+  // "Offline" already says everything; a type subtitle would only muddy it.
+  if (!network.online) return undefined;
+  if (!canReportType) return 'Type unavailable';
+  if (!network.supported) return 'Checking…';
+  // Chromium and Android Chrome populate effectiveType ('4g') but leave type
+  // undefined, so preferring type alone would print "Type: unknown" for most of
+  // this app's users.
+  const label = meaningful(network.type) ?? meaningful(network.effectiveType);
+  return label ? `Type: ${label}` : 'Type unavailable';
+}
 
 export function DeviceStatusPanel() {
-  const { battery, network, visibility } = useDeviceStore();
+  const battery = useDeviceStore((state) => state.battery);
+  const network = useDeviceStore((state) => state.network);
   const [permissions, setPermissions] = useState<Record<string, string>>({});
+  // What the device *can* report, known synchronously.
+  const can = useMemo(() => getSupportedTriggers(), []);
 
   useEffect(() => {
     const check = async () => {
-      const geo = await getPermissionStatus('geolocation' as any);
-      const notify = await getPermissionStatus('notifications' as any);
+      const names: PermissionNameWithExtra[] = ['geolocation', 'notifications'];
+      const [geo, notify] = await Promise.all(names.map(getPermissionStatus));
       setPermissions({ geolocation: geo, notifications: notify });
     };
     check();
   }, []);
 
-  const deniedPermissions = Object.entries(permissions).filter(([_, status]) => status === 'denied');
+  const deniedPermissions = Object.entries(permissions).filter(([, status]) => status === 'denied');
 
   return (
     <div className="space-y-4">
@@ -28,61 +71,44 @@ export function DeviceStatusPanel() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Permissions Required</AlertTitle>
           <AlertDescription>
-            Some features are disabled because permissions were denied ({deniedPermissions.map(([p]) => p).join(', ')}). 
+            Some features are disabled because permissions were denied ({deniedPermissions.map(([p]) => p).join(', ')}).
             Please enable them in your browser settings to use all automations.
           </AlertDescription>
         </Alert>
       )}
-      
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Battery</CardTitle>
-            <Battery className={`h-4 w-4 ${battery.charging ? 'text-green-500 animate-pulse' : 'text-muted-foreground'}`} />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{Math.round(battery.level * 100)}%</div>
-            <p className="text-xs text-muted-foreground">
-              {battery.charging ? 'Charging' : 'Discharging'}
-              {!battery.supported && ' (Not Supported)'}
-            </p>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Network</CardTitle>
-            {network.online ? (
-              <Wifi className="h-4 w-4 text-blue-500" />
-            ) : (
-              <WifiOff className="h-4 w-4 text-destructive" />
-            )}
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{network.online ? 'Online' : 'Offline'}</div>
-            <p className="text-xs text-muted-foreground">
-              Type: {network.type} ({network.effectiveType})
-            </p>
-          </CardContent>
-        </Card>
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold">Device</h3>
+        <div className="grid grid-cols-2 gap-2">
+          {/* Three distinct states. Without the Battery API the store still holds
+              its defaults (100%, discharging), so reporting them would invent a
+              reading — but the device's own reading is debounced, so "no reading
+              yet" must not be reported as "no battery API" either. */}
+          {!can.battery ? (
+            <Stat icon={Battery} label="Battery" value="Unavailable" detail="No Battery API here" muted />
+          ) : battery.supported ? (
+            <Stat
+              icon={battery.charging ? BatteryCharging : Battery}
+              iconClassName={battery.charging ? 'text-green-600' : undefined}
+              label="Battery"
+              value={`${Math.round(battery.level * 100)}%`}
+              detail={battery.charging ? 'Charging' : 'Discharging'}
+            />
+          ) : (
+            <Stat icon={Battery} label="Battery" value="Checking…" muted />
+          )}
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Visibility</CardTitle>
-            {visibility.state === 'visible' ? (
-              <Eye className="h-4 w-4 text-primary" />
-            ) : (
-              <EyeOff className="h-4 w-4 text-muted-foreground" />
-            )}
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold capitalize">{visibility.state}</div>
-            <Badge variant={visibility.state === 'visible' ? 'default' : 'secondary'} className="mt-1">
-              {visibility.state === 'visible' ? 'Foreground' : 'Background'}
-            </Badge>
-          </CardContent>
-        </Card>
-      </div>
+          {/* online/offline comes from navigator.onLine and is always truthful;
+              only the connection type depends on the Network Information API. */}
+          <Stat
+            icon={network.online ? Wifi : WifiOff}
+            iconClassName={network.online ? 'text-blue-600' : 'text-destructive'}
+            label="Network"
+            value={network.online ? 'Online' : 'Offline'}
+            detail={networkDetail(network, can.connectionType)}
+          />
+        </div>
+      </section>
     </div>
   );
 }

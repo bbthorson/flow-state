@@ -1,3 +1,7 @@
+> **ARCHIVED — completed.** This refactor shipped. Paths like `src/app/page.tsx` are
+> Next.js-era and no longer exist; the store schema has since grown well past the sketch
+> below. See [`../../README.md`](../../README.md) for the current system.
+
 # **Flow State v2.0: Implementation Specification**
 
 ## **1\. Executive Summary & Architecture**

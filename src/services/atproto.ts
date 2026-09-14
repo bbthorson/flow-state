@@ -1,5 +1,6 @@
-import { Agent } from '@atproto/api';
+import type { Agent } from '@atproto/api';
 import { Flow } from '@/types';
+import { parseFlowRecord } from '@/lib/flow-schema';
 
 const FLOW_COLLECTION = 'app.flowstate.flow';
 const INSTALL_COLLECTION = 'app.flowstate.install';
@@ -15,17 +16,30 @@ function flowToRecord(flow: Flow) {
   };
 }
 
-/** Convert an AT Protocol flow record back to a local Flow shape. */
-function recordToFlow(uri: string, record: any): PublishedFlow {
+/**
+ * Convert an AT Protocol flow record back to a local Flow shape.
+ *
+ * Returns null for anything that doesn't validate. These records come from
+ * other people's PDSes, so "trust the shape" is not available to us — see
+ * `@/lib/flow-schema`.
+ */
+function recordToFlow(uri: string, value: unknown): PublishedFlow | null {
+  const parsed = parseFlowRecord(value);
+  if (!parsed.ok) {
+    console.warn(`[flow-state] Skipping malformed flow record ${uri} — ${parsed.reason}`);
+    return null;
+  }
+
   const [, , did, , rkey] = uri.split('/');
+  const { name, enabled, trigger, actions } = parsed.record;
   return {
     uri,
     did,
     rkey,
-    name: record.name,
-    enabled: record.enabled,
-    trigger: record.trigger,
-    actions: record.actions,
+    name,
+    enabled,
+    trigger,
+    actions,
   };
 }
 
@@ -65,7 +79,10 @@ export async function listPublishedFlows(agent: Agent, did: string): Promise<Pub
     collection: FLOW_COLLECTION,
     limit: 100,
   });
-  return response.data.records.map((r) => recordToFlow(r.uri, r.value));
+  // One bad record must not cost us the rest of this account's flows.
+  return response.data.records
+    .map((r) => recordToFlow(r.uri, r.value))
+    .filter((flow): flow is PublishedFlow => flow !== null);
 }
 
 /** Write an install record to the authenticated user's PDS. */

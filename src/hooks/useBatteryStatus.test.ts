@@ -25,9 +25,8 @@ describe('useBatteryStatus', () => {
   });
 
   it('should update store with battery status', async () => {
-    let result: any;
     await act(async () => {
-      result = renderHook(() => useBatteryStatus());
+      renderHook(() => useBatteryStatus());
     });
     
     // Advance timer for debounce

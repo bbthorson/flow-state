@@ -12,6 +12,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { TriggerType, ActionType } from '@/types';
+import { formatSchedule } from '@/lib/schedule';
 
 /**
  * Single source of truth for trigger/action display metadata. Previously these
@@ -80,4 +81,55 @@ export const TRIGGER_ICONS: Record<TriggerType, LucideIcon> = {
 /** Icon for a trigger type, falling back to a generic bolt for unknown values. */
 export function triggerIcon(type: string): LucideIcon {
   return TRIGGER_ICONS[type as TriggerType] ?? Zap;
+}
+
+/**
+ * One-line description of what fires a flow.
+ *
+ * Every branch reports only what the details actually say. The earlier version
+ * collapsed unknown values into a definite claim — a geolocation trigger with
+ * no `event` read as "Exit zone", the *opposite* of the other valid value, and
+ * a battery trigger with no level read as "0%". Network-discovered flows are
+ * validated now (see `@/lib/flow-schema`), but vault imports and flows stored
+ * before that check still reach this function.
+ */
+export function triggerSummary(trigger: { type: string; details: Record<string, any> }): string {
+  const d = trigger.details ?? {};
+
+  switch (trigger.type) {
+    case 'NATIVE_BATTERY': {
+      const level = typeof d.level === 'number' ? `${Math.round(d.level * 100)}%` : null;
+      const state = typeof d.charging === 'boolean' ? (d.charging ? 'charging' : 'discharging') : null;
+      if (level && state) return `Battery ${state} at ${level}`;
+      if (level) return `Battery at ${level}`;
+      if (state) return `Battery ${state}`;
+      return 'Battery change (no threshold set)';
+    }
+    case 'NETWORK':
+      if (d.ssid) return `Connected to ${d.ssid}`;
+      if (typeof d.online === 'boolean') return d.online ? 'Network online' : 'Network offline';
+      return 'Network change';
+    case 'GEOLOCATION': {
+      const radius = typeof d.radius === 'number' ? `${d.radius}m radius` : 'radius not set';
+      if (d.event === 'ENTER') return `Enter zone (${radius})`;
+      if (d.event === 'EXIT') return `Exit zone (${radius})`;
+      return `Zone, direction not set (${radius})`;
+    }
+    case 'DEEP_LINK':
+      return `Deep link: ${d.event ?? 'any'}`;
+    case 'IDLE':
+      return typeof d.threshold === 'number'
+        ? `Idle after ${Math.round(d.threshold / 1000)}s`
+        : 'Idle (no threshold set)';
+    case 'DEVICE_MOTION':
+      return `Gesture: ${d.gesture ?? 'any'}`;
+    case 'SCREEN_ORIENTATION':
+      return `Orientation: ${d.orientation ?? 'any'}`;
+    case 'MANUAL':
+      return 'Triggered manually';
+    case 'TIME':
+      return formatSchedule(d);
+    default:
+      return '';
+  }
 }

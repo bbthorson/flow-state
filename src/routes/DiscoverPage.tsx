@@ -9,7 +9,7 @@ export function DiscoverPage() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" asChild>
-          <Link to="/">
+          <Link to="/" aria-label="Back to timeline">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>

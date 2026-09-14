@@ -53,11 +53,15 @@ export function NetworkFlows() {
   const discoverFromFollows = useAuthStore((s) => s.discoverFromFollows);
   const navigate = useNavigate();
 
+  // Kick off discovery once an agent appears. The flow list and in-flight flag
+  // are read at call time so refreshing them doesn't re-trigger the crawl.
   useEffect(() => {
-    if (agent && networkFlows.length === 0 && !discovering) {
+    if (!agent) return;
+    const { networkFlows: flows, discovering: inFlight } = useAuthStore.getState();
+    if (flows.length === 0 && !inFlight) {
       discoverFromFollows();
     }
-  }, [agent]);
+  }, [agent, discoverFromFollows]);
 
   if (!agent) {
     return (

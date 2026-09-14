@@ -54,7 +54,7 @@ function BlueskySection() {
             <div className="text-sm font-medium">@{handle}</div>
             <div className="text-[10px] font-mono text-muted-foreground">{did}</div>
           </div>
-          <Button variant="ghost" size="icon" onClick={signOut} title="Sign out">
+          <Button variant="ghost" size="icon" onClick={signOut} title="Sign out" aria-label="Sign out">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
@@ -119,6 +119,7 @@ function WebhookSecretSection() {
           <div className="relative flex-1">
             <Input
               readOnly
+              aria-label="Webhook secret"
               value={visible ? webhookSecret : '••••••••••••••••'}
               className="pr-10 font-mono text-sm"
             />
@@ -127,11 +128,12 @@ function WebhookSecretSection() {
               size="icon"
               className="absolute right-0 top-0 h-full"
               onClick={() => setVisible(!visible)}
+              aria-label={visible ? 'Hide webhook secret' : 'Show webhook secret'}
             >
               {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
           </div>
-          <Button variant="outline" size="icon" onClick={handleCopy} title="Copy to clipboard">
+          <Button variant="outline" size="icon" onClick={handleCopy} title="Copy to clipboard" aria-label="Copy webhook secret">
             <Copy className="h-4 w-4" />
           </Button>
         </div>
@@ -221,11 +223,11 @@ function AboutSection() {
       <div className="space-y-2 text-sm text-muted-foreground">
         <div className="flex justify-between">
           <span>Version</span>
-          <span className="font-mono">0.2.0</span>
+          <span className="font-mono">{__APP_VERSION__}</span>
         </div>
         <div className="flex justify-between">
           <span>Storage</span>
-          <span>Local only (IndexedDB)</span>
+          <span>Local only (localStorage)</span>
         </div>
         <p className="pt-2 text-xs">
           Flow State runs entirely on your device. No data is sent to any server unless you configure a webhook action.

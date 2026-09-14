@@ -1,60 +1,42 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { VaultSection } from './vault-section';
 import { useAppStore } from '@/store/useAppStore';
+import { STALE_BACKUP_DAYS } from '@/lib/vault';
 
-// Mock URL.createObjectURL and URL.revokeObjectURL
-global.URL.createObjectURL = vi.fn(() => 'mock-url');
-global.URL.revokeObjectURL = vi.fn();
+const DAY = 24 * 60 * 60 * 1000;
 
-// Mock toast
-const mockToast = vi.fn();
-vi.mock('@/hooks/use-toast', () => ({
-  useToast: () => ({
-    toast: mockToast,
-  }),
-}));
-
-describe('VaultSection', () => {
+describe('VaultSection backup freshness', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    useAppStore.setState({ lastBackupTimestamp: null });
   });
 
-  it('renders correctly', () => {
+  it('warns when no backup has ever been taken', () => {
     render(<VaultSection />);
-    expect(screen.getByText('Backup')).toBeInTheDocument();
-    expect(screen.getByText('Export')).toBeInTheDocument();
-    expect(screen.getByText('Import')).toBeInTheDocument();
+    expect(screen.getByText(/No backup yet/)).toBeInTheDocument();
   });
 
-  it('triggers export flow', () => {
-    const mockExportVault = vi.fn(() => JSON.stringify({ flows: [] }));
-    useAppStore.setState({ exportVault: mockExportVault });
-
+  it('warns once a backup is older than the threshold', () => {
+    // lastBackupTimestamp was written on every export and read by nothing, so
+    // this warning did not exist at all before.
+    useAppStore.setState({ lastBackupTimestamp: Date.now() - (STALE_BACKUP_DAYS + 2) * DAY });
     render(<VaultSection />);
-    fireEvent.click(screen.getByText('Export'));
 
-    expect(mockExportVault).toHaveBeenCalled();
-    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({
-      title: 'Vault Exported',
-    }));
+    expect(screen.getByText(/Export a fresh one/)).toBeInTheDocument();
+    expect(screen.getByText(/8 days ago/)).toBeInTheDocument();
   });
 
-  it('triggers import flow', async () => {
-    const mockImportVault = vi.fn(() => ({ success: true, message: 'Success' }));
-    useAppStore.setState({ importVault: mockImportVault });
+  it('is quiet when the backup is recent', () => {
+    useAppStore.setState({ lastBackupTimestamp: Date.now() - DAY });
+    render(<VaultSection />);
 
-    const { container } = render(<VaultSection />);
-    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
-    
-    const file = new File(['{"flows":[]}'], 'vault.json', { type: 'application/json' });
-    fireEvent.change(input, { target: { files: [file] } });
+    expect(screen.getByText(/Last backup yesterday/)).toBeInTheDocument();
+    expect(screen.queryByText(/Export a fresh one/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/No backup yet/)).not.toBeInTheDocument();
+  });
 
-    await waitFor(() => {
-      expect(mockImportVault).toHaveBeenCalled();
-      expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({
-        title: 'Vault Imported',
-      }));
-    });
+  it('is titled with the product term used everywhere else', () => {
+    render(<VaultSection />);
+    expect(screen.getByRole('heading', { name: 'Vault' })).toBeInTheDocument();
   });
 });

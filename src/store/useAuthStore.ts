@@ -1,8 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Agent } from '@atproto/api';
-import { OAuthSession } from '@atproto/oauth-client-browser';
-import { getOAuthClient } from '@/lib/atproto';
+import type { Agent } from '@atproto/api';
+import type { OAuthSession } from '@atproto/oauth-client-browser';
+import {
+  getOAuthClient,
+  bootedOnOAuthCallback,
+  hasOAuthSessionToRestore,
+} from '@/lib/atproto';
 import { Flow } from '@/types';
 import {
   publishFlow as publishFlowToNetwork,
@@ -52,7 +56,10 @@ export const useAuthStore = create<AuthState>()(
       handle: null,
       publishedFlows: {},
       onboardingSkipped: false,
-      loading: false,
+      // Start in the loading state when this page load is an OAuth redirect, so
+      // the /oauth/callback route holds position until init() has consumed the
+      // response instead of racing it (see OAuthCallback in App.tsx).
+      loading: bootedOnOAuthCallback(),
       error: null,
       session: null,
       agent: null,
@@ -60,13 +67,24 @@ export const useAuthStore = create<AuthState>()(
       discovering: false,
 
       init: async () => {
+        // Decide whether we need the AT Protocol client *before* importing it.
+        // Both checks are plain reads of the URL and localStorage, so a user who
+        // has never signed in never downloads the ~242 kB (gzip) client.
+        const isCallback = bootedOnOAuthCallback();
+        const hasSession = Boolean(get().did) || hasOAuthSessionToRestore();
+        if (!isCallback && !hasSession) {
+          set({ loading: false });
+          return;
+        }
+
         set({ loading: true, error: null });
         try {
-          const client = getOAuthClient();
+          const client = await getOAuthClient();
           const result = await client.init();
 
           if (result) {
             const session = result.session;
+            const { Agent } = await import('@atproto/api');
             const agent = new Agent(session);
             const profile = await agent.getProfile({
               actor: session.did,
@@ -93,7 +111,7 @@ export const useAuthStore = create<AuthState>()(
       signIn: async (handle: string) => {
         set({ loading: true, error: null });
         try {
-          const client = getOAuthClient();
+          const client = await getOAuthClient();
           await client.signIn(handle, {
             state: crypto.randomUUID(),
           });
@@ -114,7 +132,7 @@ export const useAuthStore = create<AuthState>()(
         const { did } = get();
         if (did) {
           try {
-            const client = getOAuthClient();
+            const client = await getOAuthClient();
             await client.revoke(did);
           } catch (err) {
             console.error('AT Protocol revoke failed:', err);
