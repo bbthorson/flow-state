@@ -69,8 +69,8 @@ export const ACTION_PERMISSIONS: Record<ActionType, DevicePermission[]> = {
   SPEECH: ['speech-synthesis'],
 };
 
-/** Get all unique permissions required by a flow. */
-export function getFlowPermissions(flow: Omit<Flow, 'id'>): DevicePermission[] {
+/** Get all unique permissions required by a flow or recipe. */
+export function getFlowPermissions(flow: Pick<Flow, 'trigger' | 'actions'>): DevicePermission[] {
   const perms = new Set<DevicePermission>();
   for (const p of TRIGGER_PERMISSIONS[flow.trigger.type]) perms.add(p);
   for (const action of flow.actions) {

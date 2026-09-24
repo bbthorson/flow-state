@@ -59,7 +59,17 @@ const TRIGGER_DETAILS = {
 /** Per-type action detail shapes, from the action lexicons' `required` lists. */
 const ACTION_DETAILS = {
   WEBHOOK: bag.extend({
-    url: z.string().url(),
+    url: z.string().refine(
+      (val) => {
+        try {
+          new URL(val);
+          return true;
+        } catch {
+          return val.includes('{{') && val.includes('}}');
+        }
+      },
+      { message: 'Must be a valid URL or template URL' },
+    ),
     method: z.string().optional(),
     headers: z.record(z.string(), z.string()).optional(),
     body: z.string().optional(),
@@ -120,10 +130,24 @@ function withTypedDetails<T extends string>(
     });
 }
 
+export const parameterDefinitionSchema = z.object({
+  key: z.string().min(1).max(64),
+  label: z.string().min(1).max(100),
+  description: z.string().max(300).optional(),
+  type: z.enum(['string', 'number', 'boolean', 'secret']),
+  required: z.boolean().optional(),
+  default: z.union([z.string(), z.number(), z.boolean()]).optional(),
+});
+
 export const flowRecordSchema = z.object({
   name: z.string().min(1).max(256),
   enabled: z.boolean(),
   securityKey: z.string().optional(),
+  description: z.string().max(1000).optional(),
+  tags: z.array(z.string().min(1).max(30)).max(10).optional(),
+  forkedFrom: z.string().optional(),
+  visibility: z.enum(['public', 'space', 'private']).optional(),
+  parameters: z.array(parameterDefinitionSchema).optional(),
   trigger: withTypedDetails(triggerTypeSchema, TRIGGER_DETAILS),
   actions: z.array(withTypedDetails(actionTypeSchema, ACTION_DETAILS)).min(1),
 });

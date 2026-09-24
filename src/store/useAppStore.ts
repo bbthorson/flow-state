@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { Flow, TriggerType, ActionType, LogEntry, TimeBlock } from '@/types';
-import { parseActionDetails, type ActionDetailsFor } from '@/lib/flow-schema';
+import { parseActionDetails, parseFlowRecord, type ActionDetailsFor } from '@/lib/flow-schema';
 import { executeWebhook, executeNotification, executeVibration, executeClipboard, executeShare, executeWakeLock, executeSpeech, type ActionResult } from '@/services/actions';
 
 export type { Flow, TriggerType, ActionType, TimeBlock } from '@/types';
@@ -242,7 +242,18 @@ export const useAppStore = create<AppState & AppActions>()(
           // Allow partial imports or legacy imports
           const updates: Partial<AppState> = { lastBackupTimestamp: Date.now() };
 
-          if (Array.isArray(flows)) updates.flows = flows;
+          if (Array.isArray(flows)) {
+            updates.flows = flows
+              .filter((f): f is Flow => {
+                if (!f || typeof f !== 'object') return false;
+                const result = parseFlowRecord(f);
+                return result.ok;
+              })
+              .map((f) => ({
+                ...f,
+                id: typeof f.id === 'string' && f.id ? f.id : uuidv4(),
+              }));
+          }
           if (Array.isArray(blocks)) updates.blocks = blocks;
           if (Array.isArray(logs)) updates.logs = logs.slice(0, MAX_LOGS);
           if (Array.isArray(webhooks)) updates.webhooks = webhooks;
@@ -346,9 +357,13 @@ export const useAppStore = create<AppState & AppActions>()(
             message: `Flow triggered by ${type}: ${flow.name}.`,
           });
 
-          // Execute actions
+          // Execute actions with trigger details and optional local/space flow secrets
+          const executionContext = flow.secrets
+            ? { ...details, secrets: flow.secrets }
+            : details;
+
           flow.actions.forEach((action) => {
-            runAction(flow.id, action, details, addLog);
+            runAction(flow.id, action, executionContext, addLog);
           });
         }
       },

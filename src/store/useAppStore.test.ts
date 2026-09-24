@@ -234,6 +234,34 @@ describe('log retention', () => {
     expect(result.success).toBe(true);
     expect(useAppStore.getState().logs).toHaveLength(MAX_LOGS);
   });
+
+  it('filters malformed flows coming in from a vault import', () => {
+    const validFlow = {
+      id: 'f1',
+      name: 'Valid flow',
+      enabled: true,
+      trigger: { type: 'NATIVE_BATTERY', details: { level: 0.5, charging: true } },
+      actions: [{ type: 'NOTIFICATION', details: { title: 'Battery OK' } }],
+    };
+    const invalidFlow = {
+      id: 'f2',
+      name: 'Broken flow',
+      enabled: true,
+      trigger: { type: 'INVALID_TRIGGER_TYPE', details: {} },
+      actions: [],
+    };
+
+    const result = useAppStore.getState().importVault(JSON.stringify({
+      flows: [validFlow, invalidFlow, null, 'not a flow'],
+      blocks: [],
+      logs: [],
+    }));
+
+    expect(result.success).toBe(true);
+    const imported = useAppStore.getState().flows;
+    expect(imported).toHaveLength(1);
+    expect(imported[0].name).toBe('Valid flow');
+  });
 });
 
 describe('processDeepLink logging', () => {

@@ -16,10 +16,22 @@ export interface ActionResult {
   message?: string;
 }
 
-function templateString(str: string | undefined, data: Record<string, any>): string {
+function getNestedValue(obj: Record<string, any>, path: string): any {
+  const parts = path.split('.');
+  let current: any = obj;
+  for (const part of parts) {
+    if (current == null) return undefined;
+    current = current[part];
+  }
+  return current;
+}
+
+export function templateString(str: string | undefined, data: Record<string, any>): string {
   if (!str) return '';
   return str.replace(/\{\{(.*?)\}\}/g, (match, key) => {
-    const value = data[key.trim()];
+    const trimmed = key.trim();
+    // Direct key lookup first, then dot-notation path
+    const value = data[trimmed] !== undefined ? data[trimmed] : getNestedValue(data, trimmed);
     return value !== undefined ? String(value) : match;
   });
 }

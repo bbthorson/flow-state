@@ -90,13 +90,63 @@ export interface SpeechActionDetails {
   volume?: number; // 0-1
 }
 
-// ── Flow record (derived from app.flowstate.flow lexicon) ──
+// ── Social & Federated Automation Types (ATProto Spaces & Recipes) ──
+
+export type FlowScope = 'local' | 'space';
+export type FlowVisibility = 'public' | 'space' | 'private';
+
+export interface FlowParameterDefinition {
+  key: string;
+  label: string;
+  description?: string;
+  type: 'string' | 'number' | 'boolean' | 'secret';
+  required?: boolean;
+  default?: string | number | boolean;
+}
+
+export interface FlowRecipe {
+  id?: string; // or AT URI when published (at://did:plc:.../app.flowstate.flow/rkey)
+  name: string;
+  description?: string;
+  authorDid?: string;
+  tags?: string[];
+  forkedFromUri?: string;
+  visibility?: FlowVisibility;
+  parameters?: FlowParameterDefinition[];
+  trigger: {
+    type: TriggerType;
+    details: Record<string, any>;
+  };
+  actions: Array<{
+    type: ActionType;
+    details: Record<string, any>;
+  }>;
+}
+
+// ── Flow record (derived from app.flowstate.flow lexicon, with Spaces & Social extensions) ──
 
 export interface Flow {
   id: string;
   name: string;
+  description?: string;
   enabled: boolean;
   securityKey?: string;
+  /** Provenance: AT URI of the recipe or flow this instance was installed/forked from */
+  forkedFromUri?: string;
+  /** Storage & execution scope: 'local' (device only) or 'space' (ATProto Spaces repository) */
+  scope?: FlowScope;
+  /** Identifier of the ATProto Space if scope === 'space' */
+  spaceId?: string;
+  /** Discoverable category or tag labels */
+  tags?: string[];
+  /** Optional parameter declarations required by this flow */
+  parameters?: FlowParameterDefinition[];
+  /**
+   * Sensitive credentials (API tokens, webhooks, auth keys).
+   * Strictly local to the device or synced to private ATProto Spaces.
+   * NEVER published to public ATProto repositories or public recipes.
+   */
+  secrets?: Record<string, string>;
   trigger: {
     type: TriggerType;
     details: Record<string, any>;
