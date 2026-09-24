@@ -1,18 +1,25 @@
 import type { Agent } from '@atproto/api';
-import { Flow } from '@/types';
+import { Flow, FlowParameterDefinition, FlowVisibility } from '@/types';
 import { parseFlowRecord } from '@/lib/flow-schema';
+import { sanitizeForRecipeExport } from '@/lib/recipe';
 
 const FLOW_COLLECTION = 'app.flowstate.flow';
 const INSTALL_COLLECTION = 'app.flowstate.install';
 
-/** Convert a local flow to an AT Protocol record (strip local-only fields). */
-function flowToRecord(flow: Flow) {
+/** Convert a local flow to an AT Protocol record (strip local-only fields, secrets, and IDs). */
+export function flowToRecord(flow: Flow) {
+  const recipe = sanitizeForRecipeExport(flow);
   return {
     $type: FLOW_COLLECTION,
-    name: flow.name,
+    name: recipe.name,
     enabled: flow.enabled,
-    trigger: flow.trigger,
-    actions: flow.actions,
+    ...(recipe.description ? { description: recipe.description } : {}),
+    ...(recipe.tags ? { tags: recipe.tags } : {}),
+    ...(recipe.forkedFromUri ? { forkedFrom: recipe.forkedFromUri } : {}),
+    ...(recipe.parameters ? { parameters: recipe.parameters } : {}),
+    ...(recipe.visibility ? { visibility: recipe.visibility } : {}),
+    trigger: recipe.trigger,
+    actions: recipe.actions,
   };
 }
 
@@ -31,13 +38,18 @@ function recordToFlow(uri: string, value: unknown): PublishedFlow | null {
   }
 
   const [, , did, , rkey] = uri.split('/');
-  const { name, enabled, trigger, actions } = parsed.record;
+  const { name, enabled, description, tags, forkedFrom, parameters, visibility, trigger, actions } = parsed.record;
   return {
     uri,
     did,
     rkey,
     name,
     enabled,
+    description,
+    tags,
+    forkedFromUri: forkedFrom,
+    parameters,
+    visibility,
     trigger,
     actions,
   };
@@ -48,6 +60,11 @@ export interface PublishedFlow {
   did: string;
   rkey: string;
   name: string;
+  description?: string;
+  tags?: string[];
+  forkedFromUri?: string;
+  parameters?: FlowParameterDefinition[];
+  visibility?: FlowVisibility;
   enabled: boolean;
   trigger: Flow['trigger'];
   actions: Flow['actions'];
