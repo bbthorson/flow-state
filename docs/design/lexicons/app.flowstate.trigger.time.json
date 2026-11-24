@@ -1,0 +1,26 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.trigger.time",
+  "description": "DRAFT — closes the gap noted in src/lib/flow-schema.ts: the TIME trigger exists in TriggerType but never had a lexicon. Fires at a time of day while the app is foregrounded (or via the hub, once it schedules pushes). Shape mirrors ScheduleTriggerDetails in src/types/index.ts.",
+  "defs": {
+    "main": {
+      "type": "object",
+      "required": ["time"],
+      "properties": {
+        "time": {
+          "type": "string",
+          "description": "Local time of day, 24-hour 'HH:MM'.",
+          "minLength": 5,
+          "maxLength": 5
+        },
+        "days": {
+          "type": "array",
+          "description": "Days of week, 0 (Sunday) to 6. Empty or omitted means every day.",
+          "maxLength": 7,
+          "items": { "type": "integer", "minimum": 0, "maximum": 6 }
+        }
+      },
+      "permissions": []
+    }
+  }
+}

@@ -249,6 +249,8 @@ Each phase is useful on its own and does not depend on the next.
 - `parseEventRecord` and the templating restriction, which also tightens `DEEP_LINK`.
 - Reconcile `FlowScope` / `spaceId`: replace the free-text field in `recipe-install-dialog.tsx`
   with a structured space reference, and hide the "ATProto Space" option until Phase C.
+- Migrate local flows to the v2 `app.flowstate.automation` shape (section 8): steps, conditions,
+  variables, `dryRun`. This is local only; publishing v2 waits for Phase E.
 
 **Phase B: hub v1 (no Spaces needed)**
 - A Worker route plus a per-user Durable Object, Web Push subscriptions and HTTPS sender tokens.
@@ -271,12 +273,102 @@ Each phase is useful on its own and does not depend on the next.
 - The hub becomes a Spaces syncer (section 5, item 3).
 
 **Phase E: recipes stay public**
-- `app.flowstate.flow` in the public repo is unchanged, but it's now an explicit "publish"
-  action and never the default home of a flow.
+- Recipes move to `app.flowstate.automation` in the public repo (read both, write v2; section 8).
+  Publishing is an explicit action and never the default home of a flow.
 - Decide the fate of `app.flowstate.install`: nothing reads those records today. Either drop them
   or count them in the hub.
 
-## 8. Open questions
+## 8. Automation record v2, informed by Airglow
+
+[Airglow](https://tangled.org/exosphere.site/airglow) (MIT, © 2026 Hugo / exosphere.site) is an
+automation service for AT Protocol events: Jetstream in, server-side steps, writes to PDSes out.
+Its `run.airglow.automation` lexicon is the most developed automation schema on the network. I
+reviewed it at the Oct 27 2026 revision (1,078 lines) along with its CONCEPTS.md.
+
+### Decision: borrow the structure, not the collection
+
+Flow State will **not** write `run.airglow.automation` records:
+
+- **Airglow owns that collection's meaning.** Its local index decides what runs, and the PDS copy is
+  "a converged projection." Device-trigger automations in that collection could be mis-indexed or
+  overwritten by Airglow, or shown in its public gallery. Flow State would also see network
+  automations it can't run, and both apps would read `active` as "I should run this."
+- **It changes weekly.** It has 449 commits, no tags, and new app-specific actions keep arriving. Flow
+  State's validation boundary rejects unknown types, so most real records would be unusable.
+- **The meanings don't carry over.** `{{event.commit.*}}`, `dedupeBySource` and Jetstream catch-up
+  assume a server reading the firehose.
+- **It's public.** Airglow automations are public records; ours live in private spaces (section 2).
+
+Instead, [`app.flowstate.automation`](./lexicons/app.flowstate.automation.json) **copies the step
+model**, keeping Airglow's field names where the concept is the same so the two read alike. It does
+not reference Airglow's lexicon across NSIDs, so it doesn't depend on Airglow's schema staying put.
+
+| Borrowed from Airglow | Replaces in v1 | Why |
+|---|---|---|
+| `steps` tree, `conditionStep` + `assertion` (same operators) | flat `actions` | Conditions and branches ("battery < 20% **and** not charging"). This also covers part of open question 4. |
+| `variableStep` with `note`, `preserveOnDuplication` | `parameters` + `{{params.x}}` | One mechanism for recipe blanks, plus a `kind: secret` that is never written anywhere |
+| `scheduleModifier` / `relativeDelay`, cancel step | nothing | "Remind me in 10 minutes unless I get home first" |
+| `dryRun`, `active` | `enabled` | Safe testing, especially for flows triggered by other people's events |
+| Stable step `id`s | array positions | Logs and edits survive reordering |
+| Flattened `forkedFrom` lineage | `forkedFrom` (unspecified) | Every copy points at the root |
+
+**Kept as Flow State's own:**
+- Device triggers and actions.
+- An `actionStep` wrapper around the unchanged `app.flowstate.action.*` objects, so
+  `permissions.ts` stays keyed by action type.
+- Assertion roots `device.*` (current device state) and `time.*`.
+- `scheduleModifier.expireAfter`, because a PWA can't always run a deferred step on time.
+- The rule that secrets never leave the device.
+
+**Not borrowed (for now):** `loopStep`, because device triggers rarely produce arrays. Also
+`fetchStep`/`searchStep`, which would need network reads mid-run, and the AI step.
+
+**Worth raising with Airglow's author:** a neutral, shared vocabulary for `assertion`,
+`conditionStep`, `variableStep` and `relativeDelay`, so AT Protocol automation apps are compatible by
+design and not merely by imitation.
+
+### Problems in v1 that v2 fixes
+
+- **v1 records don't match the v1 lexicon.** `flowToRecord` writes `trigger: {type: 'NATIVE_BATTERY', details}`,
+  but `app.flowstate.flow` declares a `$type` union of `app.flowstate.trigger.*` refs. v2 serialises
+  real union members.
+- **`TIME` has no lexicon.** [`app.flowstate.trigger.time`](./lexicons/app.flowstate.trigger.time.json)
+  closes the gap noted in `src/lib/flow-schema.ts`.
+- **`visibility` moves out of the record.** Where the record lives (public repo, personal space,
+  group space) decides visibility.
+- **`securityKey` is dropped.** It was already stripped on publish, and a deep-link secret is a
+  `variableStep` with `kind: secret`.
+
+### Migration v1 → v2
+
+The NSID is new because replacing a required `actions` with `steps` is a breaking change, and
+published lexicons may only evolve compatibly.
+
+| v1 (`app.flowstate.flow` / local `Flow`) | v2 (`app.flowstate.automation`) |
+|---|---|
+| `name`, `description`, `tags`, `forkedFrom` | same |
+| `enabled` | `active`; `dryRun: false` |
+| `trigger: {type: 'NATIVE_BATTERY', details}` | `trigger: {$type: 'app.flowstate.trigger.battery', ...details}` (and so on per type; `TIME` → `app.flowstate.trigger.time`) |
+| `actions[i]` | `steps[]`: `{$type: '#actionStep', id: <new TID>, action: {$type: 'app.flowstate.action.<x>', ...details}}`, in order |
+| `parameters[]` | leading `variableStep`s: `key`→`name`, `label`, `description`→`note`, `type`→`kind`, `default`→`value`, `required` |
+| `{{params.x}}` / `{{secrets.x}}` in templates | `{{x}}`. The resolver keeps `params.`/`secrets.` as deprecated aliases for one release |
+| `visibility` | dropped (section 2) |
+| `securityKey` | a `variableStep` with `kind: secret`, resolved from the local secret store |
+| `createdAt` | the record's TID time for published flows, or migration time for local-only ones |
+
+**Rollout:**
+1. **Local first (fits in Phase A).** Add a Zustand persist `version` and a `migrate` function. The
+   store currently has neither, only the `flow-state-v2` storage name. Convert flows in place, and
+   keep the v1 shape in the vault export for one release so downgrades still import.
+2. **Read both, write v2.** Discovery reads `app.flowstate.flow` and `app.flowstate.automation`.
+   v1 records go through `parseFlowRecord` and are converted on read; v2 records get a new
+   `parseAutomationRecord` at the same trust boundary. Publishing writes v2 only.
+3. **Republish.** Offer each user to republish their v1 flows as v2. Once republished, delete the v1
+   record and keep the old URI in an alias map so existing `forkedFrom` links and install records
+   still resolve.
+4. **Retire v1 writes.** v1 reading stays as long as any followed account still has v1 records.
+
+## 9. Open questions
 
 1. **`DEEP_LINK` templating, which exists today.** Query parameters can already reach the webhook URL
    and header templates in `executeWebhook`. Should Phase A's restriction ship on its own, ahead of
