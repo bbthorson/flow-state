@@ -1,6 +1,6 @@
 // ── Trigger types (derived from app.flowstate.trigger.* lexicons) ──
 
-export type TriggerType = 'NATIVE_BATTERY' | 'NETWORK' | 'GEOLOCATION' | 'DEEP_LINK' | 'MANUAL' | 'IDLE' | 'DEVICE_MOTION' | 'SCREEN_ORIENTATION' | 'TIME';
+export type TriggerType = 'NATIVE_BATTERY' | 'NETWORK' | 'GEOLOCATION' | 'DEEP_LINK' | 'MANUAL' | 'IDLE' | 'DEVICE_MOTION' | 'SCREEN_ORIENTATION' | 'TIME' | 'EVENT';
 
 export interface BatteryTriggerDetails {
   level: number;
@@ -38,6 +38,17 @@ export interface ScreenOrientationTriggerDetails {
   orientation: 'portrait' | 'landscape';
 }
 
+/**
+ * Fires on an app.flowstate.event. Only `source: local` (emitted by another flow
+ * on this device) exists so far; spaces and the hub come later.
+ */
+export interface EventTriggerDetails {
+  /** Event name to match, or '*' for any. */
+  event: string;
+  /** Keys of the event's `data` that actions may read as {{event.data.<key>}}. */
+  exposeData?: string[];
+}
+
 export interface ScheduleTriggerDetails {
   time: string; // 'HH:MM' 24-hour
   days: number[]; // 0-6 (Sun-Sat); empty = every day
@@ -45,7 +56,7 @@ export interface ScheduleTriggerDetails {
 
 // ── Action types (derived from app.flowstate.action.* lexicons) ──
 
-export type ActionType = 'WEBHOOK' | 'NOTIFICATION' | 'LOG' | 'VIBRATION' | 'CLIPBOARD' | 'WEB_SHARE' | 'WAKE_LOCK' | 'SPEECH';
+export type ActionType = 'WEBHOOK' | 'NOTIFICATION' | 'LOG' | 'VIBRATION' | 'CLIPBOARD' | 'WEB_SHARE' | 'WAKE_LOCK' | 'SPEECH' | 'EMIT_EVENT';
 
 export interface WebhookActionDetails {
   url: string;
@@ -81,6 +92,31 @@ export interface WebShareActionDetails {
 
 export interface WakeLockActionDetails {
   duration?: number; // ms, optional auto-release
+}
+
+export interface EmitEventActionDetails {
+  event: string;
+  title?: string;
+  body?: string;
+  urgency?: 'low' | 'normal' | 'high';
+  ttlSeconds?: number;
+  /** Flat key/value payload; values may use templates. */
+  data?: Record<string, string>;
+}
+
+/** An app.flowstate.event as flows receive it. */
+export interface FlowEvent {
+  event: string;
+  title?: string;
+  body?: string;
+  urgency?: 'low' | 'normal' | 'high';
+  data?: Record<string, string | number | boolean>;
+  createdAt: string;
+  expiresAt?: string;
+  /** Who wrote it: 'self' for local events; a DID once events arrive from spaces. */
+  author: string;
+  /** How many emitEvent hops produced this event (loop guard). */
+  hops: number;
 }
 
 export interface SpeechActionDetails {

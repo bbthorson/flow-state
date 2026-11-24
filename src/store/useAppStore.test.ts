@@ -435,3 +435,76 @@ describe('action execution', () => {
     });
   });
 });
+
+describe('local events', () => {
+  beforeEach(() => {
+    useAppStore.setState({ flows: [], logs: [] });
+    vi.clearAllMocks();
+  });
+
+  const add = (flow: object) =>
+    useAppStore.getState().addFlow({ active: true, dryRun: false, ...flow } as never);
+
+  it('delivers an emitted event to matching event flows, exposing only listed data keys', async () => {
+    add({
+      name: 'Sender',
+      trigger: { type: 'MANUAL', details: {} },
+      steps: [
+        {
+          type: 'action',
+          id: 'e1',
+          action: { type: 'EMIT_EVENT', details: { event: 'arrived', title: 'Home', data: { room: '{{trigger.room}}', secret: 'x' } } },
+        },
+      ],
+    });
+    add({
+      name: 'Receiver',
+      trigger: { type: 'EVENT', details: { event: 'arrived', exposeData: ['room'] } },
+      steps: [{ type: 'action', id: 'n1', action: { type: 'NOTIFICATION', details: { title: '{{event.title}} {{event.data.room}}' } } }],
+    });
+    add({
+      name: 'Other event',
+      trigger: { type: 'EVENT', details: { event: 'left' } },
+      steps: [{ type: 'action', id: 'n2', action: { type: 'NOTIFICATION', details: { title: 'wrong' } } }],
+    });
+
+    const sender = useAppStore.getState().flows[0].id;
+    await useAppStore.getState().triggerFlows('MANUAL', { room: 'kitchen' }, sender);
+
+    await vi.waitFor(() => expect(actions.executeNotification).toHaveBeenCalledOnce());
+    const [, data] = vi.mocked(actions.executeNotification).mock.calls[0];
+    expect(data?.event).toMatchObject({ event: 'arrived', title: 'Home', author: 'self', hops: 1, data: { room: 'kitchen' } });
+    expect(data?.event.data).not.toHaveProperty('secret');
+  });
+
+  it('stops a flow that keeps re-emitting its own event', async () => {
+    add({
+      name: 'Echo',
+      trigger: { type: 'EVENT', details: { event: 'loop' } },
+      steps: [{ type: 'action', id: 'e', action: { type: 'EMIT_EVENT', details: { event: 'loop' } } }],
+    });
+    await useAppStore.getState().triggerFlows('EVENT', { event: 'loop', author: 'self', hops: 0, createdAt: new Date().toISOString() });
+
+    await vi.waitFor(() =>
+      expect(useAppStore.getState().logs.some((l) => l.status === 'failure' && /events deep/.test(l.message))).toBe(true),
+    );
+    const emitted = useAppStore.getState().logs.filter((l) => l.message.startsWith('Emitted event'));
+    expect(emitted.length).toBe(5);
+  });
+
+  it('ignores expired events', async () => {
+    add({
+      name: 'Late',
+      trigger: { type: 'EVENT', details: { event: '*' } },
+      steps: [{ type: 'action', id: 'n', action: { type: 'NOTIFICATION', details: { title: 'late' } } }],
+    });
+    await useAppStore.getState().triggerFlows('EVENT', {
+      event: 'stale',
+      author: 'self',
+      hops: 0,
+      createdAt: '2020-01-01T00:00:00.000Z',
+      expiresAt: '2020-01-01T00:05:00.000Z',
+    });
+    expect(actions.executeNotification).not.toHaveBeenCalled();
+  });
+});

@@ -10,6 +10,7 @@ import {
   CalendarClock,
   Zap,
   type LucideIcon,
+  Radio,
 } from 'lucide-react';
 import { TriggerType, ActionType } from '@/types';
 import { formatSchedule } from '@/lib/schedule';
@@ -30,6 +31,7 @@ export const TRIGGER_TYPES: TriggerType[] = [
   'DEVICE_MOTION',
   'SCREEN_ORIENTATION',
   'TIME',
+  'EVENT',
 ];
 
 export const ACTION_TYPES: ActionType[] = [
@@ -41,6 +43,7 @@ export const ACTION_TYPES: ActionType[] = [
   'WEB_SHARE',
   'WAKE_LOCK',
   'SPEECH',
+  'EMIT_EVENT',
 ];
 
 export const TRIGGER_LABELS: Record<TriggerType, string> = {
@@ -53,6 +56,7 @@ export const TRIGGER_LABELS: Record<TriggerType, string> = {
   DEVICE_MOTION: 'Device Motion',
   SCREEN_ORIENTATION: 'Screen Orientation',
   TIME: 'Schedule',
+  EVENT: 'Event',
 };
 
 export const ACTION_LABELS: Record<ActionType, string> = {
@@ -64,6 +68,7 @@ export const ACTION_LABELS: Record<ActionType, string> = {
   WEB_SHARE: 'Share',
   WAKE_LOCK: 'Wake Lock',
   SPEECH: 'Speech',
+  EMIT_EVENT: 'Emit event',
 };
 
 export const TRIGGER_ICONS: Record<TriggerType, LucideIcon> = {
@@ -76,6 +81,7 @@ export const TRIGGER_ICONS: Record<TriggerType, LucideIcon> = {
   DEVICE_MOTION: Smartphone,
   SCREEN_ORIENTATION: RotateCw,
   TIME: CalendarClock,
+  EVENT: Radio,
 };
 
 /** Icon for a trigger type, falling back to a generic bolt for unknown values. */
@@ -129,6 +135,8 @@ export function triggerSummary(trigger: { type: string; details: Record<string, 
       return 'Triggered manually';
     case 'TIME':
       return formatSchedule(d);
+    case 'EVENT':
+      return d.event === '*' || !d.event ? 'Any event' : `Event: ${d.event}`;
     default:
       return '';
   }
@@ -145,4 +153,5 @@ export const TRIGGER_DATA_KEYS: Record<TriggerType, string[]> = {
   DEVICE_MOTION: ['gesture'],
   SCREEN_ORIENTATION: ['orientation', 'angle'],
   TIME: ['time', 'date', 'day', 'timestamp'],
+  EVENT: ['event', 'title', 'body', 'author', 'data.<key>'],
 };

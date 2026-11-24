@@ -38,7 +38,7 @@ import { cn } from '@/lib/utils';
 const flowSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     trigger: z.object({
-        type: z.enum(['NATIVE_BATTERY', 'NETWORK', 'GEOLOCATION', 'DEEP_LINK', 'MANUAL', 'IDLE', 'DEVICE_MOTION', 'SCREEN_ORIENTATION', 'TIME']),
+        type: z.enum(TRIGGER_TYPES as [TriggerType, ...TriggerType[]]),
         details: z.record(z.any()),
     }),
     // Steps are validated structurally on save by the engine's schema; the
@@ -365,6 +365,50 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                                 </FormItem>
                             )}
                         />
+                    )}
+
+                    {triggerType === 'EVENT' && (
+                        <div className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="trigger.details.event"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Event Name</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., arrived-home, or * for any" {...field} value={field.value || ''} />
+                                        </FormControl>
+                                        <FormDescription>
+                                            Fires when another flow on this device emits this event.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="trigger.details.exposeData"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Readable data keys</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="e.g., room, minutes"
+                                                defaultValue={Array.isArray(field.value) ? field.value.join(', ') : ''}
+                                                onBlur={(e) => {
+                                                    const keys = e.target.value.split(',').map((k) => k.trim()).filter(Boolean);
+                                                    field.onChange(keys.length ? keys : undefined);
+                                                }}
+                                            />
+                                        </FormControl>
+                                        <FormDescription>
+                                            Only these keys of the event's data are visible, as {'{{event.data.<key>}}'}.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
                     )}
 
                     {triggerType === 'TIME' && (
@@ -781,6 +825,63 @@ function ActionDetails({ prefix, form: typedForm }: { prefix: string, form: UseF
                     </FormItem>
                 )}
             />
+        );
+    }
+
+    if (type === 'EMIT_EVENT') {
+        const dataLines = Object.entries((form.watch(`${prefix}.details.data`) ?? {}) as Record<string, string>)
+            .map(([k, v]) => `${k}=${v}`)
+            .join('\n');
+        return (
+            <>
+                <FormField
+                    control={form.control}
+                    name={`${prefix}.details.event`}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Event Name</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g., arrived-home" {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormDescription>Flows with an Event trigger for this name will run.</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name={`${prefix}.details.title`}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Title</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Optional — supports {{variables}}" {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormItem>
+                    <FormLabel>Data</FormLabel>
+                    <FormControl>
+                        <textarea
+                            className="flex min-h-[64px] w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs placeholder:text-muted-foreground"
+                            placeholder={'room={{trigger.room}}\nminutes=10'}
+                            defaultValue={dataLines}
+                            onBlur={(e) => {
+                                const entries = e.target.value
+                                    .split('\n')
+                                    .map((line) => line.trim())
+                                    .filter((line) => line.includes('='))
+                                    .map((line) => [line.slice(0, line.indexOf('=')).trim(), line.slice(line.indexOf('=') + 1).trim()] as const)
+                                    .filter(([k]) => k);
+                                form.setValue(`${prefix}.details.data`, entries.length ? Object.fromEntries(entries) : undefined, { shouldDirty: true });
+                            }}
+                        />
+                    </FormControl>
+                    <FormDescription>One key=value per line. Receivers only see keys they list.</FormDescription>
+                </FormItem>
+            </>
         );
     }
 

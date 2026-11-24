@@ -244,7 +244,7 @@ today's app.
 
 Each phase is useful on its own and does not depend on the next.
 
-**Phase A: local events (no account, no network)**
+**Phase A: local events (no account, no network)** — *built (Nov 2026)*
 - `trigger.event` with `localSource`, plus `emitEvent` with a local target.
 - `parseEventRecord` and the templating restriction, which also tightens `DEEP_LINK`.
 - Reconcile `FlowScope` / `spaceId`: replace the free-text field in `recipe-install-dialog.tsx`

@@ -44,6 +44,7 @@ const MOCK_DATA: Record<TriggerType, Record<string, any>> = {
   DEVICE_MOTION: { gesture: 'SHAKE', accelerationX: 0, accelerationY: 0, accelerationZ: 15 },
   SCREEN_ORIENTATION: { orientation: 'landscape', angle: 90 },
   TIME: { time: '09:00', date: 'Jan 1, 2026', day: 'Mon' },
+  EVENT: { event: 'test', title: 'Test event', body: 'Sent from the Test button', author: 'self', data: {}, createdAt: new Date(0).toISOString(), hops: 0 },
 };
 
 export function FlowDetailPage() {

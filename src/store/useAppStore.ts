@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { Flow, TriggerType, ActionType, LogEntry, TimeBlock, FlowAction } from '@/types';
+import { Flow, TriggerType, ActionType, LogEntry, TimeBlock, FlowAction, FlowEvent } from '@/types';
 import { parseActionDetails, parseRecipe, type ActionDetailsFor } from '@/lib/flow-schema';
 import { executeWebhook, executeNotification, executeVibration, executeClipboard, executeShare, executeWakeLock, executeSpeech, templateString, type ActionResult } from '@/services/actions';
 import { matchesTrigger, runFlow, type RunData, type ScheduledRun } from '@/lib/engine';
@@ -150,6 +150,62 @@ const ACTION_EXECUTORS = {
  * this is the only check they get. Failures come back as results — the engine
  * logs them — and throws are caught here so none becomes an unhandled rejection.
  */
+/** emitEvent → event trigger → emitEvent … stops after this many hops. */
+export const MAX_EVENT_HOPS = 5;
+
+/**
+ * Write an app.flowstate.event and deliver it to this device's event triggers.
+ * Delivery is deferred to a fresh task so a chain of flows never recurses on
+ * the stack, and `hops` bounds a flow that (indirectly) triggers itself.
+ */
+function emitEvent(flowId: string, action: FlowAction, data: RunData, addLog: AppActions['addLog']): ActionResult {
+  const parsed = parseActionDetails('EMIT_EVENT', action.details ?? {});
+  if (!parsed.ok) return { success: false, message: `skipped — invalid settings (${parsed.reason})` };
+  const d = parsed.details;
+
+  const incomingHops = typeof data.event?.hops === 'number' ? data.event.hops : 0;
+  const hops = incomingHops + 1;
+  if (hops > MAX_EVENT_HOPS) {
+    return { success: false, message: `not emitted — "${d.event}" is ${hops} events deep (limit ${MAX_EVENT_HOPS})` };
+  }
+
+  const now = Date.now();
+  const event: FlowEvent = {
+    event: d.event,
+    ...(d.title ? { title: templateString(d.title, data) } : {}),
+    ...(d.body ? { body: templateString(d.body, data) } : {}),
+    ...(d.urgency ? { urgency: d.urgency } : {}),
+    ...(d.data ? { data: Object.fromEntries(Object.entries(d.data).map(([k, v]) => [k, templateString(v, data)])) } : {}),
+    createdAt: new Date(now).toISOString(),
+    ...(d.ttlSeconds ? { expiresAt: new Date(now + d.ttlSeconds * 1000).toISOString() } : {}),
+    author: 'self',
+    hops,
+  };
+  addLog({ flowId, status: 'success', message: `Emitted event "${event.event}".` });
+  setTimeout(() => void useAppStore.getState().triggerFlows('EVENT', event), 0);
+  return { success: true };
+}
+
+/**
+ * What an event-triggered flow may read: the event's own fields, plus only
+ * the `data` keys its trigger lists in `exposeData`. Everything here is
+ * untrusted (written by whoever emitted it), as `trigger.*` is.
+ */
+export function exposeEvent(event: Partial<FlowEvent>, exposeData: unknown): RunData {
+  const allowed = new Set(Array.isArray(exposeData) ? exposeData.map(String) : []);
+  const data = Object.fromEntries(Object.entries(event.data ?? {}).filter(([k]) => allowed.has(k)));
+  return {
+    event: event.event,
+    title: event.title,
+    body: event.body,
+    urgency: event.urgency,
+    author: event.author,
+    createdAt: event.createdAt,
+    hops: event.hops ?? 0,
+    data,
+  };
+}
+
 async function runAction(
   flowId: string,
   action: FlowAction,
@@ -157,6 +213,7 @@ async function runAction(
   trustedRoots: ReadonlySet<string>,
   addLog: AppActions['addLog'],
 ): Promise<ActionResult> {
+  if (action.type === 'EMIT_EVENT') return emitEvent(flowId, action, data, addLog);
   if (action.type === 'LOG') {
     const message = templateString(action.details?.message, data);
     if (message) addLog({ flowId, status: 'success', message });
@@ -191,6 +248,7 @@ export function deviceSnapshot(): RunData {
 
 function actionLabel(action: FlowAction): string {
   if (action.type === 'LOG') return 'Log';
+  if (action.type === 'EMIT_EVENT') return 'Emit event';
   return ACTION_EXECUTORS[action.type as keyof typeof ACTION_EXECUTORS]?.label ?? action.type;
 }
 
@@ -382,8 +440,12 @@ export const useAppStore = create<AppState & AppActions>()(
           });
 
           const log = (status: 'success' | 'failure', message: string) => addLog({ flowId: flow.id, status, message });
+          // Event triggers see only the data keys they opted into, as both
+          // trigger.* and event.*.
+          const triggerData = type === 'EVENT' ? exposeEvent(details, flow.trigger.details.exposeData) : details;
+          const extra = type === 'EVENT' ? { event: triggerData } : undefined;
           runs.push(
-            runFlow(flow, details, { device: deviceSnapshot(), now: new Date() }, {
+            runFlow(flow, triggerData, { device: deviceSnapshot(), now: new Date(), extra }, {
               execute: (action, data, trusted) => runAction(flow.id, action, data, trusted, addLog),
               log,
               schedule: (item) => get().scheduleRun(item),

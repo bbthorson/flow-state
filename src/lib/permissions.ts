@@ -57,6 +57,7 @@ export const TRIGGER_PERMISSIONS: Record<TriggerType, DevicePermission[]> = {
   DEVICE_MOTION: ['device-motion'],
   SCREEN_ORIENTATION: ['screen-orientation'],
   TIME: [],
+  EVENT: [],
 };
 
 export const ACTION_PERMISSIONS: Record<ActionType, DevicePermission[]> = {
@@ -68,6 +69,7 @@ export const ACTION_PERMISSIONS: Record<ActionType, DevicePermission[]> = {
   WEB_SHARE: ['web-share'],
   WAKE_LOCK: ['wake-lock'],
   SPEECH: ['speech-synthesis'],
+  EMIT_EVENT: [],
 };
 
 /** Get all unique permissions required by a flow or recipe. */

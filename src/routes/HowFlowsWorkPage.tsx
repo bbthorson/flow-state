@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Battery, Wifi, MapPin, Link as LinkIcon, Hand, Bell, Globe, FileText, ArrowLeft, Timer, Smartphone, RotateCw, Vibrate, Clipboard, Share2, Sun, Volume2, CalendarClock } from 'lucide-react';
+import { Battery, Wifi, MapPin, Link as LinkIcon, Hand, Bell, Globe, FileText, ArrowLeft, Timer, Smartphone, RotateCw, Vibrate, Clipboard, Share2, Sun, Volume2, CalendarClock, Radio } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSION_LABELS, DevicePermission, PermissionState } from '@/lib/permissions';
 
@@ -21,7 +21,7 @@ const TRIGGERS = [
     name: 'Network',
     lexicon: 'app.flowstate.trigger.network',
     icon: Wifi,
-    description: 'Fires when you go online/offline or connect to a specific Wi-Fi network.',
+    description: 'Fires when you go online or offline.',
     permissions: ['network-information'] as DevicePermission[],
     variables: ['online'],
   },
@@ -88,6 +88,15 @@ const TRIGGERS = [
     permissions: ['screen-orientation'] as DevicePermission[],
     variables: ['orientation', 'angle'],
   },
+  {
+    type: 'EVENT',
+    name: 'Event',
+    lexicon: 'app.flowstate.trigger.event',
+    icon: Radio,
+    description: 'Fires when another flow on this device emits a matching event. Only the data keys you list are readable.',
+    permissions: [] as DevicePermission[],
+    variables: ['event', 'title', 'body', 'data.<key>'],
+  },
 ];
 
 const ACTIONS = [
@@ -96,7 +105,7 @@ const ACTIONS = [
     name: 'Webhook',
     lexicon: 'app.flowstate.action.webhook',
     icon: Globe,
-    description: 'Sends an HTTP request to any URL. Supports template variables in the URL and body.',
+    description: 'Sends an HTTP request to any URL. Trigger data can be used in the body; the URL and headers only take secret variables.',
     permissions: [] as DevicePermission[],
   },
   {
@@ -154,6 +163,14 @@ const ACTIONS = [
     icon: Volume2,
     description: 'Speaks text aloud with configurable rate, pitch, and volume.',
     permissions: ['speech-synthesis'] as DevicePermission[],
+  },
+  {
+    type: 'EMIT_EVENT',
+    name: 'Emit event',
+    lexicon: 'app.flowstate.action.emitEvent',
+    icon: Radio,
+    description: 'Emits a named event that other flows can react to. Chains stop after five hops.',
+    permissions: [] as DevicePermission[],
   },
 ];
 

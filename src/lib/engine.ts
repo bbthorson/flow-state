@@ -82,6 +82,10 @@ export function matchesTrigger(type: TriggerType, config: Record<string, any>, d
       return config.gesture === undefined || data.gesture === config.gesture;
     case 'SCREEN_ORIENTATION':
       return config.orientation === undefined || data.orientation === config.orientation;
+    case 'EVENT': {
+      if (typeof data.expiresAt === 'string' && Date.parse(data.expiresAt) < Date.now()) return false;
+      return config.event === '*' || data.event === config.event;
+    }
     case 'MANUAL':
     case 'GEOLOCATION':
     case 'TIME':

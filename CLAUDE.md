@@ -48,6 +48,10 @@ Deploys are handled by Cloudflare's GitHub integration — pushing to `master` t
 - `src/services/actions.ts` — Action executors, all return ActionResult. **Webhook URLs and headers
   only accept placeholders from trusted roots** (`templateTrusted`); trigger data goes in bodies and
   text only. Don't loosen this — a deep link's query string is attacker-controlled.
+- **Local events:** the `EMIT_EVENT` action writes an `app.flowstate.event` and delivers it (on a
+  fresh task) to flows with an `EVENT` trigger. Receivers see only the `data` keys listed in their
+  trigger's `exposeData`, as `event.*`/`trigger.*` (untrusted). Chains stop at `MAX_EVENT_HOPS` (5).
+  Only the local source exists; spaces and the hub are designed in `docs/design/` but not built.
 - Secrets live in `Flow.secrets` (device-only) and are referenced through `kind: 'secret'` variables.
   They are never written to any record — `toAutomationRecord` and `sanitizeForRecipeExport` strip them.
 - `src/services/atproto.ts` — AT Protocol operations: publish/unpublish flows, record installs, discover flows from follows

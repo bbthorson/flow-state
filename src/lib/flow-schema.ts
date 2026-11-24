@@ -59,6 +59,10 @@ const TRIGGER_DETAILS = {
     time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'expected HH:MM'),
     days: z.array(z.number().int().min(0).max(6)).optional(),
   }),
+  EVENT: bag.extend({
+    event: z.string().min(1).max(64),
+    exposeData: z.array(z.string().max(64)).max(16).optional(),
+  }),
 } satisfies Record<TriggerType, z.ZodTypeAny>;
 
 /** Per-type action detail shapes, from the action lexicons' `required` lists. */
@@ -101,6 +105,14 @@ const ACTION_DETAILS = {
     rate: z.number().min(0.1).max(10).optional(),
     pitch: z.number().min(0).max(2).optional(),
     volume: z.number().min(0).max(1).optional(),
+  }),
+  EMIT_EVENT: bag.extend({
+    event: z.string().min(1).max(64),
+    title: z.string().max(120).optional(),
+    body: z.string().max(1000).optional(),
+    urgency: z.enum(['low', 'normal', 'high']).optional(),
+    ttlSeconds: z.number().int().min(60).max(604800).optional(),
+    data: z.record(z.string().max(64), z.string().max(256)).optional(),
   }),
 } satisfies Record<ActionType, z.ZodTypeAny>;
 

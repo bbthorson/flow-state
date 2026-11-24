@@ -22,6 +22,7 @@ const TRIGGER_NSID: Record<TriggerType, string> = {
   DEVICE_MOTION: 'app.flowstate.trigger.motion',
   SCREEN_ORIENTATION: 'app.flowstate.trigger.orientation',
   TIME: 'app.flowstate.trigger.time',
+  EVENT: 'app.flowstate.trigger.event',
 };
 
 const ACTION_NSID: Record<ActionType, string> = {
@@ -33,6 +34,7 @@ const ACTION_NSID: Record<ActionType, string> = {
   WEB_SHARE: 'app.flowstate.action.share',
   WAKE_LOCK: 'app.flowstate.action.wakeLock',
   SPEECH: 'app.flowstate.action.speech',
+  EMIT_EVENT: 'app.flowstate.action.emitEvent',
 };
 
 const STEP_NSID = {
