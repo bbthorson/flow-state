@@ -40,7 +40,6 @@ export function DiscoverPage() {
   const discovering = useAuthStore((s) => s.discovering);
   const discoverFromFollows = useAuthStore((s) => s.discoverFromFollows);
   const addFlowFromTemplate = useAppStore((s) => s.addFlowFromTemplate);
-  const installFromNetwork = useAuthStore((s) => s.installFromNetwork);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -125,10 +124,6 @@ export function DiscoverPage() {
 
     // Zero-parameter recipe: install directly
     addFlowFromTemplate(instantiateRecipe(recipe));
-
-    if ('uri' in recipe && recipe.uri) {
-      await installFromNetwork(recipe as PublishedFlow);
-    }
 
     toast({
       title: 'Recipe Installed',

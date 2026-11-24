@@ -14,12 +14,10 @@ import { actionSteps } from '@/lib/steps';
 
 function NetworkFlowCard({ flow }: { flow: PublishedFlow }) {
   const addFlowFromTemplate = useAppStore((s) => s.addFlowFromTemplate);
-  const installFromNetwork = useAuthStore((s) => s.installFromNetwork);
   const { toast } = useToast();
 
-  const handleInstall = async () => {
+  const handleInstall = () => {
     addFlowFromTemplate(instantiateRecipe(flow));
-    await installFromNetwork(flow);
     toast({
       title: 'Flow Installed',
       description: `"${flow.name}" has been added to your flows.`,

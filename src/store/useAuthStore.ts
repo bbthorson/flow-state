@@ -11,7 +11,6 @@ import { Flow } from '@/types';
 import {
   publishFlow as publishFlowToNetwork,
   unpublishFlow as unpublishFlowFromNetwork,
-  recordInstall,
   discoverFlowsFromFollows,
   PublishedFlow,
 } from '@/services/atproto';
@@ -45,7 +44,6 @@ interface AuthState {
   skipOnboarding: () => void;
   publishFlow: (flow: Flow) => Promise<void>;
   unpublishFlow: (flowId: string) => Promise<void>;
-  installFromNetwork: (published: PublishedFlow) => Promise<void>;
   discoverFromFollows: () => Promise<void>;
 }
 
@@ -175,20 +173,6 @@ export const useAuthStore = create<AuthState>()(
           const { [flowId]: _, ...rest } = state.publishedFlows;
           return { publishedFlows: rest };
         });
-      },
-
-      installFromNetwork: async (published: PublishedFlow) => {
-        const { agent } = get();
-        // Record the install on the network if signed in
-        if (agent) {
-          try {
-            await recordInstall(agent, published.uri);
-          } catch (err) {
-            console.error('Failed to record install:', err);
-          }
-        }
-        // The actual local install is handled by useAppStore.addFlowFromTemplate
-        // called from the UI — this just records the network side
       },
 
       discoverFromFollows: async () => {

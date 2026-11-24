@@ -328,8 +328,8 @@ export function HowFlowsWorkPage() {
           </p>
           <p>
             <strong className="text-foreground">Installing</strong> a flow creates a local copy
-            on your device. You own it completely — edit, disable, or delete it at any time. An
-            install record is written to the network so authors can see how popular their flows are.
+            on your device. You own it completely — edit, disable, or delete it at any time. Installing
+            writes nothing to the network: nobody is told you installed it.
           </p>
           <p>
             Your data stays yours. Flows run entirely on-device, and your Bluesky account is only

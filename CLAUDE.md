@@ -88,7 +88,7 @@ Deploys are handled by Cloudflare's GitHub integration — pushing to `master` t
 - Handle resolution through Bluesky's public API (`https://bsky.social`)
 - Flows are published to the user's PDS as `app.flowstate.automation` records (v2). Discovery reads
   only that collection; old `app.flowstate.flow` records are ignored but can still be unpublished
-- Installs are recorded as `app.flowstate.install` records (AT URI reference + timestamp)
+- Installs are not recorded on the network (the old `app.flowstate.install` records were dropped: nothing read them, and they told the network what you run)
 - Discovery crawls the user's follow list client-side — no backend indexer. Records are
   validated against `src/lib/flow-schema.ts` on the way in; unknown trigger/action types are
   rejected even though the lexicon unions are open, because this build can't represent them

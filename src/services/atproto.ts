@@ -3,8 +3,6 @@ import type { Flow, FlowRecipe } from '@/types';
 import { AUTOMATION_COLLECTION, parseAutomationRecord, toAutomationRecord } from '@/lib/automation-record';
 import { sanitizeForRecipeExport } from '@/lib/recipe';
 
-const INSTALL_COLLECTION = 'app.flowstate.install';
-
 /**
  * A recipe read off someone's PDS. Only `app.flowstate.automation` (v2) records
  * are read; v1 `app.flowstate.flow` records are ignored.
@@ -64,20 +62,6 @@ export async function listPublishedFlows(agent: Agent, did: string): Promise<Pub
   return response.data.records
     .map((r) => recordToFlow(r.uri, r.value))
     .filter((flow): flow is PublishedFlow => flow !== null);
-}
-
-/** Write an install record to the authenticated user's PDS. */
-export async function recordInstall(agent: Agent, flowUri: string): Promise<{ uri: string }> {
-  const response = await agent.com.atproto.repo.createRecord({
-    repo: agent.assertDid,
-    collection: INSTALL_COLLECTION,
-    record: {
-      $type: INSTALL_COLLECTION,
-      flowUri,
-      installedAt: new Date().toISOString(),
-    },
-  });
-  return { uri: response.data.uri };
 }
 
 /** List flows published by people the authenticated user follows. */

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
-import { useAuthStore } from '@/store/useAuthStore';
 import { instantiateRecipe, recipeBlanks } from '@/lib/recipe';
 import type { FlowRecipe, VariableStep } from '@/types';
 import type { PublishedFlow } from '@/services/atproto';
@@ -33,7 +32,6 @@ export function RecipeInstallDialog({
   onSuccess,
 }: RecipeInstallDialogProps) {
   const addFlow = useAppStore((s) => s.addFlow);
-  const installFromNetwork = useAuthStore((s) => s.installFromNetwork);
   const { toast } = useToast();
 
   const [flowName, setFlowName] = useState(recipe?.name ?? '');
@@ -70,11 +68,6 @@ export function RecipeInstallDialog({
     });
 
     addFlow(flowToInstall);
-
-    // If this is a published flow from ATProto, track install record on user's PDS
-    if ('uri' in recipe && recipe.uri) {
-      await installFromNetwork(recipe as PublishedFlow);
-    }
 
     toast({
       title: 'Recipe Installed',

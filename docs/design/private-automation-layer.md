@@ -275,8 +275,8 @@ Each phase is useful on its own and does not depend on the next.
 **Phase E: recipes stay public**
 - Recipes move to `app.flowstate.automation` in the public repo (read both, write v2; section 8).
   Publishing is an explicit action and never the default home of a flow.
-- Decide the fate of `app.flowstate.install`: nothing reads those records today. Either drop them
-  or count them in the hub.
+- *Done (Nov 2026):* `app.flowstate.install` was dropped. Nothing read it, and it told the network
+  which flows you run.
 
 ## 8. Automation record v2, informed by Airglow
 
