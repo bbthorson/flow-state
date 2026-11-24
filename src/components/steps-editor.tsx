@@ -1,14 +1,13 @@
 import type { ReactNode } from 'react';
-import type { UseFieldArrayReturn, UseFormReturn } from 'react-hook-form';
+import type { UseFormReturn } from 'react-hook-form';
 import { ArrowDown, ArrowUp, Clock, Filter, Lock, PlusCircle, Trash2, Variable, XCircle, ChevronRight, GitBranch } from 'lucide-react';
 import type { AssertionOperator, FlowStep, RelativeDelay, TriggerType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ACTION_LABELS, ACTION_TYPES } from '@/lib/flow-constants';
-import { MAX_STEPS, newStepId } from '@/lib/steps';
+import { MAX_DEPTH, MAX_STEPS, newStepId, walkSteps } from '@/lib/steps';
 import { TRIGGER_DATA_KEYS } from '@/lib/flow-constants';
-import { StepsSummary } from '@/components/steps-summary';
 import type { FlowFormValues } from '@/components/flow-form';
 
 // The steps array is loosely typed in the form (see flow-form.tsx), so field
@@ -86,7 +85,7 @@ function SmallSelect({
   );
 }
 
-function ConditionEditor({ form, path, listId }: { form: AnyForm; path: string; listId: string }) {
+function ConditionEditor({ form, path, listId, branch }: { form: AnyForm; path: string; listId: string; branch: boolean }) {
   const assertions: any[] = form.watch(`${path}.assertions`) ?? [];
   const match: string = form.watch(`${path}.match`) ?? 'all';
   const set = (next: any[]) => form.setValue(`${path}.assertions`, next, { shouldDirty: true });
@@ -161,7 +160,7 @@ function ConditionEditor({ form, path, listId }: { form: AnyForm; path: string; 
       >
         <PlusCircle className="mr-1 h-3 w-3" /> Add check
       </Button>
-      <p className="text-[10px] text-muted-foreground">When this fails, the run stops here.</p>
+      {!branch && <p className="text-[10px] text-muted-foreground">When this fails, the whole run stops here.</p>}
     </div>
   );
 }
@@ -297,94 +296,129 @@ function DelayEditor({ form, path }: { form: AnyForm; path: string }) {
   );
 }
 
-export function StepsEditor({
-  form: typedForm,
-  stepsArray,
-  renderActionDetails,
-}: {
-  form: UseFormReturn<FlowFormValues>;
-  stepsArray: UseFieldArrayReturn<any, any, 'key'>;
+const newStep = {
+  action: (): FlowStep => ({ type: 'action', id: newStepId(), action: { type: 'LOG', details: {} } }),
+  condition: (): FlowStep => ({ type: 'condition', id: newStepId(), assertions: [{ field: '', operator: 'eq', value: '' }] }),
+  variable: (): FlowStep => ({ type: 'variable', id: newStepId(), name: '', kind: 'string', value: '' }),
+  cancelScheduled: (): FlowStep => ({ type: 'cancelScheduled', id: newStepId(), identifier: '' }),
+};
+
+interface ListContext {
+  form: AnyForm;
+  listId: string;
+  /** Total steps in the whole flow (the lexicon caps the total, not each list). */
+  full: boolean;
   renderActionDetails: (prefix: string) => ReactNode;
-}) {
-  const form = typedForm as unknown as AnyForm;
-  const { fields, append, remove, swap } = stepsArray;
-  const steps: FlowStep[] = form.watch('steps') ?? [];
-  const triggerType: TriggerType = form.watch('trigger.type');
-  const listId = 'condition-fields';
+}
 
-  const variableNames = steps.filter((s) => s.type === 'variable').map((s: any) => s.name).filter(Boolean);
-  const suggestions = [
-    ...(TRIGGER_DATA_KEYS[triggerType] ?? []).map((k) => `trigger.${k}`),
-    ...DEVICE_FIELDS,
-    ...variableNames,
-  ];
-
-  const add = (step: FlowStep) => append(step as any);
-  const full = fields.length >= MAX_STEPS;
+/**
+ * One list of steps: the flow's top level, or a branch's `then`/`else`. Lists
+ * nest through condition steps, so this renders itself recursively. Steps are
+ * keyed by their stable id rather than by react-hook-form field-array keys,
+ * which don't extend to nested arrays.
+ */
+function StepList({ ctx, path, depth }: { ctx: ListContext; path: string; depth: number }) {
+  const { form, listId, full, renderActionDetails } = ctx;
+  const steps: FlowStep[] = form.watch(path) ?? [];
+  const setSteps = (next: FlowStep[]) => form.setValue(path, next, { shouldDirty: true });
+  const move = (from: number, to: number) => {
+    const next = [...steps];
+    [next[from], next[to]] = [next[to], next[from]];
+    setSteps(next);
+  };
+  const add = (step: FlowStep) => setSteps([...steps, step]);
+  const nested = depth > 1;
 
   return (
     <div className="space-y-3">
-      <datalist id={listId}>
-        {suggestions.map((s) => (
-          <option key={s} value={s} />
-        ))}
-      </datalist>
-
-      {fields.map((field, index) => {
-        const step = steps[index];
-        if (!step) return null;
-        const path = `steps.${index}`;
+      {steps.map((step, index) => {
+        const stepPath = `${path}.${index}`;
+        const isBranch = step.type === 'condition' && !!step.then;
         const Icon =
-          step.type === 'action' ? ChevronRight : step.type === 'condition' ? (step.then ? GitBranch : Filter) : step.type === 'variable' ? (step.kind === 'secret' ? Lock : Variable) : XCircle;
+          step.type === 'action' ? ChevronRight : step.type === 'condition' ? (isBranch ? GitBranch : Filter) : step.type === 'variable' ? (step.kind === 'secret' ? Lock : Variable) : XCircle;
+        const label = `step ${index + 1}${nested ? ` (level ${depth})` : ''}`;
+        const branchChildren = isBranch ? (step.then?.length ?? 0) + (step.else?.length ?? 0) : 0;
 
         return (
-          <div key={field.key} className="space-y-3 rounded-md border p-3">
+          <div key={step.id} className="space-y-3 rounded-md border p-3">
             <div className="flex items-center gap-2">
               <span className="shrink-0 text-xs font-medium text-muted-foreground">#{index + 1}</span>
               <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               {step.type === 'action' ? (
-                <div className="flex-1">
+                <div className="min-w-0 flex-1">
                   <SmallSelect
-                    label={`Step ${index + 1} action`}
+                    label={`Action for ${label}`}
                     value={step.action?.type ?? 'LOG'}
-                    onChange={(v) => form.setValue(`${path}.action`, { type: v, details: {} }, { shouldDirty: true })}
+                    onChange={(v) => form.setValue(`${stepPath}.action`, { type: v, details: {} }, { shouldDirty: true })}
                     options={ACTION_TYPES.map((t) => ({ value: t, label: ACTION_LABELS[t] }))}
                   />
                 </div>
               ) : (
-                <span className="flex-1 text-sm font-medium">{step.type === 'condition' && step.then ? 'Branch' : STEP_LABELS[step.type]}</span>
+                <span className="flex-1 text-sm font-medium">{isBranch ? 'If' : STEP_LABELS[step.type]}</span>
               )}
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => swap(index, index - 1)} disabled={index === 0} aria-label={`Move step ${index + 1} up`}>
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => move(index, index - 1)} disabled={index === 0} aria-label={`Move ${label} up`}>
                 <ArrowUp className="h-3.5 w-3.5" />
               </Button>
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => swap(index, index + 1)} disabled={index === fields.length - 1} aria-label={`Move step ${index + 1} down`}>
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => move(index, index + 1)} disabled={index === steps.length - 1} aria-label={`Move ${label} down`}>
                 <ArrowDown className="h-3.5 w-3.5" />
               </Button>
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive" onClick={() => remove(index)} aria-label={`Remove step ${index + 1}`}>
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive" onClick={() => setSteps(steps.filter((_, j) => j !== index))} aria-label={`Remove ${label}`}>
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
 
             {step.type === 'action' && (
               <>
-                {renderActionDetails(`${path}.action`)}
-                <DelayEditor form={form} path={path} />
+                {renderActionDetails(`${stepPath}.action`)}
+                <DelayEditor form={form} path={stepPath} />
               </>
             )}
-            {step.type === 'condition' && !step.then && <ConditionEditor form={form} path={path} listId={listId} />}
-            {step.type === 'condition' && step.then && (
-              <div className="space-y-2">
-                <StepsSummary steps={[step]} />
-                <p className="text-[10px] text-muted-foreground">Branches can't be edited here yet; it's kept as is.</p>
-              </div>
+
+            {step.type === 'condition' && (
+              <>
+                <ConditionEditor form={form} path={stepPath} listId={listId} branch={isBranch} />
+                {isBranch ? (
+                  <>
+                    <BranchList ctx={ctx} path={`${stepPath}.then`} depth={depth + 1} title="Then" />
+                    <BranchList ctx={ctx} path={`${stepPath}.else`} depth={depth + 1} title="Otherwise" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled={branchChildren > 0}
+                      title={branchChildren > 0 ? 'Remove the steps inside first' : undefined}
+                      onClick={() => {
+                        const { then: _t, else: _e, ...gate } = step;
+                        form.setValue(stepPath, gate, { shouldDirty: true });
+                      }}
+                    >
+                      <Filter className="mr-1 h-3 w-3" /> Stop the run instead
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    disabled={depth >= MAX_DEPTH}
+                    title={depth >= MAX_DEPTH ? `Branches can nest ${MAX_DEPTH} levels deep` : undefined}
+                    onClick={() => form.setValue(stepPath, { ...step, then: [], else: [] }, { shouldDirty: true })}
+                  >
+                    <GitBranch className="mr-1 h-3 w-3" /> Branch instead (then / otherwise)
+                  </Button>
+                )}
+              </>
             )}
-            {step.type === 'variable' && <VariableEditor form={form} path={path} />}
+
+            {step.type === 'variable' && <VariableEditor form={form} path={stepPath} />}
             {step.type === 'cancelScheduled' && (
               <Input
                 className="h-8 font-mono text-xs"
                 placeholder="identifier to cancel"
-                value={form.watch(`${path}.identifier`) ?? ''}
-                onChange={(e) => form.setValue(`${path}.identifier`, e.target.value, { shouldDirty: true })}
+                value={form.watch(`${stepPath}.identifier`) ?? ''}
+                onChange={(e) => form.setValue(`${stepPath}.identifier`, e.target.value, { shouldDirty: true })}
                 aria-label="Identifier to cancel"
               />
             )}
@@ -393,19 +427,72 @@ export function StepsEditor({
       })}
 
       <div className="grid grid-cols-2 gap-2">
-        <Button type="button" variant="outline" size="sm" disabled={full} onClick={() => add({ type: 'action', id: newStepId(), action: { type: 'LOG', details: {} } })}>
+        <Button type="button" variant="outline" size="sm" disabled={full} onClick={() => add(newStep.action())}>
           <PlusCircle className="mr-2 h-4 w-4" /> Action
         </Button>
-        <Button type="button" variant="outline" size="sm" disabled={full} onClick={() => add({ type: 'condition', id: newStepId(), assertions: [{ field: '', operator: 'eq', value: '' }] })}>
+        <Button type="button" variant="outline" size="sm" disabled={full} onClick={() => add(newStep.condition())}>
           <Filter className="mr-2 h-4 w-4" /> Condition
         </Button>
-        <Button type="button" variant="outline" size="sm" disabled={full} onClick={() => add({ type: 'variable', id: newStepId(), name: '', kind: 'string', value: '' })}>
-          <Variable className="mr-2 h-4 w-4" /> Variable
-        </Button>
-        <Button type="button" variant="outline" size="sm" disabled={full} onClick={() => add({ type: 'cancelScheduled', id: newStepId(), identifier: '' })}>
-          <XCircle className="mr-2 h-4 w-4" /> Cancel scheduled
-        </Button>
+        {!nested && (
+          <>
+            <Button type="button" variant="outline" size="sm" disabled={full} onClick={() => add(newStep.variable())}>
+              <Variable className="mr-2 h-4 w-4" /> Variable
+            </Button>
+            <Button type="button" variant="outline" size="sm" disabled={full} onClick={() => add(newStep.cancelScheduled())}>
+              <XCircle className="mr-2 h-4 w-4" /> Cancel scheduled
+            </Button>
+          </>
+        )}
+        {nested && (
+          <Button type="button" variant="outline" size="sm" disabled={full} onClick={() => add(newStep.cancelScheduled())}>
+            <XCircle className="mr-2 h-4 w-4" /> Cancel
+          </Button>
+        )}
       </div>
+    </div>
+  );
+}
+
+function BranchList({ ctx, path, depth, title }: { ctx: ListContext; path: string; depth: number; title: string }) {
+  return (
+    <div className="space-y-2 border-l-2 pl-3">
+      <p className="text-xs font-semibold text-muted-foreground">{title}</p>
+      <StepList ctx={ctx} path={path} depth={depth} />
+    </div>
+  );
+}
+
+export function StepsEditor({
+  form: typedForm,
+  renderActionDetails,
+}: {
+  form: UseFormReturn<FlowFormValues>;
+  renderActionDetails: (prefix: string) => ReactNode;
+}) {
+  const form = typedForm as unknown as AnyForm;
+  const steps: FlowStep[] = form.watch('steps') ?? [];
+  const triggerType: TriggerType = form.watch('trigger.type');
+  const listId = 'condition-fields';
+
+  const all = [...walkSteps(steps)].map((s) => s.step);
+  const variableNames = all.filter((s) => s.type === 'variable').map((s: any) => s.name).filter(Boolean);
+  const suggestions = [
+    ...(TRIGGER_DATA_KEYS[triggerType] ?? []).map((k) => `trigger.${k}`),
+    ...DEVICE_FIELDS,
+    ...variableNames,
+  ];
+
+  const ctx: ListContext = { form, listId, full: all.length >= MAX_STEPS, renderActionDetails };
+
+  return (
+    <div className="space-y-3">
+      <datalist id={listId}>
+        {suggestions.map((s) => (
+          <option key={s} value={s} />
+        ))}
+      </datalist>
+      <StepList ctx={ctx} path="steps" depth={1} />
+      {ctx.full && <p className="text-[10px] text-muted-foreground">A flow can have at most {MAX_STEPS} steps.</p>}
     </div>
   );
 }

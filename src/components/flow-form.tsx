@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useForm, useFieldArray, UseFormReturn } from 'react-hook-form';
+import { useForm, UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Flow, TriggerType, ActionType, FlowStep } from '@/types';
 import { Switch } from '@/components/ui/switch';
 import { StepsEditor } from '@/components/steps-editor';
-import { actionSteps, newStepId } from '@/lib/steps';
+import { actionSteps, newStepId, walkSteps } from '@/lib/steps';
+import { parseRecipe } from '@/lib/flow-schema';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -56,6 +57,37 @@ interface FlowFormProps {
     flow?: Flow;
     onSave: (changes: FlowFormResult) => void;
     onCancel: () => void;
+}
+
+/**
+ * Turn a schema path like `steps.0.then.1.assertions.0.field: …` into
+ * "Step 1 → then step 2: …" so the person can find the step.
+ */
+function describeSaveError(reason: string, steps: FlowStep[]): string {
+    const [rawPath, ...rest] = reason.split(': ');
+    const raw = rest.join(': ') || reason;
+    const message = /at least 1 character/.test(raw) ? 'is empty' : raw;
+    const parts = rawPath.split('.');
+    if (parts[0] !== 'steps' || parts.length < 2) return `Can't save: ${reason}`;
+    const labels: string[] = [];
+    let list: FlowStep[] | undefined = steps;
+    let i = 1;
+    while (i < parts.length && list) {
+        const index = Number(parts[i]);
+        if (Number.isNaN(index)) break;
+        labels.push(`${labels.length ? `${parts[i - 1] === 'else' ? 'otherwise' : 'then'} step` : 'Step'} ${index + 1}`);
+        const step: FlowStep | undefined = list[index];
+        const next = parts[i + 1];
+        if (step?.type === 'condition' && (next === 'then' || next === 'else')) {
+            list = step[next];
+            i += 2;
+        } else {
+            i += 1;
+            break;
+        }
+    }
+    const field = parts.slice(i).join('.');
+    return `Can't save — ${labels.join(' → ')}${field ? ` (${field})` : ''}: ${message}`;
 }
 
 function PermissionWarning({ unmet, permissions }: {
@@ -129,6 +161,7 @@ function AiFlowInput({ onGenerated }: { onGenerated: (data: { name: string; trig
 export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
     const permissions = usePermissions();
     const aiAvailability = useLanguageModel();
+    const [saveError, setSaveError] = useState<string | null>(null);
     const defaultValues: FlowFormValues = {
         name: flow?.name ?? '',
         trigger: flow?.trigger ?? { type: 'MANUAL', details: {} },
@@ -144,10 +177,9 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
         defaultValues,
     });
 
-    const stepsArray = useFieldArray({ control: form.control, name: 'steps' as never, keyName: 'key' });
-
     const triggerType = form.watch('trigger.type');
     const watchedSteps = (form.watch('steps') ?? []) as FlowStep[];
+    const stepCount = [...walkSteps(watchedSteps)].length;
 
     // Compute unmet permissions for current form state
     const allPerms = new Set<DevicePermission>();
@@ -158,6 +190,14 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
     const unmetPerms = Array.from(allPerms).filter((p) => permissions[p] !== 'granted');
 
     function onSubmit(data: FlowFormValues) {
+        // Same check records get on the way in, so an unfinished step (an empty
+        // condition field, a webhook with no URL) can't be saved and fail at run time.
+        const checked = parseRecipe({ name: data.name, trigger: data.trigger, steps: data.steps });
+        if (!checked.ok) {
+            setSaveError(describeSaveError(checked.reason, data.steps as FlowStep[]));
+            return;
+        }
+        setSaveError(null);
         // Secrets only for variables that still exist and are secret.
         const secretNames = new Set(
             (data.steps as FlowStep[]).filter((s) => s.type === 'variable' && s.kind === 'secret').map((s) => (s as { name: string }).name),
@@ -192,12 +232,13 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                         form.setValue('name', data.name);
                         form.setValue('trigger.type', data.trigger.type as any);
                         form.setValue('trigger.details', data.trigger.details || {});
-                        stepsArray.replace(
+                        form.setValue(
+                            'steps',
                             data.actions.map((action) => ({
                                 type: 'action',
                                 id: newStepId(),
                                 action: { type: action.type as ActionType, details: action.details || {} },
-                            })) as never,
+                            })),
                         );
                     }} />
                 )}
@@ -599,11 +640,11 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
 
                   <AccordionItem value="steps">
                     <AccordionTrigger className="text-sm">
-                      ...do this — <span className="text-muted-foreground ml-1">{watchedSteps.length} step{watchedSteps.length !== 1 ? 's' : ''}</span>
+                      ...do this — <span className="text-muted-foreground ml-1">{stepCount} step{stepCount !== 1 ? 's' : ''}</span>
                     </AccordionTrigger>
                     <AccordionContent className="space-y-4">
                         <VariableHints type={triggerType} />
-                        <StepsEditor form={form} stepsArray={stepsArray} renderActionDetails={(prefix) => <ActionDetails prefix={prefix} form={form} />} />
+                        <StepsEditor form={form} renderActionDetails={(prefix) => <ActionDetails prefix={prefix} form={form} />} />
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
@@ -625,6 +666,12 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                 />
 
                 <PermissionWarning unmet={unmetPerms} permissions={permissions} />
+
+                {saveError && (
+                    <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+                        {saveError}
+                    </p>
+                )}
 
                 <Button type="submit" className="w-full" disabled={!isValid}>
                     Save Flow
