@@ -24,6 +24,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { VariableHints } from './variable-hints';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useLanguageModel, generateFlow } from '@/hooks/useLanguageModel';
+import type { GeneratedFlow } from '@/lib/generated-flow';
 import {
     TRIGGER_PERMISSIONS,
     ACTION_PERMISSIONS,
@@ -115,7 +116,7 @@ function PermissionWarning({ unmet, permissions }: {
     );
 }
 
-function AiFlowInput({ onGenerated }: { onGenerated: (data: { name: string; trigger: any; actions: any[] }) => void }) {
+function AiFlowInput({ onGenerated }: { onGenerated: (data: GeneratedFlow) => void }) {
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -230,16 +231,9 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                 {!flow && aiAvailability !== 'unavailable' && (
                     <AiFlowInput onGenerated={(data) => {
                         form.setValue('name', data.name);
-                        form.setValue('trigger.type', data.trigger.type as any);
-                        form.setValue('trigger.details', data.trigger.details || {});
-                        form.setValue(
-                            'steps',
-                            data.actions.map((action) => ({
-                                type: 'action',
-                                id: newStepId(),
-                                action: { type: action.type as ActionType, details: action.details || {} },
-                            })),
-                        );
+                        form.setValue('trigger.type', data.trigger.type);
+                        form.setValue('trigger.details', data.trigger.details);
+                        form.setValue('steps', data.steps);
                     }} />
                 )}
 
