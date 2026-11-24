@@ -32,6 +32,11 @@ function recordToFlow(uri: string, value: unknown): PublishedFlow | null {
   return { ...parsed.recipe, id: uri, authorDid: did, uri, did, rkey };
 }
 
+/** True for a record in the superseded v1 `app.flowstate.flow` collection. */
+export function isLegacyFlowUri(uri: string): boolean {
+  return uri.split('/')[3] === 'app.flowstate.flow';
+}
+
 /** Publish a flow to the authenticated user's PDS. */
 export async function publishFlow(agent: Agent, flow: Flow): Promise<{ uri: string; cid: string }> {
   const response = await agent.com.atproto.repo.createRecord({
@@ -40,6 +45,17 @@ export async function publishFlow(agent: Agent, flow: Flow): Promise<{ uri: stri
     record: flowToRecord(flow),
   });
   return { uri: response.data.uri, cid: response.data.cid };
+}
+
+/** Overwrite an already published automation in place, keeping its URI. */
+export async function updatePublishedFlow(agent: Agent, rkey: string, flow: Flow): Promise<{ uri: string }> {
+  const response = await agent.com.atproto.repo.putRecord({
+    repo: agent.assertDid,
+    collection: AUTOMATION_COLLECTION,
+    rkey,
+    record: flowToRecord(flow),
+  });
+  return { uri: response.data.uri };
 }
 
 /**

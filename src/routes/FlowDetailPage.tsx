@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate, Navigate, Link } from 'react-router';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { isLegacyFlowUri } from '@/services/atproto';
 import { usePermissions } from '@/hooks/usePermissions';
 import { getFlowPermissions, PERMISSION_LABELS } from '@/lib/permissions';
 import { TRIGGER_LABELS, triggerSummary } from '@/lib/flow-constants';
@@ -31,6 +32,7 @@ import {
   GlobeLock,
   ShieldAlert,
   FlaskConical,
+  RefreshCw,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -63,6 +65,7 @@ export function FlowDetailPage() {
   const publishedFlows = useAuthStore((s) => s.publishedFlows);
   const publishFlow = useAuthStore((s) => s.publishFlow);
   const unpublishFlow = useAuthStore((s) => s.unpublishFlow);
+  const republishFlow = useAuthStore((s) => s.republishFlow);
 
   const permissions = usePermissions();
 
@@ -84,6 +87,7 @@ export function FlowDetailPage() {
   }
 
   const isPublished = !!publishedFlows[flow.id];
+  const isLegacy = isPublished && isLegacyFlowUri(publishedFlows[flow.id].uri);
   const requiredPerms = getFlowPermissions(flow);
   const unmetPerms = requiredPerms.filter((p) => permissions[p] !== 'granted');
 
@@ -98,6 +102,27 @@ export function FlowDetailPage() {
   const handleDelete = () => {
     deleteFlow(flow.id);
     navigate('/');
+  };
+
+  const handleRepublish = async () => {
+    setPublishing(true);
+    try {
+      await republishFlow(flow);
+      toast({
+        title: isLegacy ? 'Republished' : 'Published copy updated',
+        description: isLegacy
+          ? `"${flow.name}" is published in the new format; the old record was removed.`
+          : `The network copy of "${flow.name}" now matches this flow.`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Update failed',
+        description: err instanceof Error ? err.message : 'Something went wrong.',
+        variant: 'destructive',
+      });
+    } finally {
+      setPublishing(false);
+    }
   };
 
   const handlePublishToggle = async () => {
@@ -176,6 +201,19 @@ export function FlowDetailPage() {
             Edit
           </Button>
         </div>
+
+        {agent && isLegacy && (
+          <p className="text-xs text-muted-foreground">
+            Published in the old format, which this version of Flow State no longer reads — nobody can discover it until you republish.
+          </p>
+        )}
+
+        {agent && isPublished && (
+          <Button variant="outline" onClick={handleRepublish} disabled={publishing}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            {isLegacy ? 'Republish in the new format' : 'Update published copy'}
+          </Button>
+        )}
 
         {agent && (
           <Button

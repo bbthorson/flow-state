@@ -11,6 +11,8 @@ import { Flow } from '@/types';
 import {
   publishFlow as publishFlowToNetwork,
   unpublishFlow as unpublishFlowFromNetwork,
+  updatePublishedFlow,
+  isLegacyFlowUri,
   discoverFlowsFromFollows,
   PublishedFlow,
 } from '@/services/atproto';
@@ -44,6 +46,13 @@ interface AuthState {
   skipOnboarding: () => void;
   publishFlow: (flow: Flow) => Promise<void>;
   unpublishFlow: (flowId: string) => Promise<void>;
+  /**
+   * Bring the published copy up to date with the local flow. A v2 record is
+   * overwritten in place (same URI, so forks keep pointing at it). A v1
+   * `app.flowstate.flow` record is replaced: the v2 record is written first,
+   * so a failure never leaves the flow unpublished.
+   */
+  republishFlow: (flow: Flow) => Promise<void>;
   discoverFromFollows: () => Promise<void>;
 }
 
@@ -173,6 +182,30 @@ export const useAuthStore = create<AuthState>()(
           const { [flowId]: _, ...rest } = state.publishedFlows;
           return { publishedFlows: rest };
         });
+      },
+
+      republishFlow: async (flow: Flow) => {
+        const { agent, publishedFlows } = get();
+        if (!agent) throw new Error('Not signed in');
+        const old = publishedFlows[flow.id];
+
+        if (old && !isLegacyFlowUri(old.uri)) {
+          await updatePublishedFlow(agent, old.rkey, flow);
+          return;
+        }
+
+        const { uri } = await publishFlowToNetwork(agent, flow);
+        const rkey = uri.split('/').pop()!;
+        set((state) => ({ publishedFlows: { ...state.publishedFlows, [flow.id]: { uri, rkey } } }));
+
+        if (old && old.uri !== uri) {
+          try {
+            await unpublishFlowFromNetwork(agent, old.uri);
+          } catch (err) {
+            // The v2 record is live; the old one is ignored by discovery anyway.
+            console.warn('[flow-state] Republished, but could not delete the old record', old.uri, err);
+          }
+        }
       },
 
       discoverFromFollows: async () => {
