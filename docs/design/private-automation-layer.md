@@ -194,8 +194,8 @@ use neither library.
 - **Longer sessions.** Authorization servers give confidential clients longer sessions than public ones.
 - **A smaller app.** If PDS calls go through the hub, the browser can drop the ~242 kB gzip OAuth
   client in favour of the package's small headless client or `<bsky-sign-in>` element.
-- **Hub identity for free.** The session cookie proves the user's DID to the hub. This replaces the
-  `getServiceAuth` JWT idea in open question 5 for signed-in users.
+- **Hub identity for free.** The session cookie proves the user's DID to the hub. For signed-in users, this replaces
+  the earlier idea of a separate `com.atproto.server.getServiceAuth` JWT.
 - **Built for Workers.** It handles what the stock libraries get wrong there: Worker-safe
   DID and handle resolution, sealed D1/KV stores, and a Durable Object lock so concurrent token
   refreshes don't sign users out.
