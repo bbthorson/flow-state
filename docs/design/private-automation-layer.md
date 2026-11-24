@@ -160,8 +160,9 @@ Worker: a fetch handler plus one Durable Object **per user**.
      more flows and revocable on its own.
    - The token lives only on the hub and in the sender's config, never in the flow record.
 3. **Space syncer (once Spaces launch).** Publishes a service DID, receives space-host
-   notifications, and obtains space credentials using short-lived delegations from the user. It
-   never holds OAuth refresh tokens. Built on `@bsky/jetstream` in `spaces` mode when that ships.
+   notifications, and obtains space credentials using delegation tokens from the user's PDS. It can
+   do this with the app closed because the hub holds the user's OAuth session (see "Authentication"
+   below). Built on `@bsky/jetstream` in `spaces` mode when that ships.
 4. **Fan-out.** Matches incoming events against the user's background-capable triggers (a small
    index the app uploads: event name, source, flow id; no flow bodies). If the urgency qualifies,
    it sends Web Push with the event as an encrypted payload.
@@ -169,8 +170,50 @@ Worker: a fetch handler plus one Durable Object **per user**.
 **What the hub must not do**
 
 - It does not store event content beyond delivery. The DO keeps a short retry queue and cursors, not history.
-- It does not hold flow definitions or secrets. It only knows enough to route.
+- It does not hold flow definitions or flow secrets (webhook tokens, API keys). It only knows enough to route.
+  The OAuth session is the one credential it does hold.
 - It does not run actions. Execution stays on the device.
+
+### Authentication: move to `@bbthorson/atproto-cf-auth` when the hub ships
+
+**Decision.** Until the hub exists, keep `@atproto/oauth-client-browser` (`src/lib/atproto.ts`): a
+public client with the browser talking to the PDS directly. When Phase B starts, move signed-in
+users to [`@bbthorson/atproto-cf-auth`](https://github.com/bbthorson/atproto-cf-auth) in its
+default `session` mode, running inside the hub Worker as a confidential client. Signed-out users
+use neither library.
+
+**Why, once there is a hub.**
+- **Background Spaces access.** Delegation tokens come from the user's PDS and require their OAuth
+  session. If only the browser has the session, the hub can only sync while the app is open. The
+  [space sync post](https://atproto.com/blog/space-sync) describes this gap: a syncer whose
+  delegating user goes away has to find another reader or stop.
+- **Space scopes that don't break sign-in.** Asking a PDS for a scope it doesn't serve fails the
+  entire login (`invalid_scope`). `conditionalScopes` with
+  `pdsServesMethod("com.atproto.space.createSpace")` asks for space scopes only where Spaces are
+  live, which matters throughout the rollout.
+- **Longer sessions.** Authorization servers give confidential clients longer sessions than public ones.
+- **A smaller app.** If PDS calls go through the hub, the browser can drop the ~242 kB gzip OAuth
+  client in favour of the package's small headless client or `<bsky-sign-in>` element.
+- **Hub identity for free.** The session cookie proves the user's DID to the hub. This replaces the
+  `getServiceAuth` JWT idea in open question 5 for signed-in users.
+- **Built for Workers.** It handles what the stock libraries get wrong there: Worker-safe
+  DID and handle resolution, sealed D1/KV stores, and a Durable Object lock so concurrent token
+  refreshes don't sign users out.
+
+**What it costs.**
+- **The hub holds refresh tokens** (sealed under a Worker secret, alongside DPoP keys). This is the
+  largest privacy change in the design. A compromised hub could act as its users on their PDSes
+  within the granted scopes. Keep scopes narrow (`atproto`, the `app.flowstate.*` collections, the
+  flow-state space types), never `transition:generic`.
+- **Sign-in depends on the hub.** If the hub is down, sign-in, publishing and discovery all stop.
+  Local flows keep working.
+- **One sign-in path.** Don't run it alongside `oauth-client-browser`, which would mean two
+  separate sign-ins and two sessions. Existing users sign in once more at the cut-over; Phase C's
+  new scope forces that anyway, so do both together.
+- **The trust-boundary rule still applies.** Records the hub proxies from other people's PDSes go
+  through `parseFlowRecord` / `parseEventRecord` on the device as they do now. The hub is not a
+  validation layer.
+- **Self-hosters** need their own `SESSION_SECRET` and D1 database. Users who switch hubs sign in again.
 
 **Privacy cost, stated plainly.** The hub sees event content in transit, and so does any space host.
 Web Push payloads are encrypted from the hub to the device (RFC 8291), so the push service (Google)
@@ -212,9 +255,13 @@ Each phase is useful on its own and does not depend on the next.
 - A service-worker executor for NOTIFICATION, WEBHOOK, LOG and local emitEvent, with the IndexedDB
   mirror of background-capable flows and secrets.
 - `hubSource` triggers. This is the first time a flow runs with the app closed.
+- Hub auth: `atproto-cf-auth` in the hub Worker. Signed-out users register with a device keypair,
+  so Phase B doesn't force anyone to sign in.
 
 **Phase C: personal space (once Spaces ship in the PDS and SDK)**
-- A new OAuth scope, `space:app.flowstate.space.personal`, which means existing users sign in again.
+- Cut sign-in over from `oauth-client-browser` to `atproto-cf-auth`, with the new space scope
+  (`space:app.flowstate.space.personal`) requested through `conditionalScopes`. Existing users
+  sign in again once, for both changes together.
 - Sync flow instances (without secrets), blocks and event history across devices.
 - Vault export/import stays for people who don't sign in.
 
@@ -244,8 +291,8 @@ Each phase is useful on its own and does not depend on the next.
 5. **Hub tenancy.** *Recommended:* one shared, multi-tenant hub run by the project, with
    self-hosting as an option.
    - Each user gets a Durable Object addressed by their DID, so they are isolated without separate deployments.
-   - There are no hub accounts. Signed-in users prove their DID with an atproto service-auth JWT
-     (`com.atproto.server.getServiceAuth`, `aud` = the hub's `did:web`), and signed-out users get a device-generated keypair.
+   - There are no hub accounts. Signed-in users are identified by their `atproto-cf-auth` session
+     (see "Authentication" in section 5), and signed-out users get a device-generated keypair.
    - Self-hosting means the same code behind a configurable hub URL in Settings. Switching hubs means
      re-subscribing to push, because subscriptions are bound to the hub's VAPID key.
    - It still needs per-sender and per-DID rate limits.
