@@ -241,8 +241,14 @@ Each phase is useful on its own and does not depend on the next.
    puts three in one file for review; they split at implementation time.
 4. **Aggregate triggers** ("everyone has left", "two of three agree"). Is this a trigger type of its
    own, or a small state machine evaluated over recent events?
-5. **Hub tenancy.** Is it one shared hub run by the project, or one per user (self-hosted)? It
-   affects whether the hub needs its own accounts and abuse controls.
+5. **Hub tenancy.** *Recommended:* one shared, multi-tenant hub run by the project, with
+   self-hosting as an option.
+   - Each user gets a Durable Object addressed by their DID, so they are isolated without separate deployments.
+   - There are no hub accounts. Signed-in users prove their DID with an atproto service-auth JWT
+     (`com.atproto.server.getServiceAuth`, `aud` = the hub's `did:web`), and signed-out users get a device-generated keypair.
+   - Self-hosting means the same code behind a configurable hub URL in Settings. Switching hubs means
+     re-subscribing to push, because subscriptions are bound to the hub's VAPID key.
+   - It still needs per-sender and per-DID rate limits.
 6. **Encryption at rest for tier 1–3.** Which fields justify device-side encryption, and how does a
    new device get the key (QR pairing from an existing device)?
 7. **iOS.** Web Push for installed PWAs works on iOS 16.4+, but the deep-link and Shortcuts bridge
