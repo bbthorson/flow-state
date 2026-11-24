@@ -1,6 +1,7 @@
 import React from 'react';
 import { TriggerType } from '@/types';
 import { Badge } from '@/components/ui/badge';
+import { TRIGGER_DATA_KEYS } from '@/lib/flow-constants';
 import { Info } from 'lucide-react';
 import {
   Tooltip,
@@ -13,20 +14,9 @@ interface VariableHintsProps {
   type: TriggerType;
 }
 
-const HINTS: Record<TriggerType, string[]> = {
-  NATIVE_BATTERY: ['level', 'charging'],
-  NETWORK: ['online', 'type', 'ssid'],
-  GEOLOCATION: ['event', 'latitude', 'longitude', 'distance'],
-  DEEP_LINK: ['any custom key passed in URL/payload'],
-  MANUAL: [],
-  IDLE: ['userState', 'screenState'],
-  DEVICE_MOTION: ['gesture', 'accelerationX', 'accelerationY', 'accelerationZ'],
-  SCREEN_ORIENTATION: ['orientation', 'angle'],
-  TIME: ['time', 'date', 'day'],
-};
 
 export function VariableHints({ type }: VariableHintsProps) {
-  const variables = HINTS[type];
+  const variables = TRIGGER_DATA_KEYS[type].map((k) => `trigger.${k}`);
 
   if (variables.length === 0 && type !== 'DEEP_LINK') return null;
 
@@ -43,7 +33,10 @@ export function VariableHints({ type }: VariableHintsProps) {
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              <p className="text-xs">Use these in your actions with {"{{variable_name}}"} syntax.</p>
+              <p className="text-xs">
+                Use in text and bodies as {"{{trigger.key}}"}. Also available: {"{{device.battery.level}}"},
+                {" {{time.hour}}"}, and variables by name. Trigger data can't go in webhook URLs or headers.
+              </p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -51,7 +44,7 @@ export function VariableHints({ type }: VariableHintsProps) {
       <div className="flex flex-wrap gap-1">
         {type === 'DEEP_LINK' ? (
           <span className="text-[10px] text-muted-foreground italic">
-            Any keys from query params or JSON payload
+            Any keys from query params or JSON payload, as {'{{trigger.<key>}}'}
           </span>
         ) : (
           variables.map((v) => (

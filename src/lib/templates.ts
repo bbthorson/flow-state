@@ -1,150 +1,121 @@
-import { Flow } from '@/types';
+import type { ActionStep, ActionType, ConditionStep, Flow, FlowStep, VariableStep } from '@/types';
+import { newStepId } from '@/lib/steps';
 
-export type FlowTemplate = Omit<Flow, 'id'>;
+export type FlowTemplate = Omit<Flow, 'id' | 'createdAt'>;
+
+const act = (type: ActionType, details: Record<string, any>, extra?: Partial<ActionStep>): ActionStep => ({
+  type: 'action',
+  id: newStepId(),
+  action: { type, details },
+  ...extra,
+});
+
+const when = (assertions: ConditionStep['assertions'], extra?: Partial<ConditionStep>): ConditionStep => ({
+  type: 'condition',
+  id: newStepId(),
+  assertions,
+  ...extra,
+});
+
+const variable = (name: string, extra: Omit<VariableStep, 'type' | 'id' | 'name'>): VariableStep => ({
+  type: 'variable',
+  id: newStepId(),
+  name,
+  ...extra,
+});
+
+const starter = (t: Omit<FlowTemplate, 'dryRun'> & { steps: FlowStep[] }): FlowTemplate => ({ dryRun: false, ...t });
 
 export const STARTER_FLOWS: FlowTemplate[] = [
-  {
+  starter({
     name: 'Low Battery Alert',
     description: 'Get notified as soon as your device battery drops below 20% while unplugged.',
     tags: ['battery', 'utility'],
-    enabled: true,
-    trigger: {
-      type: 'NATIVE_BATTERY',
-      details: { charging: false, level: 0.2 },
-    },
-    actions: [
-      {
-        type: 'NOTIFICATION',
-        details: {
-          title: 'Battery Low',
-          body: 'Your battery is below 20%. Consider plugging in.',
-        },
-      },
-    ],
-  },
-  {
+    active: true,
+    trigger: { type: 'NATIVE_BATTERY', details: { charging: false, level: 0.2 } },
+    steps: [act('NOTIFICATION', { title: 'Battery Low', body: 'Your battery is below 20%. Consider plugging in.' })],
+  }),
+  starter({
     name: 'Home WiFi Connect',
     description: 'Trigger a welcome notification when you connect to your home wireless network.',
     tags: ['network', 'home'],
-    enabled: false,
-    trigger: {
-      type: 'NETWORK',
-      details: { online: true, ssid: 'Home-WiFi' },
-    },
-    actions: [
-      {
-        type: 'NOTIFICATION',
-        details: {
-          title: 'Welcome Home',
-          body: 'You connected to your home network.',
-        },
-      },
-    ],
-  },
-  {
+    active: false,
+    trigger: { type: 'NETWORK', details: { online: true } },
+    steps: [act('NOTIFICATION', { title: 'Welcome Home', body: 'You connected to your home network.' })],
+  }),
+  starter({
     name: 'Manual Webhook Ping',
     description: 'Test one-tap automation execution with a local notification.',
     tags: ['test', 'utility'],
-    enabled: true,
-    trigger: {
-      type: 'MANUAL',
-      details: {},
-    },
-    actions: [
-      {
-        type: 'NOTIFICATION',
-        details: {
-          title: 'Manual Trigger',
-          body: 'Flow State ran a manual flow successfully.',
-        },
-      },
-    ],
-  },
-  {
+    active: true,
+    trigger: { type: 'MANUAL', details: {} },
+    steps: [act('NOTIFICATION', { title: 'Manual Trigger', body: 'Flow State ran a manual flow successfully.' })],
+  }),
+  starter({
     name: 'Shake to Share',
-    description: 'Shake your phone to open the native share sheet with a custom message.',
+    description: 'Shake your phone to open the share sheet — only during the day, so a bumpy night bus stays quiet.',
     tags: ['motion', 'social'],
-    enabled: false,
-    trigger: {
-      type: 'DEVICE_MOTION',
-      details: { gesture: 'SHAKE' },
-    },
-    actions: [
-      {
-        type: 'WEB_SHARE',
-        details: {
-          title: 'Shared via Flow State',
-          text: 'Check this out!',
-        },
-      },
+    active: false,
+    trigger: { type: 'DEVICE_MOTION', details: { gesture: 'SHAKE' } },
+    steps: [
+      when(
+        [
+          { field: 'time.hour', operator: 'gte', value: '8' },
+          { field: 'time.hour', operator: 'lt', value: '22' },
+        ],
+        { comment: 'Daytime only' },
+      ),
+      act('WEB_SHARE', { title: 'Shared via Flow State', text: 'Check this out!' }),
     ],
-  },
-  {
+  }),
+  starter({
     name: 'Morning Kickoff',
-    description: 'Start your workday at 9:00 AM with a morning focus prompt.',
+    description: 'Start your workday at 9:00 AM with a morning focus prompt, and a nudge ten minutes later.',
     tags: ['time', 'routine'],
-    enabled: false,
-    trigger: {
-      type: 'TIME',
-      details: { time: '09:00', days: [1, 2, 3, 4, 5] },
-    },
-    actions: [
-      {
-        type: 'NOTIFICATION',
-        details: {
-          title: 'Start your day',
-          body: 'It\'s {{time}} on {{day}} — time to get into flow.',
-        },
-      },
+    active: false,
+    trigger: { type: 'TIME', details: { time: '09:00', days: [1, 2, 3, 4, 5] } },
+    steps: [
+      act('NOTIFICATION', {
+        title: 'Start your day',
+        body: "It's {{trigger.time}} on {{trigger.day}} — time to get into flow.",
+      }),
+      act(
+        'NOTIFICATION',
+        { title: 'Still with us?', body: 'Ten minutes in. Pick the one thing for this block.' },
+        { schedule: { identifier: 'morning-nudge', delay: { unit: 'm', value: { kind: 'literal', n: 10 } } } },
+      ),
     ],
-  },
-  {
+  }),
+  starter({
     name: 'Idle Screen Alert',
-    description: 'Vibrate and notify if your device screen remains inactive for 2 minutes.',
+    description: 'Notify if your device stays inactive — but only if it is not charging.',
     tags: ['idle', 'focus'],
-    enabled: false,
-    trigger: {
-      type: 'IDLE',
-      details: { threshold: 120000, detectScreen: false },
-    },
-    actions: [
-      {
-        type: 'NOTIFICATION',
-        details: {
-          title: 'Still there?',
-          body: 'You\'ve been idle for 2 minutes.',
-        },
-      },
+    active: false,
+    trigger: { type: 'IDLE', details: { threshold: 120000, detectScreen: false } },
+    steps: [
+      when([{ field: 'device.battery.charging', operator: 'eq', value: 'false' }]),
+      act('NOTIFICATION', { title: 'Still there?', body: "You've been idle for a while." }),
     ],
-  },
-  {
+  }),
+  starter({
     name: 'Discord Channel Alert',
     description: 'Post a webhook message to your Discord channel when battery is low.',
     tags: ['webhook', 'social', 'battery'],
-    enabled: false,
-    parameters: [
-      {
-        key: 'webhook_url',
+    active: false,
+    trigger: { type: 'NATIVE_BATTERY', details: { charging: false, level: 0.15 } },
+    steps: [
+      variable('webhook_url', {
+        kind: 'secret',
         label: 'Discord Webhook URL',
-        description: 'Your Discord channel incoming webhook URL',
-        type: 'secret',
+        note: 'Your Discord channel incoming webhook URL',
         required: true,
-      },
+      }),
+      act('WEBHOOK', {
+        url: '{{webhook_url}}',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: 'My phone battery just dropped below 15%!' }),
+      }),
     ],
-    trigger: {
-      type: 'NATIVE_BATTERY',
-      details: { charging: false, level: 0.15 },
-    },
-    actions: [
-      {
-        type: 'WEBHOOK',
-        details: {
-          url: '{{secrets.webhook_url}}',
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: '🔋 My phone battery just dropped below 15%!' }),
-        },
-      },
-    ],
-  },
+  }),
 ];

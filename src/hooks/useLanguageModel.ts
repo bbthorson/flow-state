@@ -46,7 +46,7 @@ Available action types and their details:
 - WAKE_LOCK: { duration?: number (ms) }
 - SPEECH: { text: string, rate?: number, pitch?: number, volume?: number }
 
-Actions support {{variable}} template syntax for trigger data.
+Actions can read trigger data as {{trigger.<key>}} (e.g. {{trigger.level}}) in text and bodies, never in webhook URLs or headers.
 
 Respond with ONLY valid JSON matching this schema:
 {

@@ -14,7 +14,7 @@ const TRIGGERS = [
     icon: Battery,
     description: 'Fires when your battery level or charging state changes.',
     permissions: ['battery-status'] as DevicePermission[],
-    variables: ['level', 'charging'],
+    variables: ['level', 'charging', 'previous.level'],
   },
   {
     type: 'NETWORK',
@@ -23,7 +23,7 @@ const TRIGGERS = [
     icon: Wifi,
     description: 'Fires when you go online/offline or connect to a specific Wi-Fi network.',
     permissions: ['network-information'] as DevicePermission[],
-    variables: ['online', 'type', 'ssid'],
+    variables: ['online'],
   },
   {
     type: 'GEOLOCATION',
@@ -32,7 +32,7 @@ const TRIGGERS = [
     icon: MapPin,
     description: 'Fires when your device enters or exits a geographic zone.',
     permissions: ['geolocation'] as DevicePermission[],
-    variables: ['event', 'latitude', 'longitude', 'distance'],
+    variables: ['event', 'distance'],
   },
   {
     type: 'DEEP_LINK',
@@ -59,7 +59,7 @@ const TRIGGERS = [
     icon: CalendarClock,
     description: 'Fires at a set time on chosen days — while the app is open. A PWA cannot wake in the background, so if the app is closed at the scheduled minute the flow waits for the next occurrence.',
     permissions: [] as DevicePermission[],
-    variables: ['time', 'date', 'day'],
+    variables: ['time', 'date', 'day', 'timestamp'],
   },
   {
     type: 'IDLE',
@@ -77,7 +77,7 @@ const TRIGGERS = [
     icon: Smartphone,
     description: 'Fires on physical gestures like shaking the device or placing it face down.',
     permissions: ['device-motion'] as DevicePermission[],
-    variables: ['gesture', 'accelerationX', 'accelerationY', 'accelerationZ'],
+    variables: ['gesture'],
   },
   {
     type: 'SCREEN_ORIENTATION',
@@ -197,8 +197,20 @@ export function HowFlowsWorkPage() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>
-            A flow has two parts: a <strong className="text-foreground">trigger</strong> (the event that starts it)
-            and one or more <strong className="text-foreground">actions</strong> (what happens when it fires).
+            A flow has a <strong className="text-foreground">trigger</strong> (the event that starts it)
+            and a list of <strong className="text-foreground">steps</strong> that run in order when it fires:
+          </p>
+          <ul className="list-disc space-y-1 pl-5">
+            <li><strong className="text-foreground">Actions</strong> do something. Any action can run later instead of now ("in 10 minutes").</li>
+            <li><strong className="text-foreground">Conditions</strong> check something — <span className="font-mono text-xs">device.battery.charging = false</span>, <span className="font-mono text-xs">time.hour ≥ 8</span> — and stop the run when it doesn't hold.</li>
+            <li><strong className="text-foreground">Variables</strong> name a value once. Secret variables stay on this device and are the only way to put a token in a webhook URL or header.</li>
+            <li><strong className="text-foreground">Cancel scheduled</strong> stops a delayed action by its identifier — "remind me unless I get home first".</li>
+          </ul>
+          <p>
+            Text fields can use <span className="font-mono text-xs">{'{{trigger.…}}'}</span>, <span className="font-mono text-xs">{'{{device.…}}'}</span>,{' '}
+            <span className="font-mono text-xs">{'{{time.…}}'}</span> and variables by name. Trigger data is never allowed into a
+            webhook URL or header, so a deep link can't redirect your webhooks. Turn on <strong className="text-foreground">dry run</strong> to
+            see what a flow would do without it doing anything.
           </p>
           <p>
             Everything runs on your device. No data is sent to any server unless you add a webhook action.
@@ -235,7 +247,7 @@ export function HowFlowsWorkPage() {
                         <span className="text-[10px] text-muted-foreground mr-1">Variables:</span>
                         {trigger.variables.map((v) => (
                           <Badge key={v} variant="secondary" className="text-[10px] py-0 px-1 font-mono">
-                            {`{{${v}}}`}
+                            {`{{trigger.${v}}}`}
                           </Badge>
                         ))}
                       </div>

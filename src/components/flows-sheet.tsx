@@ -14,7 +14,7 @@ export function FlowsSheet() {
   const updateFlow = useAppStore((s) => s.updateFlow);
   const addFlow = useAppStore((s) => s.addFlow);
 
-  const enabledCount = flows.filter((f) => f.enabled).length;
+  const enabledCount = flows.filter((f) => f.active).length;
 
   const handleFlowTap = (flowId: string) => {
     setOpen(false);
@@ -25,9 +25,10 @@ export function FlowsSheet() {
     setOpen(false);
     const id = addFlow({
       name: 'New Flow',
-      enabled: false,
+      active: false,
+      dryRun: false,
       trigger: { type: 'MANUAL', details: {} },
-      actions: [],
+      steps: [],
     });
     navigate(`/flows/${id}`);
   };
@@ -70,8 +71,8 @@ export function FlowsSheet() {
               {flows.map((flow) => (
                 <div key={flow.id} className="flex items-center gap-3 py-3">
                   <Switch
-                    checked={flow.enabled}
-                    onCheckedChange={(enabled) => updateFlow({ ...flow, enabled })}
+                    checked={flow.active}
+                    onCheckedChange={(active) => updateFlow({ ...flow, active })}
                     aria-label={`Enable ${flow.name}`}
                   />
                   <button

@@ -63,9 +63,13 @@ export function templateTrusted(
   return { ok: true, value: templateString(str, data) };
 }
 
-export async function executeWebhook(details: WebhookDetails, data: Record<string, any> = {}): Promise<ActionResult> {
+export async function executeWebhook(
+  details: WebhookDetails,
+  data: Record<string, any> = {},
+  trustedRoots: ReadonlySet<string> = TRUSTED_TEMPLATE_ROOTS,
+): Promise<ActionResult> {
   try {
-    const url = templateTrusted(details.url, data);
+    const url = templateTrusted(details.url, data, trustedRoots);
     if (!url.ok) {
       return {
         success: false,
@@ -79,7 +83,7 @@ export async function executeWebhook(details: WebhookDetails, data: Record<strin
     if (details.headers) {
       templatedHeaders = {};
       for (const [name, raw] of Object.entries(details.headers)) {
-        const value = templateTrusted(String(raw), data);
+        const value = templateTrusted(String(raw), data, trustedRoots);
         if (!value.ok) {
           return {
             success: false,

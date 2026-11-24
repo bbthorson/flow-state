@@ -1,9 +1,10 @@
 import * as z from 'zod';
 import { TRIGGER_TYPES, ACTION_TYPES } from '@/lib/flow-constants';
-import type { TriggerType, ActionType } from '@/types';
+import type { TriggerType, ActionType, FlowStep, FlowRecipe } from '@/types';
+import { RESERVED_ROOTS, checkStepLimits } from '@/lib/steps';
 
 /**
- * Runtime validation for `app.flowstate.flow` records.
+ * Runtime validation for automations (v2, `app.flowstate.automation`).
  *
  * Discovery crawls the follow graph and reads records straight off other
  * people's PDSes. Nothing on that path is under our control: a record can be
@@ -13,7 +14,11 @@ import type { TriggerType, ActionType } from '@/types';
  * `FlowCard` calls `triggerType.replace(...)` and `actions.map(...)` — and an
  * installed one would throw inside `useFlowTriggerManager` on every sensor tick.
  *
- * Mirrors `src/lexicons/app/flowstate/`. Keep the two in step.
+ * Records are converted from the lexicon's `$type` form into the local
+ * `{ type, details }` form first (`@/lib/automation-record`), then validated
+ * here. Vault imports and AI-generated flows go through the same check.
+ *
+ * Mirrors `docs/design/lexicons/` (v2). Keep the two in step.
  */
 
 /** Keeps unknown keys. Stripping them would change DEEP_LINK matching, which
@@ -130,43 +135,114 @@ function withTypedDetails<T extends string>(
     });
 }
 
-export const parameterDefinitionSchema = z.object({
-  key: z.string().min(1).max(64),
-  label: z.string().min(1).max(100),
-  description: z.string().max(300).optional(),
-  type: z.enum(['string', 'number', 'boolean', 'secret']),
-  required: z.boolean().optional(),
-  default: z.union([z.string(), z.number(), z.boolean()]).optional(),
+const triggerSchema = withTypedDetails(triggerTypeSchema, TRIGGER_DETAILS);
+const actionSchema = withTypedDetails(actionTypeSchema, ACTION_DETAILS);
+
+const stepId = z.string().min(1).max(32);
+const comment = z.string().max(1024).optional();
+
+const assertionSchema = z.object({
+  field: z.string().min(1).max(256),
+  operator: z
+    .enum(['eq', 'neq', 'contains', 'notContains', 'startsWith', 'endsWith', 'gt', 'gte', 'lt', 'lte', 'exists', 'notExists'])
+    .optional(),
+  value: z.string().max(1024).optional(),
+  comment,
 });
 
-export const flowRecordSchema = z.object({
-  name: z.string().min(1).max(256),
-  enabled: z.boolean(),
-  securityKey: z.string().optional(),
-  description: z.string().max(1000).optional(),
-  tags: z.array(z.string().min(1).max(30)).max(10).optional(),
-  forkedFrom: z.string().optional(),
-  visibility: z.enum(['public', 'space', 'private']).optional(),
-  parameters: z.array(parameterDefinitionSchema).optional(),
-  trigger: withTypedDetails(triggerTypeSchema, TRIGGER_DETAILS),
-  actions: z.array(withTypedDetails(actionTypeSchema, ACTION_DETAILS)).min(1),
+const relativeDelaySchema = z.object({
+  unit: z.enum(['ms', 's', 'm', 'h', 'd', 'w']),
+  value: z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('literal'), n: z.number().int().nonnegative() }),
+    z.object({ kind: z.literal('template'), expr: z.string().max(512) }),
+    z.object({ kind: z.literal('sum'), expr: z.string().max(512), offset: z.number().int() }),
+  ]),
 });
 
-export type FlowRecord = z.infer<typeof flowRecordSchema>;
+const reserved = new Set<string>(RESERVED_ROOTS);
+
+export const stepSchema: z.ZodType<FlowStep> = z.lazy(() =>
+  z.discriminatedUnion('type', [
+    z.object({
+      type: z.literal('condition'),
+      id: stepId,
+      match: z.enum(['all', 'any']).optional(),
+      assertions: z.array(assertionSchema).min(1).max(10),
+      then: z.array(stepSchema).max(25).optional(),
+      else: z.array(stepSchema).max(25).optional(),
+      comment,
+    }),
+    z.object({
+      type: z.literal('variable'),
+      id: stepId,
+      name: z
+        .string()
+        .regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/, 'variable names are letters, digits and _')
+        .max(64)
+        .refine((n) => !reserved.has(n), 'variable name shadows a reserved root'),
+      kind: z.enum(['string', 'number', 'boolean', 'secret']).optional(),
+      value: z.string().max(2048).optional(),
+      label: z.string().max(100).optional(),
+      note: z.string().max(1024).optional(),
+      required: z.boolean().optional(),
+      preserveOnDuplication: z.boolean().optional(),
+      comment,
+    }),
+    z.object({
+      type: z.literal('action'),
+      id: stepId,
+      name: z.string().max(64).optional(),
+      action: actionSchema,
+      schedule: z
+        .object({
+          identifier: z.string().min(1).max(512),
+          delay: relativeDelaySchema,
+          expireAfter: relativeDelaySchema.optional(),
+        })
+        .optional(),
+      comment,
+    }),
+    z.object({
+      type: z.literal('cancelScheduled'),
+      id: stepId,
+      identifier: z.string().min(1).max(512),
+      comment,
+    }),
+  ]),
+) as z.ZodType<FlowStep>;
+
+export const recipeSchema = z
+  .object({
+    name: z.string().min(1).max(256),
+    description: z.string().max(1000).optional(),
+    tags: z.array(z.string().min(1).max(30)).max(10).optional(),
+    forkedFromUri: z.string().optional(),
+    trigger: triggerSchema,
+    // Locally a new flow starts empty; records need at least one step (checked
+    // in parseAutomationRecord).
+    steps: z.array(stepSchema).max(25),
+  })
+  .superRefine((value, ctx) => {
+    const problem = checkStepLimits(value.steps as FlowStep[]);
+    if (problem) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['steps'], message: problem });
+  });
+
+export type ParsedRecipe = Omit<FlowRecipe, 'id' | 'authorDid'>;
+
+function firstIssue(error: z.ZodError): string {
+  const first = error.issues[0];
+  const path = first.path.length ? first.path.join('.') : '(root)';
+  return `${path}: ${first.message}`;
+}
 
 /**
- * Validate one record. Returns the parsed record, or `null` with the reason —
+ * Validate one recipe (local form). Returns the parsed value, or the reason —
  * callers skip the bad one and keep going rather than failing the whole crawl.
  */
-export function parseFlowRecord(
-  value: unknown,
-): { ok: true; record: FlowRecord } | { ok: false; reason: string } {
-  const result = flowRecordSchema.safeParse(value);
-  if (result.success) return { ok: true, record: result.data };
-
-  const first = result.error.issues[0];
-  const path = first.path.length ? first.path.join('.') : '(root)';
-  return { ok: false, reason: `${path}: ${first.message}` };
+export function parseRecipe(value: unknown): { ok: true; recipe: ParsedRecipe } | { ok: false; reason: string } {
+  const result = recipeSchema.safeParse(value);
+  if (result.success) return { ok: true, recipe: result.data as ParsedRecipe };
+  return { ok: false, reason: firstIssue(result.error) };
 }
 
 /** The validated shape of one action's details, keyed by its type. */
@@ -178,7 +254,7 @@ export type ActionDetailsFor<T extends ActionType> = z.infer<(typeof ACTION_DETA
  * Executors need concrete shapes (`executeWebhook` wants a `url`), and
  * `Record<string, any>` is not assignable to those — the call sites used to
  * paper over that with `as any`. Locally stored flows reach the executors
- * without ever passing through `parseFlowRecord` (vault imports, and anything
+ * without ever passing through `parseAutomationRecord` (vault imports, and anything
  * saved before that check existed), so the shape genuinely has to be checked
  * here rather than asserted.
  */

@@ -133,3 +133,16 @@ export function triggerSummary(trigger: { type: string; details: Record<string, 
       return '';
   }
 }
+
+/** Keys each trigger reports, readable as {{trigger.<key>}}. */
+export const TRIGGER_DATA_KEYS: Record<TriggerType, string[]> = {
+  NATIVE_BATTERY: ['level', 'charging', 'previous.level', 'previous.charging'],
+  NETWORK: ['online'],
+  GEOLOCATION: ['event', 'distance'],
+  DEEP_LINK: ['any custom key passed in URL/payload'],
+  MANUAL: [],
+  IDLE: ['userState', 'screenState'],
+  DEVICE_MOTION: ['gesture'],
+  SCREEN_ORIENTATION: ['orientation', 'angle'],
+  TIME: ['time', 'date', 'day', 'timestamp'],
+};

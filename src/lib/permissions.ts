@@ -1,4 +1,5 @@
-import { TriggerType, ActionType, Flow } from '@/types';
+import { TriggerType, ActionType, FlowRecipe } from '@/types';
+import { actionSteps } from '@/lib/steps';
 
 export type DevicePermission =
   | 'battery-status'
@@ -70,11 +71,11 @@ export const ACTION_PERMISSIONS: Record<ActionType, DevicePermission[]> = {
 };
 
 /** Get all unique permissions required by a flow or recipe. */
-export function getFlowPermissions(flow: Pick<Flow, 'trigger' | 'actions'>): DevicePermission[] {
+export function getFlowPermissions(flow: Pick<FlowRecipe, 'trigger' | 'steps'>): DevicePermission[] {
   const perms = new Set<DevicePermission>();
-  for (const p of TRIGGER_PERMISSIONS[flow.trigger.type]) perms.add(p);
-  for (const action of flow.actions) {
-    for (const p of ACTION_PERMISSIONS[action.type]) perms.add(p);
+  for (const p of TRIGGER_PERMISSIONS[flow.trigger.type] ?? []) perms.add(p);
+  for (const { action } of actionSteps(flow.steps)) {
+    for (const p of ACTION_PERMISSIONS[action.type] ?? []) perms.add(p);
   }
   return Array.from(perms);
 }

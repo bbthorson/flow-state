@@ -170,7 +170,7 @@ export const useAuthStore = create<AuthState>()(
         const ref = publishedFlows[flowId];
         if (!ref) return;
 
-        await unpublishFlowFromNetwork(agent, ref.rkey);
+        await unpublishFlowFromNetwork(agent, ref.uri);
         set((state) => {
           const { [flowId]: _, ...rest } = state.publishedFlows;
           return { publishedFlows: rest };

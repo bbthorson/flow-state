@@ -7,6 +7,8 @@ import { PermissionHint } from '@/components/permission-hint';
 import type { FlowRecipe } from '@/types';
 import type { PublishedFlow } from '@/services/atproto';
 import { Plus, Sliders, Globe, Lock, GitFork, User } from 'lucide-react';
+import { actionSteps } from '@/lib/steps';
+import { recipeBlanks } from '@/lib/recipe';
 
 interface RecipeCardProps {
   recipe: FlowRecipe | PublishedFlow;
@@ -27,9 +29,10 @@ export function RecipeCard({
   onTagClick,
 }: RecipeCardProps) {
   const Icon = triggerIcon(recipe.trigger.type);
-  const parameters = recipe.parameters ?? [];
-  const hasSecrets = parameters.some((p) => p.type === 'secret');
-  const hasParams = parameters.length > 0;
+  const blanks = recipeBlanks(recipe);
+  const hasSecrets = blanks.some((v) => v.kind === 'secret');
+  const hasParams = blanks.length > 0;
+  const actions = actionSteps(recipe.steps).map((s) => s.action);
 
   // Check required permissions if permission map provided
   const requiredPerms = permissions ? getFlowPermissions(recipe) : [];
@@ -95,17 +98,17 @@ export function RecipeCard({
         {/* Actions Summary */}
         <div className="space-y-1.5 rounded-md bg-muted/40 p-2 text-xs">
           <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
-            {recipe.actions.length} {recipe.actions.length === 1 ? 'Action' : 'Actions'}
+            {actions.length} {actions.length === 1 ? 'Action' : 'Actions'}
           </div>
-          {recipe.actions.slice(0, 2).map((action, i) => (
+          {actions.slice(0, 2).map((action, i) => (
             <div key={i} className="flex items-center gap-1 text-[11px] text-muted-foreground truncate">
               <span className="font-semibold text-foreground/80">{action.type}:</span>
               <span className="truncate">{actionPreview(action)}</span>
             </div>
           ))}
-          {recipe.actions.length > 2 && (
+          {actions.length > 2 && (
             <div className="text-[10px] text-muted-foreground italic">
-              +{recipe.actions.length - 2} more
+              +{actions.length - 2} more
             </div>
           )}
         </div>
