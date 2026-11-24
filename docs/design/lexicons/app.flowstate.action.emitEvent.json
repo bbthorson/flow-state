@@ -1,0 +1,41 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.action.emitEvent",
+  "description": "DRAFT — not wired into the app. Writes an app.flowstate.event so other flows can react: on this device, in a group, or in someone's flow inbox. This is what turns device triggers into group automations (my geofence -> my family's phones).",
+  "defs": {
+    "main": {
+      "type": "object",
+      "description": "Emit-event action configuration.",
+      "required": ["target", "event"],
+      "properties": {
+        "target": {
+          "type": "union",
+          "refs": [
+            "app.flowstate.trigger.event#localSource",
+            "app.flowstate.trigger.event#spaceSource"
+          ],
+          "closed": false
+        },
+        "event": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "title": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "May use templates from this flow's own trigger data."
+        },
+        "body": { "type": "string", "maxLength": 1000 },
+        "urgency": {
+          "type": "string",
+          "knownValues": ["low", "normal", "high"],
+          "default": "normal"
+        },
+        "ttlSeconds": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 604800,
+          "description": "Sets expiresAt = now + ttlSeconds."
+        }
+      },
+      "permissions": []
+    }
+  }
+}

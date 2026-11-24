@@ -1,0 +1,249 @@
+# Flow State as a private automation layer
+
+**Status:** Design draft, not implemented
+**Date:** 2026-11-24
+**Draft lexicons:** [`docs/design/lexicons/`](./lexicons/)
+
+## 1. The reframe
+
+Today Flow State treats the network as a place to **publish**. A flow is either on the device or
+public on your PDS. The only social primitive is "post a recipe, crawl your follows to find recipes."
+
+This draft reframes it as a **private automation layer** for one person and the few groups they
+belong to (a household, a team, a care circle). Most of what automation touches is private: where
+you are, when you got home, whether your phone is charging, who is on call. Making that public is
+off the table, and keeping it locked to one device is too limiting.
+
+| | Today | Proposed |
+|---|---|---|
+| Default network tier | Public (PDS records) | Private (personal and group spaces) |
+| Public | The only way to share | One explicit action: "publish as recipe" |
+| Multi-device | Manual vault export/import | Personal space syncs your setup |
+| Other people | Can copy your recipes | Can trigger your flows, if you let them |
+| Outside apps | Deep link with a shared secret | Per-sender inbox, revocable |
+| App closed | Nothing runs | High-urgency events wake the device (Web Push) |
+
+The core idea: **flows react to events, and events can come from anywhere you trust**: this
+device's sensors, your other devices, people in your groups, or apps you've connected. The device
+engine stays the product. The network becomes a private event bus around it.
+
+## 2. Privacy tiers
+
+Every piece of data gets exactly one home. The rule is that data only moves *up* this table when
+a feature needs it to.
+
+| Tier | Lives in | Who can read | What goes here |
+|---|---|---|---|
+| 0. Device | localStorage / IndexedDB | This device | Secrets, raw sensor readings, location history, any future phenotype inputs |
+| 1. Personal space | Your PDS, `app.flowstate.space.personal` (skey `self`) | You (your devices and apps you authorize) | Flow instances (secrets stripped), day-plan blocks, event history, device list |
+| 2. Group space | Members' PDSes, `app.flowstate.space.group` | Group members | Shared flows, events members emit to each other |
+| 3. Flow inbox | Writers' PDSes, `app.flowstate.space.inbox` | You plus the writers you allowed | Events from specific people, bots and services into one flow |
+| 4. Public | Your PDS, `app.flowstate.flow` | Everyone | Recipes, explicitly published, run through `sanitizeForRecipeExport` |
+
+**Spaces are access control, not encryption.** Your PDS operator, each writer's PDS operator and
+the space host can read tier 1–3 content. That is the same trust you already give your PDS, but it
+means:
+
+- Secrets (webhook URLs with tokens, API keys) stay in tier 0. They never sync, even to your personal space.
+  A new device asks you to re-enter them, the same way recipe parameters work today.
+- Anything genuinely sensitive should be encrypted on the device before it is written. This is out
+  of scope for v1. Its blocker is getting a key to each of your devices, not the cryptography.
+
+### Consequence for the Kairos roadmap
+
+[`kairos-roadmap.md`](../kairos-roadmap.md) currently puts session records, override
+justifications and phenotype weight profiles on the PDS as public records. Under this design those
+move to tier 1 (personal space). Shared weight profiles meant for others become tier 4 recipes. A
+signed, public log of someone's self-control overrides should not be the default.
+
+## 3. Events: the new core primitive
+
+Three draft lexicons ([`lexicons/`](./lexicons/)):
+
+- **`app.flowstate.event`** (record): `event` name, optional `title`/`body`, flat `data` map,
+  `urgency`, `createdAt`, `expiresAt`. The sender is the record's author DID. There is no
+  self-declared `from`, so a sender cannot claim to be someone else.
+- **`app.flowstate.trigger.event`**: fires on a matching event from a `source`:
+  - `localSource`: another flow on this device emitted it. No account or network needed.
+  - `spaceSource`: a personal, group or inbox space.
+  - `hubSource`: a sender with no AT Protocol identity, posting to the hub over HTTPS (section 5).
+
+  It also has an optional `from` allowlist of DIDs and an `exposeData` allowlist of `data` keys.
+- **`app.flowstate.action.emitEvent`**: writes an event locally or into a space.
+
+`emitEvent` plus `trigger.event` is what makes this a *group* automation layer and not just a
+private notification inbox. Some examples:
+
+- **"I'm home"**: my geofence fires, then `emitEvent` sends `arrived-home` to the household group.
+  On my partner's phone, `trigger.event` matches it and shows a notification.
+- **"Last one out"**: each member's geofence exit emits `left-home`. A flow on any device keeps the
+  latest event per member and fires once everyone has left. This needs aggregate conditions over
+  multiple events, which are not in v1 but follow naturally.
+- **On-call**: CI posts `deploy-failed` to the on-call flow's inbox, which shows a high-urgency
+  notification and calls a webhook.
+- **Chaining on one device**: low battery emits `power-save`, which fires three other flows. No
+  network needed.
+
+### Event data is untrusted input
+
+Events are written by other people. `src/services/actions.ts` currently runs `templateString`
+over the webhook **URL and headers** as well as the body. If event data reached those templates, a
+sender could redirect your webhook or inject headers. So:
+
+1. Events are validated with a zod schema (`parseEventRecord`) next to `parseFlowRecord` in
+   `src/lib/flow-schema.ts`, the same trust boundary as discovered recipes.
+2. Only `{{event.title}}`, `{{event.body}}` and the `{{event.data.<key>}}` keys listed in the
+   trigger's `exposeData` are available to templates.
+3. Event-sourced values are interpolated only into **bodies and notification text**, never into a
+   URL or header. This applies to all trigger data, not just events, because the same risk exists
+   today with `DEEP_LINK` query parameters (see open question 1).
+4. Events past `expiresAt` are dropped. Sends are rate-limited per sender per flow.
+
+## 4. Delivery
+
+How an event reaches the flow engine depends on where it came from and whether the app is open.
+
+```
+                      ┌──────────────── app open (foreground) ─────────────────┐
+ local emitEvent ───► │  in-memory event bus ──► useFlowTriggerManager ──► all actions
+ space (poll) ──────► │  (same path; polls personal/group/inbox spaces on focus)   │
+                      └──────────────────────────────────────────────────────────┘
+
+                      ┌──────────────── app closed (background) ───────────────┐
+ space write ──► space host ──notify──► Hub (Worker + DO) ──Web Push──► Service Worker
+ HTTPS sender ──(per-sender token)───► Hub                                  │
+                      │                                                     ▼
+                      │                       NOTIFICATION / WEBHOOK actions only;
+                      │                       everything else is queued for next open
+                      └──────────────────────────────────────────────────────────┘
+```
+
+**Foreground path (no hub needed).** On focus, and on an interval while visible, the app reads each
+space it belongs to, starting after its saved cursor. This is the direct-read path from proposal 0016
+(OAuth session → delegation token → space credential → repo reads). It is not the path the atproto
+team's tooling targets; their [space sync post](https://atproto.com/blog/space-sync) says the stream
+is "not for browsers." Treat it as best-effort catch-up for small spaces.
+
+**Background path (needs the hub).** The atproto team's sync model is server-side: the space host
+sends signed notifications to a sync service with its own DID. A PWA cannot receive those, and it
+cannot wake up on its own. Web Push is the only way to wake a closed PWA, and sending one requires a
+server, so background delivery needs the hub regardless of Spaces.
+
+### What the service worker can and cannot do
+
+Once Web Push wakes it, the service worker is a stripped-down executor:
+
+| Action | In SW | Notes |
+|---|---|---|
+| NOTIFICATION | Yes | Android requires a visible notification per push anyway |
+| WEBHOOK | Yes | `fetch` works; secrets must be readable from IndexedDB |
+| LOG | Yes | Into IndexedDB, merged into the store on next open |
+| emitEvent (local) | Yes | Chains to other SW-capable flows |
+| VIBRATION, SPEECH, WAKE_LOCK, CLIPBOARD, WEB_SHARE | No | Queued and run (or offered) on next open |
+
+**Engineering consequence:** Zustand persists to `localStorage`, which service workers **cannot
+read**. Flows that may run in the background, and the secrets they need, must be mirrored to
+IndexedDB. Do this with a narrow, explicit mirror of "background-capable flows," not by moving the
+whole store.
+
+## 5. The hub
+
+A small, optional Cloudflare service, in the same repo and deployed with the existing `wrangler.jsonc`
+Worker: a fetch handler plus one Durable Object **per user**.
+
+**Responsibilities**
+
+1. **Push registration.** Stores Web Push subscriptions per device, with VAPID keys as Worker secrets.
+2. **HTTPS ingress** for senders without an AT Protocol identity:
+   - `POST /hub/e/{senderToken}` with an `app.flowstate.event`-shaped JSON body.
+   - Each sender (Home Assistant, a CI job, a shell script) gets its own token, scoped to one or
+     more flows and revocable on its own.
+   - The token lives only on the hub and in the sender's config, never in the flow record.
+3. **Space syncer (once Spaces launch).** Publishes a service DID, receives space-host
+   notifications, and obtains space credentials using short-lived delegations from the user. It
+   never holds OAuth refresh tokens. Built on `@bsky/jetstream` in `spaces` mode when that ships.
+4. **Fan-out.** Matches incoming events against the user's background-capable triggers (a small
+   index the app uploads: event name, source, flow id; no flow bodies). If the urgency qualifies,
+   it sends Web Push with the event as an encrypted payload.
+
+**What the hub must not do**
+
+- It does not store event content beyond delivery. The DO keeps a short retry queue and cursors, not history.
+- It does not hold flow definitions or secrets. It only knows enough to route.
+- It does not run actions. Execution stays on the device.
+
+**Privacy cost, stated plainly.** The hub sees event content in transit, and so does any space host.
+Web Push payloads are encrypted from the hub to the device (RFC 8291), so the push service (Google)
+can't read them, but the hub can. One option for later is "wake-only" pushes: an empty push makes the
+device fetch the event itself. That needs the space credential flow inside the service worker, which
+is heavy, so it's deferred.
+
+**Changes to the product promise.** CLAUDE.md's "no server unless the user adds a webhook action"
+becomes: *the app is fully functional with no server; background delivery and outside senders are
+opt-in through the hub, which is a single self-hostable Worker.* Users who never enable it get
+today's app.
+
+## 6. Groups
+
+- **Creating a group** makes an `app.flowstate.space.group` space with the creator as authority
+  (v1). The atproto team's planned "group host" service would later let a group have its own DID,
+  so it survives the creator leaving.
+- **Invites** are a deep link carrying the space URI plus a one-time code. The authority's
+  membership endpoints add the invitee. The protocol has no invite primitive.
+- **Leaving or removal** is enforced by credential expiry (about 10 minutes). The app also writes a
+  membership-change event into the space so other members' UIs update. There's no protocol signal
+  for this yet.
+- **Shared flows** in a group space are *templates*. Each member installs their own instance, with
+  their own secrets and permissions, which is the existing recipe → instance model. Nobody runs
+  code on someone else's device without that person installing it.
+
+## 7. Phasing
+
+Each phase is useful on its own and does not depend on the next.
+
+**Phase A: local events (no account, no network)**
+- `trigger.event` with `localSource`, plus `emitEvent` with a local target.
+- `parseEventRecord` and the templating restriction, which also tightens `DEEP_LINK`.
+- Reconcile `FlowScope` / `spaceId`: replace the free-text field in `recipe-install-dialog.tsx`
+  with a structured space reference, and hide the "ATProto Space" option until Phase C.
+
+**Phase B: hub v1 (no Spaces needed)**
+- A Worker route plus a per-user Durable Object, Web Push subscriptions and HTTPS sender tokens.
+- A service-worker executor for NOTIFICATION, WEBHOOK, LOG and local emitEvent, with the IndexedDB
+  mirror of background-capable flows and secrets.
+- `hubSource` triggers. This is the first time a flow runs with the app closed.
+
+**Phase C: personal space (once Spaces ship in the PDS and SDK)**
+- A new OAuth scope, `space:app.flowstate.space.personal`, which means existing users sign in again.
+- Sync flow instances (without secrets), blocks and event history across devices.
+- Vault export/import stays for people who don't sign in.
+
+**Phase D: inboxes and groups**
+- Per-flow inbox spaces, with writers managed from the flow detail page.
+- Group spaces, invites and shared templates.
+- The hub becomes a Spaces syncer (section 5, item 3).
+
+**Phase E: recipes stay public**
+- `app.flowstate.flow` in the public repo is unchanged, but it's now an explicit "publish"
+  action and never the default home of a flow.
+- Decide the fate of `app.flowstate.install`: nothing reads those records today. Either drop them
+  or count them in the hub.
+
+## 8. Open questions
+
+1. **`DEEP_LINK` templating, which exists today.** Query parameters can already reach the webhook URL
+   and header templates in `executeWebhook`. Should Phase A's restriction ship on its own, ahead of
+   the rest? Recommendation: yes.
+2. **Spaces API churn.** As of Nov 2026, proposal names are still changing (`authority` → `spaceDid`,
+   `at://` vs `ats://`, the DID-document service id). The draft lexicons here track proposal 0016
+   and must be re-checked at launch.
+3. **Space type declaration.** Proposal 0016 declares one space type per lexicon. `app.flowstate.space`
+   puts three in one file for review; they split at implementation time.
+4. **Aggregate triggers** ("everyone has left", "two of three agree"). Is this a trigger type of its
+   own, or a small state machine evaluated over recent events?
+5. **Hub tenancy.** Is it one shared hub run by the project, or one per user (self-hosted)? It
+   affects whether the hub needs its own accounts and abuse controls.
+6. **Encryption at rest for tier 1–3.** Which fields justify device-side encryption, and how does a
+   new device get the key (QR pairing from an existing device)?
+7. **iOS.** Web Push for installed PWAs works on iOS 16.4+, but the deep-link and Shortcuts bridge
+   remains the better iOS trigger story. Keep Android-first.
