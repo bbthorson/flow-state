@@ -28,9 +28,10 @@ Deploys are handled by Cloudflare's GitHub integration — pushing to `master` t
 
 - `src/types/` — Core types derived from lexicon schemas. `battery.d.ts` is an ambient
   declaration picked up via tsconfig, not imported anywhere — don't "clean it up".
-- `src/lexicons/` — AT Protocol lexicon JSON files (app.flowstate.flow v1, app.flowstate.install, triggers, actions).
-  The v2 `app.flowstate.automation` record and `trigger.time` are drafts in `docs/design/lexicons/`
-  — see `docs/design/private-automation-layer.md` §8.
+- `src/lexicons/` — AT Protocol lexicon JSON files: `app.flowstate.automation` (the v2 flow record),
+  `app.flowstate.event`, triggers and actions. `app.flowstate.flow` is the superseded v1 record.
+  `src/lib/lexicons.test.ts` fails if the code's NSID tables and these files drift apart. Space
+  types are still drafts in `docs/design/lexicons/` (see `docs/design/private-automation-layer.md`).
 - `src/store/useAppStore.ts` — Zustand store for flows, day-plan blocks, logs, vault import/export (persisted to localStorage). `blocks` is the recurring daily Focus/Care/Triage plan.
 - `src/store/useDeviceStore.ts` — Zustand store for device sensor state
 - `src/store/useAuthStore.ts` — Zustand store for AT Protocol OAuth (did, handle, published flows map, network discovery)

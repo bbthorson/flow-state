@@ -3,7 +3,7 @@ import { parseRecipe, type ParsedRecipe } from '@/lib/flow-schema';
 
 /**
  * Conversion between the local automation shape and `app.flowstate.automation`
- * records (draft lexicon: docs/design/lexicons/app.flowstate.automation.json).
+ * records (lexicon: src/lexicons/app/flowstate/automation.json).
  *
  * Locally, triggers and actions are `{ type: 'NATIVE_BATTERY', details }` because
  * the UI and permission registry are keyed by those enums. On the wire they are
@@ -12,7 +12,7 @@ import { parseRecipe, type ParsedRecipe } from '@/lib/flow-schema';
 
 export const AUTOMATION_COLLECTION = 'app.flowstate.automation';
 
-const TRIGGER_NSID: Record<TriggerType, string> = {
+export const TRIGGER_NSID: Record<TriggerType, string> = {
   NATIVE_BATTERY: 'app.flowstate.trigger.battery',
   NETWORK: 'app.flowstate.trigger.network',
   GEOLOCATION: 'app.flowstate.trigger.geolocation',
@@ -25,7 +25,7 @@ const TRIGGER_NSID: Record<TriggerType, string> = {
   EVENT: 'app.flowstate.trigger.event',
 };
 
-const ACTION_NSID: Record<ActionType, string> = {
+export const ACTION_NSID: Record<ActionType, string> = {
   WEBHOOK: 'app.flowstate.action.webhook',
   NOTIFICATION: 'app.flowstate.action.notification',
   LOG: 'app.flowstate.action.log',
@@ -54,6 +54,18 @@ class UnknownTypeError extends Error {}
 
 // ── Local → record ──
 
+const LOCAL_SOURCE = { $type: 'app.flowstate.trigger.event#localSource' };
+
+/**
+ * Fields the lexicon requires that the local shape leaves implicit: the event
+ * trigger's `source` and emitEvent's `target` are always this device for now.
+ */
+function withRequiredDefaults(type: TriggerType | ActionType, details: Record<string, any>): Record<string, any> {
+  if (type === 'EVENT' && !details.source) return { ...details, source: LOCAL_SOURCE };
+  if (type === 'EMIT_EVENT' && !details.target) return { ...details, target: LOCAL_SOURCE };
+  return details;
+}
+
 const toUnionMember = (nsid: string, details: Record<string, any>) => ({ $type: nsid, ...details });
 
 function stepToRecord(step: FlowStep): Record<string, unknown> {
@@ -79,7 +91,7 @@ function stepToRecord(step: FlowStep): Record<string, unknown> {
       return {
         ...rest,
         $type: STEP_NSID.action,
-        action: toUnionMember(ACTION_NSID[step.action.type], step.action.details),
+        action: toUnionMember(ACTION_NSID[step.action.type], withRequiredDefaults(step.action.type, step.action.details)),
       };
     case 'cancelScheduled':
       return { ...rest, $type: STEP_NSID.cancelScheduled };
@@ -96,7 +108,7 @@ export function toAutomationRecord(flow: FlowRecipe & Partial<Pick<Flow, 'active
     ...(flow.description ? { description: flow.description } : {}),
     ...(flow.tags?.length ? { tags: flow.tags } : {}),
     ...(flow.forkedFromUri ? { forkedFrom: flow.forkedFromUri } : {}),
-    trigger: toUnionMember(TRIGGER_NSID[flow.trigger.type], flow.trigger.details),
+    trigger: toUnionMember(TRIGGER_NSID[flow.trigger.type], withRequiredDefaults(flow.trigger.type, flow.trigger.details)),
     steps: flow.steps.map(stepToRecord),
     active: flow.active ?? true,
     dryRun: flow.dryRun ?? false,

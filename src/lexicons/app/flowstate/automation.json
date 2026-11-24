@@ -1,7 +1,7 @@
 {
   "lexicon": 1,
   "id": "app.flowstate.automation",
-  "description": "DRAFT — not wired into the app. Successor to app.flowstate.flow: a trigger followed by an ordered tree of steps. The step model (conditions with assertions, variables, scheduled actions, stable step ids, dryRun) follows the shapes of run.airglow.automation (MIT, exosphere.site) so the two read alike, but nothing here references that lexicon. A new NSID rather than a revision because replacing 'actions' with 'steps' is a breaking change, and published lexicons may only evolve compatibly.",
+  "description": "Successor to app.flowstate.flow: a trigger followed by an ordered tree of steps. The step model (conditions with assertions, variables, scheduled actions, stable step ids, dryRun) follows the shapes of run.airglow.automation (MIT, exosphere.site) so the two read alike, but nothing here references that lexicon. A new NSID rather than a revision because replacing 'actions' with 'steps' is a breaking change, and published lexicons may only evolve compatibly.",
   "defs": {
     "main": {
       "type": "record",
@@ -9,14 +9,30 @@
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["name", "trigger", "steps", "createdAt"],
+        "required": [
+          "name",
+          "trigger",
+          "steps",
+          "createdAt"
+        ],
         "properties": {
-          "name": { "type": "string", "minLength": 1, "maxLength": 256 },
-          "description": { "type": "string", "maxLength": 1000 },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
           "tags": {
             "type": "array",
             "maxLength": 10,
-            "items": { "type": "string", "minLength": 1, "maxLength": 30 }
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 30
+            }
           },
           "forkedFrom": {
             "type": "string",
@@ -45,7 +61,10 @@
             "description": "Run in order when the trigger fires. Conditions nest child steps; expect a nesting depth of up to 3 and at most 25 steps in total. Leading conditionSteps that read only trigger/device data form the trigger gate and are evaluated before anything else runs.",
             "minLength": 1,
             "maxLength": 25,
-            "items": { "type": "ref", "ref": "#step" }
+            "items": {
+              "type": "ref",
+              "ref": "#step"
+            }
           },
           "active": {
             "type": "boolean",
@@ -57,37 +76,82 @@
             "default": false,
             "description": "When true, runs are evaluated and logged but no action executes. New installs of a recipe, and any automation whose trigger is app.flowstate.trigger.event, should start in dry run."
           },
-          "createdAt": { "type": "string", "format": "datetime" }
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
         }
       }
     },
     "step": {
       "type": "union",
-      "refs": ["#conditionStep", "#variableStep", "#actionStep", "#cancelScheduledStep"],
+      "refs": [
+        "#conditionStep",
+        "#variableStep",
+        "#actionStep",
+        "#cancelScheduledStep"
+      ],
       "closed": false
     },
     "conditionStep": {
       "type": "object",
       "description": "Checks assertions. Without 'then' it is a gate: a failed check ends the run. With 'then' it branches: the matching side runs, then flow continues after this step.",
-      "required": ["id", "assertions"],
+      "required": [
+        "id",
+        "assertions"
+      ],
       "properties": {
-        "id": { "type": "string", "maxLength": 32, "description": "Stable opaque id (a TID). Logs and edits refer to steps by id, never by position." },
-        "match": { "type": "string", "knownValues": ["all", "any"], "default": "all", "maxLength": 8 },
+        "id": {
+          "type": "string",
+          "maxLength": 32,
+          "description": "Stable opaque id (a TID). Logs and edits refer to steps by id, never by position."
+        },
+        "match": {
+          "type": "string",
+          "knownValues": [
+            "all",
+            "any"
+          ],
+          "default": "all",
+          "maxLength": 8
+        },
         "assertions": {
           "type": "array",
           "minLength": 1,
           "maxLength": 10,
-          "items": { "type": "ref", "ref": "#assertion" }
+          "items": {
+            "type": "ref",
+            "ref": "#assertion"
+          }
         },
-        "then": { "type": "array", "maxLength": 25, "items": { "type": "ref", "ref": "#step" } },
-        "else": { "type": "array", "maxLength": 25, "items": { "type": "ref", "ref": "#step" } },
-        "comment": { "type": "string", "maxLength": 1024 }
+        "then": {
+          "type": "array",
+          "maxLength": 25,
+          "items": {
+            "type": "ref",
+            "ref": "#step"
+          }
+        },
+        "else": {
+          "type": "array",
+          "maxLength": 25,
+          "items": {
+            "type": "ref",
+            "ref": "#step"
+          }
+        },
+        "comment": {
+          "type": "string",
+          "maxLength": 1024
+        }
       }
     },
     "assertion": {
       "type": "object",
       "description": "Compares a field against a value. Same operator vocabulary as run.airglow.automation#assertion.",
-      "required": ["field"],
+      "required": [
+        "field"
+      ],
       "properties": {
         "field": {
           "type": "string",
@@ -96,47 +160,110 @@
         },
         "operator": {
           "type": "string",
-          "knownValues": ["eq", "neq", "contains", "notContains", "startsWith", "endsWith", "gt", "gte", "lt", "lte", "exists", "notExists"],
+          "knownValues": [
+            "eq",
+            "neq",
+            "contains",
+            "notContains",
+            "startsWith",
+            "endsWith",
+            "gt",
+            "gte",
+            "lt",
+            "lte",
+            "exists",
+            "notExists"
+          ],
           "default": "eq",
           "maxLength": 32
         },
-        "value": { "type": "string", "maxLength": 1024, "description": "Supports {{placeholder}} expressions. Ignored by exists/notExists." },
-        "comment": { "type": "string", "maxLength": 1024 }
+        "value": {
+          "type": "string",
+          "maxLength": 1024,
+          "description": "Supports {{placeholder}} expressions. Ignored by exists/notExists."
+        },
+        "comment": {
+          "type": "string",
+          "maxLength": 1024
+        }
       }
     },
     "variableStep": {
       "type": "object",
       "description": "Names a value once so later steps can use it as {{name}}. Replaces v1 'parameters': a recipe's blanks are variableSteps that installers fill in.",
-      "required": ["id", "name"],
+      "required": [
+        "id",
+        "name"
+      ],
       "properties": {
-        "id": { "type": "string", "maxLength": 32 },
-        "name": { "type": "string", "maxLength": 64, "description": "Reference name. Must not collide with a reserved root (trigger, device, event, time, self, secrets)." },
+        "id": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Reference name. Must not collide with a reserved root (trigger, device, event, time, self, secrets)."
+        },
         "kind": {
           "type": "string",
-          "knownValues": ["string", "number", "boolean", "secret"],
+          "knownValues": [
+            "string",
+            "number",
+            "boolean",
+            "secret"
+          ],
           "default": "string",
           "maxLength": 16,
           "description": "'secret' values are never written to any record. The stored value is empty, and the device resolves {{name}} from its local secret store. This holds in personal and group spaces as well as the public repo."
         },
-        "value": { "type": "string", "maxLength": 2048, "description": "Literal or template. Omitted or blanked for secrets and for values the installer must supply." },
-        "label": { "type": "string", "maxLength": 100, "description": "Shown to the person filling this in." },
-        "note": { "type": "string", "maxLength": 1024, "description": "Explains to an installer what the value should be." },
-        "required": { "type": "boolean", "default": true },
+        "value": {
+          "type": "string",
+          "maxLength": 2048,
+          "description": "Literal or template. Omitted or blanked for secrets and for values the installer must supply."
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Shown to the person filling this in."
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 1024,
+          "description": "Explains to an installer what the value should be."
+        },
+        "required": {
+          "type": "boolean",
+          "default": true
+        },
         "preserveOnDuplication": {
           "type": "boolean",
           "default": false,
           "description": "When true, duplicating carries the value over; when false it is blanked so the installer supplies their own. Always false for 'secret'."
         },
-        "comment": { "type": "string", "maxLength": 1024 }
+        "comment": {
+          "type": "string",
+          "maxLength": 1024
+        }
       }
     },
     "actionStep": {
       "type": "object",
       "description": "Runs one device action. The action itself stays a pure app.flowstate.action.* object, so the permission registry (src/lib/permissions.ts) remains keyed by action type. This wrapper adds step identity and scheduling. It deliberately differs from Airglow, which puts id/schedule on each action type.",
-      "required": ["id", "action"],
+      "required": [
+        "id",
+        "action"
+      ],
       "properties": {
-        "id": { "type": "string", "maxLength": 32 },
-        "name": { "type": "string", "maxLength": 64, "description": "Optional: later steps can read this action's result, e.g. {{post.status}} after a webhook." },
+        "id": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Optional: later steps can read this action's result, e.g. {{post.status}} after a webhook."
+        },
         "action": {
           "type": "union",
           "refs": [
@@ -152,27 +279,56 @@
           ],
           "closed": false
         },
-        "schedule": { "type": "ref", "ref": "#scheduleModifier" },
-        "comment": { "type": "string", "maxLength": 1024 }
+        "schedule": {
+          "type": "ref",
+          "ref": "#scheduleModifier"
+        },
+        "comment": {
+          "type": "string",
+          "maxLength": 1024
+        }
       }
     },
     "cancelScheduledStep": {
       "type": "object",
       "description": "Cancels this owner's pending scheduled steps whose identifier matches. Equivalent to run.airglow.automation#clearScheduledAction.",
-      "required": ["id", "identifier"],
+      "required": [
+        "id",
+        "identifier"
+      ],
       "properties": {
-        "id": { "type": "string", "maxLength": 32 },
-        "identifier": { "type": "string", "maxLength": 512, "description": "Supports {{placeholder}} expressions." },
-        "comment": { "type": "string", "maxLength": 1024 }
+        "id": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "identifier": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Supports {{placeholder}} expressions."
+        },
+        "comment": {
+          "type": "string",
+          "maxLength": 1024
+        }
       }
     },
     "scheduleModifier": {
       "type": "object",
       "description": "Defers the step: it is queued and runs after the delay. On a PWA a deferred step runs on time only if the app is open or the hub delivers it; otherwise it runs at next open unless it has expired. Same shape as run.airglow.automation#scheduleModifier.",
-      "required": ["identifier", "delay"],
+      "required": [
+        "identifier",
+        "delay"
+      ],
       "properties": {
-        "identifier": { "type": "string", "maxLength": 512, "description": "Names the queued work so a cancelScheduledStep can cancel it. Supports {{placeholder}} expressions." },
-        "delay": { "type": "ref", "ref": "#relativeDelay" },
+        "identifier": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Names the queued work so a cancelScheduledStep can cancel it. Supports {{placeholder}} expressions."
+        },
+        "delay": {
+          "type": "ref",
+          "ref": "#relativeDelay"
+        },
         "expireAfter": {
           "type": "ref",
           "ref": "#relativeDelay",
@@ -182,21 +338,56 @@
     },
     "relativeDelay": {
       "type": "object",
-      "required": ["unit", "value"],
+      "required": [
+        "unit",
+        "value"
+      ],
       "properties": {
-        "unit": { "type": "string", "knownValues": ["ms", "s", "m", "h", "d", "w"], "maxLength": 4 },
-        "value": { "type": "ref", "ref": "#relativeDelayValue" }
+        "unit": {
+          "type": "string",
+          "knownValues": [
+            "ms",
+            "s",
+            "m",
+            "h",
+            "d",
+            "w"
+          ],
+          "maxLength": 4
+        },
+        "value": {
+          "type": "ref",
+          "ref": "#relativeDelayValue"
+        }
       }
     },
     "relativeDelayValue": {
       "type": "object",
       "description": "'literal' uses n; 'template' uses expr (a single {{placeholder}}); 'sum' uses expr plus offset.",
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "properties": {
-        "kind": { "type": "string", "knownValues": ["literal", "template", "sum"], "maxLength": 16 },
-        "n": { "type": "integer", "minimum": 0 },
-        "expr": { "type": "string", "maxLength": 512 },
-        "offset": { "type": "integer" }
+        "kind": {
+          "type": "string",
+          "knownValues": [
+            "literal",
+            "template",
+            "sum"
+          ],
+          "maxLength": 16
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expr": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "offset": {
+          "type": "integer"
+        }
       }
     }
   }

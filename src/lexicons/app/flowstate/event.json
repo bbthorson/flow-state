@@ -1,7 +1,7 @@
 {
   "lexicon": 1,
   "id": "app.flowstate.event",
-  "description": "DRAFT — not wired into the app. Something that happened, written by a person, app, or device so that flows can react to it. Events are written into a private space (a flow's inbox, a group, or the owner's personal space), never into the public repo.",
+  "description": "Something that happened, written by a person, app, or device so that flows can react to it. Events are written into a private space (a flow's inbox, a group, or the owner's personal space), never into the public repo.",
   "defs": {
     "main": {
       "type": "record",
@@ -9,7 +9,10 @@
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["event", "createdAt"],
+        "required": [
+          "event",
+          "createdAt"
+        ],
         "properties": {
           "event": {
             "type": "string",
@@ -30,7 +33,11 @@
           "urgency": {
             "type": "string",
             "description": "Delivery hint. 'high' may wake the device via Web Push; 'low' waits for the next foreground sync.",
-            "knownValues": ["low", "normal", "high"],
+            "knownValues": [
+              "low",
+              "normal",
+              "high"
+            ],
             "default": "normal"
           },
           "data": {

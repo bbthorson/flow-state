@@ -18,7 +18,7 @@ import { RESERVED_ROOTS, checkStepLimits } from '@/lib/steps';
  * `{ type, details }` form first (`@/lib/automation-record`), then validated
  * here. Vault imports and AI-generated flows go through the same check.
  *
- * Mirrors `docs/design/lexicons/` (v2). Keep the two in step.
+ * Mirrors `src/lexicons/app/flowstate/` (v2). Keep the two in step.
  */
 
 /** Keeps unknown keys. Stripping them would change DEEP_LINK matching, which

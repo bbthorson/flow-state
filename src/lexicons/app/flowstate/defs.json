@@ -32,7 +32,9 @@
         "app.flowstate.trigger.manual",
         "app.flowstate.trigger.idle",
         "app.flowstate.trigger.motion",
-        "app.flowstate.trigger.orientation"
+        "app.flowstate.trigger.orientation",
+        "app.flowstate.trigger.time",
+        "app.flowstate.trigger.event"
       ],
       "closed": false
     },
@@ -47,7 +49,8 @@
         "app.flowstate.action.clipboard",
         "app.flowstate.action.share",
         "app.flowstate.action.wakeLock",
-        "app.flowstate.action.speech"
+        "app.flowstate.action.speech",
+        "app.flowstate.action.emitEvent"
       ],
       "closed": false
     }

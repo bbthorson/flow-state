@@ -126,7 +126,7 @@ export interface SpeechActionDetails {
   volume?: number; // 0-1
 }
 
-// ── Automation model (v2, mirrors docs/design/lexicons/app.flowstate.automation.json) ──
+// ── Automation model (v2, mirrors src/lexicons/app/flowstate/automation.json) ──
 //
 // The local shape keeps `{ type, details }` for triggers and actions because the
 // form, labels and permission registry are keyed by those enums; conversion to

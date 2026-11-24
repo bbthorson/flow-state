@@ -1,17 +1,24 @@
 {
   "lexicon": 1,
   "id": "app.flowstate.trigger.event",
-  "description": "DRAFT — not wired into the app. Fires when an app.flowstate.event record arrives from a source this flow listens to.",
+  "description": "Fires when an app.flowstate.event record arrives from a source this flow listens to. Only localSource is implemented; spaceSource and hubSource are reserved for the designs in docs/design/private-automation-layer.md.",
   "defs": {
     "main": {
       "type": "object",
       "description": "Event trigger configuration.",
-      "required": ["source", "event"],
+      "required": [
+        "source",
+        "event"
+      ],
       "properties": {
         "source": {
           "type": "union",
           "description": "Where events come from. Open union so new transports can be added without changing the trigger.",
-          "refs": ["#localSource", "#spaceSource", "#hubSource"],
+          "refs": [
+            "#localSource",
+            "#spaceSource",
+            "#hubSource"
+          ],
           "closed": false
         },
         "event": {
@@ -23,13 +30,19 @@
         "from": {
           "type": "array",
           "description": "Optional allowlist of sender DIDs. Space membership already restricts who can write; this narrows it further for one flow.",
-          "items": { "type": "string", "format": "did" },
+          "items": {
+            "type": "string",
+            "format": "did"
+          },
           "maxLength": 50
         },
         "exposeData": {
           "type": "array",
           "description": "Keys of event.data that action templates may read as {{event.data.<key>}}. Anything not listed is invisible to actions. title/body are always available as {{event.title}} / {{event.body}}.",
-          "items": { "type": "string", "maxLength": 64 },
+          "items": {
+            "type": "string",
+            "maxLength": 64
+          },
           "maxLength": 16
         }
       },
@@ -43,7 +56,9 @@
     "spaceSource": {
       "type": "object",
       "description": "Events written into an AT Protocol space: a flow's inbox space, a group space, or the owner's personal space.",
-      "required": ["space"],
+      "required": [
+        "space"
+      ],
       "properties": {
         "space": {
           "type": "string",
@@ -55,7 +70,9 @@
     "hubSource": {
       "type": "object",
       "description": "Events posted to the user's Flow State hub over plain HTTPS by senders without an AT Protocol identity (Home Assistant, CI, curl). Each sender gets its own revocable token; the token never appears in the flow.",
-      "required": ["senderId"],
+      "required": [
+        "senderId"
+      ],
       "properties": {
         "senderId": {
           "type": "string",

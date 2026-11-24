@@ -2,7 +2,7 @@
 
 **Status:** Design draft, not implemented
 **Date:** 2026-11-24
-**Draft lexicons:** [`docs/design/lexicons/`](./lexicons/)
+**Lexicons:** the automation, event, `trigger.time`, `trigger.event` and `action.emitEvent` lexicons are now in [`src/lexicons/app/flowstate/`](../../src/lexicons/app/flowstate/). Only the space types remain a draft here, in [`lexicons/`](./lexicons/).
 
 ## 1. The reframe
 
@@ -58,7 +58,7 @@ signed, public log of someone's self-control overrides should not be the default
 
 ## 3. Events: the new core primitive
 
-Three draft lexicons ([`lexicons/`](./lexicons/)):
+Three lexicons (now in [`src/lexicons/app/flowstate/`](../../src/lexicons/app/flowstate/)):
 
 - **`app.flowstate.event`** (record): `event` name, optional `title`/`body`, flat `data` map,
   `urgency`, `createdAt`, `expiresAt`. The sender is the record's author DID. There is no
@@ -299,7 +299,7 @@ Flow State will **not** write `run.airglow.automation` records:
   assume a server reading the firehose.
 - **It's public.** Airglow automations are public records; ours live in private spaces (section 2).
 
-Instead, [`app.flowstate.automation`](./lexicons/app.flowstate.automation.json) **copies the step
+Instead, [`app.flowstate.automation`](../../src/lexicons/app/flowstate/automation.json) **copies the step
 model**, keeping Airglow's field names where the concept is the same so the two read alike. It does
 not reference Airglow's lexicon across NSIDs, so it doesn't depend on Airglow's schema staying put.
 
@@ -332,7 +332,7 @@ design and not merely by imitation.
 - **v1 records don't match the v1 lexicon.** `flowToRecord` writes `trigger: {type: 'NATIVE_BATTERY', details}`,
   but `app.flowstate.flow` declares a `$type` union of `app.flowstate.trigger.*` refs. v2 serialises
   real union members.
-- **`TIME` has no lexicon.** [`app.flowstate.trigger.time`](./lexicons/app.flowstate.trigger.time.json)
+- **`TIME` has no lexicon.** [`app.flowstate.trigger.time`](../../src/lexicons/app/flowstate/trigger/time.json)
   closes the gap noted in `src/lib/flow-schema.ts`.
 - **`visibility` moves out of the record.** Where the record lives (public repo, personal space,
   group space) decides visibility.
