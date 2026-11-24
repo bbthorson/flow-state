@@ -14,6 +14,8 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import type { FlowRecipe } from '@/types';
 import type { PublishedFlow } from '@/services/atproto';
+import { actionSteps } from '@/lib/steps';
+import { instantiateRecipe, recipeBlanks } from '@/lib/recipe';
 import {
   ArrowLeft,
   Search,
@@ -38,7 +40,6 @@ export function DiscoverPage() {
   const discovering = useAuthStore((s) => s.discovering);
   const discoverFromFollows = useAuthStore((s) => s.discoverFromFollows);
   const addFlowFromTemplate = useAppStore((s) => s.addFlowFromTemplate);
-  const installFromNetwork = useAuthStore((s) => s.installFromNetwork);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -107,7 +108,7 @@ export function DiscoverPage() {
       const descMatch = (r.description ?? '').toLowerCase().includes(q);
       const tagMatch = r.tags?.some((t) => t.toLowerCase().includes(q));
       const triggerMatch = r.trigger.type.toLowerCase().includes(q);
-      const actionMatch = r.actions.some((a) => a.type.toLowerCase().includes(q));
+      const actionMatch = actionSteps(r.steps).some((a) => a.action.type.toLowerCase().includes(q));
       const authorMatch = 'did' in r ? r.did.toLowerCase().includes(q) : false;
 
       return nameMatch || descMatch || tagMatch || triggerMatch || actionMatch || authorMatch;
@@ -116,24 +117,13 @@ export function DiscoverPage() {
 
   const handleSelectInstall = async (recipe: FlowRecipe | PublishedFlow) => {
     // If recipe requires parameters or has secrets, open the config dialog
-    if (recipe.parameters && recipe.parameters.length > 0) {
+    if (recipeBlanks(recipe).length > 0) {
       setActiveInstallRecipe(recipe);
       return;
     }
 
     // Zero-parameter recipe: install directly
-    addFlowFromTemplate({
-      name: recipe.name,
-      description: recipe.description,
-      tags: recipe.tags,
-      enabled: false,
-      trigger: recipe.trigger,
-      actions: recipe.actions,
-    });
-
-    if ('uri' in recipe && recipe.uri) {
-      await installFromNetwork(recipe as PublishedFlow);
-    }
+    addFlowFromTemplate(instantiateRecipe(recipe));
 
     toast({
       title: 'Recipe Installed',

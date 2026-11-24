@@ -1,7 +1,7 @@
 {
   "lexicon": 1,
   "id": "app.flowstate.flow",
-  "description": "An on-device automation that connects a trigger to one or more actions.",
+  "description": "Superseded by app.flowstate.automation (v2). Kept so existing v1 records can be identified and removed; this app no longer reads or writes them.",
   "defs": {
     "main": {
       "type": "record",
@@ -9,7 +9,12 @@
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["name", "enabled", "trigger", "actions"],
+        "required": [
+          "name",
+          "enabled",
+          "trigger",
+          "actions"
+        ],
         "properties": {
           "name": {
             "type": "string",

@@ -1,9 +1,12 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { Flow, TriggerType, ActionType, LogEntry, TimeBlock } from '@/types';
-import { parseActionDetails, parseFlowRecord, type ActionDetailsFor } from '@/lib/flow-schema';
-import { executeWebhook, executeNotification, executeVibration, executeClipboard, executeShare, executeWakeLock, executeSpeech, type ActionResult } from '@/services/actions';
+import { Flow, TriggerType, ActionType, LogEntry, TimeBlock, FlowAction, FlowEvent } from '@/types';
+import { parseActionDetails, parseRecipe, type ActionDetailsFor } from '@/lib/flow-schema';
+import { executeWebhook, executeNotification, executeVibration, executeClipboard, executeShare, executeWakeLock, executeSpeech, templateString, type ActionResult } from '@/services/actions';
+import { matchesTrigger, runFlow, type RunData, type ScheduledRun } from '@/lib/engine';
+import { isV1Flow, migrateFlowV1 } from '@/lib/migrate';
+import { useDeviceStore } from '@/store/useDeviceStore';
 
 export type { Flow, TriggerType, ActionType, TimeBlock } from '@/types';
 
@@ -59,6 +62,11 @@ interface AppState {
   flows: Flow[];
   blocks: TimeBlock[]; // recurring daily plan (Focus/Care/Triage)
   logs: LogEntry[];
+  /**
+   * Deferred action steps. Persisted so a delay survives the app closing: a
+   * due item runs at the next open unless its `expiresAt` has passed.
+   */
+  scheduled: (ScheduledRun & { id: string })[];
   webhookSecret: string;
   lastBackupTimestamp: number | null;
   initialized: boolean; // To track if the store has been hydrated from localStorage
@@ -70,11 +78,17 @@ interface AppState {
 /** What actually goes to storage — everything but the hydration flag. */
 type PersistedState = Omit<AppState, 'initialized'>;
 
+/** A flow as callers create it; the store assigns `id` and, if absent, `createdAt`. */
+export type NewFlow = Omit<Flow, 'id' | 'createdAt'> & { createdAt?: string };
+
+/** Bumped when the persisted shape changes; see `migrate` at the bottom. */
+export const STORE_VERSION = 1;
+
 // 3. Actions Interface
 
 interface AppActions {
-  addFlow: (flow: Omit<Flow, 'id'>) => string;
-  addFlowFromTemplate: (template: Omit<Flow, 'id'>) => void;
+  addFlow: (flow: NewFlow) => string;
+  addFlowFromTemplate: (template: NewFlow) => void;
   updateFlow: (flow: Flow) => void;
   deleteFlow: (flowId: string) => void;
   addBlock: (block: Omit<TimeBlock, 'id'>) => string;
@@ -82,7 +96,12 @@ interface AppActions {
   deleteBlock: (blockId: string) => void;
   addLog: (log: Omit<LogEntry, 'id' | 'timestamp'>) => void;
   processDeepLink: (params: URLSearchParams) => void;
-  triggerFlows: (type: TriggerType, details: Record<string, any>, specificFlowId?: string) => void;
+  /** Resolves once every matching flow's run has finished (scheduled steps excluded). */
+  triggerFlows: (type: TriggerType, details: Record<string, any>, specificFlowId?: string) => Promise<void>;
+  scheduleRun: (item: ScheduledRun) => void;
+  cancelScheduled: (identifier: string) => void;
+  /** Run deferred steps that are due; drop ones that expired while the app was closed. */
+  runDueScheduled: (now?: number) => Promise<void>;
   regenerateWebhookSecret: () => void;
   exportVault: () => string;
   importVault: (json: string) => { success: boolean; message: string };
@@ -102,22 +121,19 @@ interface AppActions {
 function bindExecutor<T extends ActionType>(
   type: T,
   label: string,
-  exec: (details: ActionDetailsFor<T>, data: Record<string, any>) => Promise<ActionResult>,
+  exec: (details: ActionDetailsFor<T>, data: Record<string, any>, trustedRoots: ReadonlySet<string>) => Promise<ActionResult>,
 ) {
   return {
     label,
-    run(details: Record<string, unknown>, data: Record<string, any>) {
+    run(details: Record<string, unknown>, data: Record<string, any>, trustedRoots: ReadonlySet<string>) {
       const parsed = parseActionDetails(type, details);
       if (!parsed.ok) return { ok: false as const, reason: parsed.reason };
-      return { ok: true as const, result: exec(parsed.details, data) };
+      return { ok: true as const, result: exec(parsed.details, data, trustedRoots) };
     },
   };
 }
 
-/**
- * Action executors, keyed by type. LOG has no executor — the "Flow triggered by"
- * entry written alongside already is the log.
- */
+/** Action executors, keyed by type. LOG is handled in `runAction`. */
 const ACTION_EXECUTORS = {
   WEBHOOK: bindExecutor('WEBHOOK', 'Webhook', executeWebhook),
   NOTIFICATION: bindExecutor('NOTIFICATION', 'Notification', executeNotification),
@@ -129,48 +145,114 @@ const ACTION_EXECUTORS = {
 };
 
 /**
- * Run one action and log anything that goes wrong.
- *
- * This replaces an if/else chain that cast every `action.details` to `any`. The
- * executors need concrete shapes and `Record<string, any>` does not provide
- * them, so details are validated (see `@/lib/flow-schema`) rather than asserted
- * — locally stored flows never pass through the network validation, so this is
- * the only check they get.
- *
- * It also makes failure handling uniform: previously only WEBHOOK and
- * NOTIFICATION had a `.catch`, so a throw from any of the other five became an
- * unhandled rejection with nothing written to the log.
+ * Run one action. Details are validated (see `@/lib/flow-schema`) rather than
+ * asserted: locally stored flows never pass through the network validation, so
+ * this is the only check they get. Failures come back as results — the engine
+ * logs them — and throws are caught here so none becomes an unhandled rejection.
  */
-function runAction(
-  flowId: string,
-  action: { type: ActionType; details: Record<string, any> },
-  data: Record<string, any>,
-  addLog: AppActions['addLog'],
-): void {
-  const executor = ACTION_EXECUTORS[action.type as keyof typeof ACTION_EXECUTORS];
-  if (!executor) return; // LOG, or a type this build doesn't run.
+/** emitEvent → event trigger → emitEvent … stops after this many hops. */
+export const MAX_EVENT_HOPS = 5;
 
-  const outcome = executor.run(action.details ?? {}, data);
-  if (!outcome.ok) {
-    addLog({
-      flowId,
-      status: 'failure',
-      message: `${executor.label} skipped — invalid settings (${outcome.reason})`,
-    });
-    return;
+/**
+ * Write an app.flowstate.event and deliver it to this device's event triggers.
+ * Delivery is deferred to a fresh task so a chain of flows never recurses on
+ * the stack, and `hops` bounds a flow that (indirectly) triggers itself.
+ */
+function emitEvent(flowId: string, action: FlowAction, data: RunData, addLog: AppActions['addLog']): ActionResult {
+  const parsed = parseActionDetails('EMIT_EVENT', action.details ?? {});
+  if (!parsed.ok) return { success: false, message: `skipped — invalid settings (${parsed.reason})` };
+  const d = parsed.details;
+
+  const incomingHops = typeof data.event?.hops === 'number' ? data.event.hops : 0;
+  const hops = incomingHops + 1;
+  if (hops > MAX_EVENT_HOPS) {
+    return { success: false, message: `not emitted — "${d.event}" is ${hops} events deep (limit ${MAX_EVENT_HOPS})` };
   }
 
-  outcome.result
-    .then((result) => {
-      if (!result.success) {
-        addLog({ flowId, status: 'failure', message: `${executor.label} failed: ${result.message}` });
-      }
-    })
-    .catch((err: unknown) => {
-      const message = err instanceof Error ? err.message : String(err);
-      addLog({ flowId, status: 'failure', message: `${executor.label} error: ${message}` });
-    });
+  const now = Date.now();
+  const event: FlowEvent = {
+    event: d.event,
+    ...(d.title ? { title: templateString(d.title, data) } : {}),
+    ...(d.body ? { body: templateString(d.body, data) } : {}),
+    ...(d.urgency ? { urgency: d.urgency } : {}),
+    ...(d.data ? { data: Object.fromEntries(Object.entries(d.data).map(([k, v]) => [k, templateString(v, data)])) } : {}),
+    createdAt: new Date(now).toISOString(),
+    ...(d.ttlSeconds ? { expiresAt: new Date(now + d.ttlSeconds * 1000).toISOString() } : {}),
+    author: 'self',
+    hops,
+  };
+  addLog({ flowId, status: 'success', message: `Emitted event "${event.event}".` });
+  setTimeout(() => void useAppStore.getState().triggerFlows('EVENT', event), 0);
+  return { success: true };
 }
+
+/**
+ * What an event-triggered flow may read: the event's own fields, plus only
+ * the `data` keys its trigger lists in `exposeData`. Everything here is
+ * untrusted (written by whoever emitted it), as `trigger.*` is.
+ */
+export function exposeEvent(event: Partial<FlowEvent>, exposeData: unknown): RunData {
+  const allowed = new Set(Array.isArray(exposeData) ? exposeData.map(String) : []);
+  const data = Object.fromEntries(Object.entries(event.data ?? {}).filter(([k]) => allowed.has(k)));
+  return {
+    event: event.event,
+    title: event.title,
+    body: event.body,
+    urgency: event.urgency,
+    author: event.author,
+    createdAt: event.createdAt,
+    hops: event.hops ?? 0,
+    data,
+  };
+}
+
+async function runAction(
+  flowId: string,
+  action: FlowAction,
+  data: RunData,
+  trustedRoots: ReadonlySet<string>,
+  addLog: AppActions['addLog'],
+): Promise<ActionResult> {
+  if (action.type === 'EMIT_EVENT') return emitEvent(flowId, action, data, addLog);
+  if (action.type === 'LOG') {
+    const message = templateString(action.details?.message, data);
+    if (message) addLog({ flowId, status: 'success', message });
+    return { success: true };
+  }
+  const executor = ACTION_EXECUTORS[action.type as keyof typeof ACTION_EXECUTORS];
+  if (!executor) return { success: false, message: `${action.type} is not supported by this build` };
+
+  const outcome = executor.run(action.details ?? {}, data, trustedRoots);
+  if (!outcome.ok) {
+    return { success: false, message: `skipped — invalid settings (${outcome.reason})` };
+  }
+  try {
+    return await outcome.result;
+  } catch (err: unknown) {
+    return { success: false, message: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** The `device.*` values conditions and templates can read. */
+export function deviceSnapshot(): RunData {
+  const d = useDeviceStore.getState();
+  return {
+    battery: { level: d.battery.level, charging: d.battery.charging, supported: d.battery.supported },
+    network: { online: d.network.online, type: d.network.type, effectiveType: d.network.effectiveType },
+    location: { latitude: d.geolocation.latitude, longitude: d.geolocation.longitude, accuracy: d.geolocation.accuracy },
+    idle: { userState: d.idle.userState, screenState: d.idle.screenState },
+    orientation: { type: d.orientation.type, angle: d.orientation.angle },
+    visibility: d.visibility.state,
+  };
+}
+
+function actionLabel(action: FlowAction): string {
+  if (action.type === 'LOG') return 'Log';
+  if (action.type === 'EMIT_EVENT') return 'Emit event';
+  return ACTION_EXECUTORS[action.type as keyof typeof ACTION_EXECUTORS]?.label ?? action.type;
+}
+
+const scheduleTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 // 4. Store Implementation
 
@@ -181,6 +263,7 @@ export const useAppStore = create<AppState & AppActions>()(
       flows: [],
       blocks: [],
       logs: [],
+      scheduled: [],
       webhookSecret: uuidv4(),
       lastBackupTimestamp: null,
       initialized: false,
@@ -191,11 +274,11 @@ export const useAppStore = create<AppState & AppActions>()(
       setInitialized: (initialized) => set({ initialized }),
       addFlow: (flow) => {
         const id = uuidv4();
-        set((state) => ({ flows: [...state.flows, { ...flow, id }] }));
+        set((state) => ({ flows: [...state.flows, { createdAt: new Date().toISOString(), ...flow, id }] }));
         return id;
       },
       addFlowFromTemplate: (template) => {
-        const newFlow = { ...template, id: uuidv4() };
+        const newFlow: Flow = { createdAt: new Date().toISOString(), ...template, id: uuidv4() };
         set((state) => ({ flows: [...state.flows, newFlow] }));
         get().addLog({
           flowId: newFlow.id,
@@ -208,7 +291,11 @@ export const useAppStore = create<AppState & AppActions>()(
         set((state) => ({
           flows: state.flows.map((flow) => (flow.id === updatedFlow.id ? updatedFlow : flow)),
         })),
-      deleteFlow: (flowId) => set((state) => ({ flows: state.flows.filter((flow) => flow.id !== flowId) })),
+      deleteFlow: (flowId) =>
+        set((state) => ({
+          flows: state.flows.filter((flow) => flow.id !== flowId),
+          scheduled: state.scheduled.filter((item) => item.flowId !== flowId),
+        })),
       addBlock: (block) => {
         const id = uuidv4();
         set((state) => ({ blocks: [...state.blocks, { ...block, id }] }));
@@ -243,15 +330,17 @@ export const useAppStore = create<AppState & AppActions>()(
           const updates: Partial<AppState> = { lastBackupTimestamp: Date.now() };
 
           if (Array.isArray(flows)) {
+            // Vault files from before v2 hold v1 flows; migrate, then validate.
             updates.flows = flows
-              .filter((f): f is Flow => {
-                if (!f || typeof f !== 'object') return false;
-                const result = parseFlowRecord(f);
-                return result.ok;
-              })
-              .map((f) => ({
+              .filter((f: unknown) => !!f && typeof f === 'object')
+              .map((f: any) => (isV1Flow(f) ? migrateFlowV1(f) : f))
+              .filter((f: any) => parseRecipe(f).ok)
+              .map((f: any): Flow => ({
                 ...f,
                 id: typeof f.id === 'string' && f.id ? f.id : uuidv4(),
+                active: !!f.active,
+                dryRun: !!f.dryRun,
+                createdAt: typeof f.createdAt === 'string' ? f.createdAt : new Date().toISOString(),
               }));
           }
           if (Array.isArray(blocks)) updates.blocks = blocks;
@@ -290,7 +379,7 @@ export const useAppStore = create<AppState & AppActions>()(
 
         let foundAnyFlow = false;
         for (const flow of flows) {
-          if (!flow.enabled || flow.trigger.type !== 'DEEP_LINK') {
+          if (!flow.active || flow.trigger.type !== 'DEEP_LINK') {
             continue;
           }
 
@@ -307,7 +396,7 @@ export const useAppStore = create<AppState & AppActions>()(
           foundAnyFlow = true;
 
           // Security Key Check (Flow specific OR global)
-          const requiredSecret = flow.securityKey || webhookSecret;
+          const requiredSecret = flow.secrets?.securityKey || webhookSecret;
           if (requiredSecret && requiredSecret !== secret) {
             addLog({
               flowId: flow.id,
@@ -317,7 +406,7 @@ export const useAppStore = create<AppState & AppActions>()(
             continue;
           }
 
-          triggerFlows('DEEP_LINK', details, flow.id);
+          void triggerFlows('DEEP_LINK', details, flow.id);
         }
 
         // Only report a miss for something that was actually trying to trigger a
@@ -334,44 +423,103 @@ export const useAppStore = create<AppState & AppActions>()(
         }
       },
 
-      triggerFlows: (type, details, specificFlowId) => {
+      triggerFlows: async (type, details, specificFlowId) => {
         const { flows, addLog } = get();
+        const runs: Promise<unknown>[] = [];
 
         for (const flow of flows) {
-          if (!flow.enabled) continue;
+          if (!flow.active) continue;
+          if (flow.trigger.type !== type) continue;
           if (specificFlowId && flow.id !== specificFlowId) continue;
-          if (!specificFlowId && flow.trigger.type !== type) continue;
-
-          // Match details if not already matched (for deep links, we might pass specificFlowId)
-          if (!specificFlowId) {
-            const triggerDetails = flow.trigger.details;
-            const isMatch = Object.keys(triggerDetails).every(
-              (key) => details[key] === triggerDetails[key]
-            );
-            if (!isMatch) continue;
-          }
+          if (!specificFlowId && !matchesTrigger(type, flow.trigger.details, details)) continue;
 
           addLog({
             flowId: flow.id,
             status: 'success',
-            message: `Flow triggered by ${type}: ${flow.name}.`,
+            message: `${flow.dryRun ? 'Dry run: ' : ''}Flow triggered by ${type}: ${flow.name}.`,
           });
 
-          // Execute actions with trigger details and optional local/space flow secrets
-          const executionContext = flow.secrets
-            ? { ...details, secrets: flow.secrets }
-            : details;
-
-          flow.actions.forEach((action) => {
-            runAction(flow.id, action, executionContext, addLog);
-          });
+          const log = (status: 'success' | 'failure', message: string) => addLog({ flowId: flow.id, status, message });
+          // Event triggers see only the data keys they opted into, as both
+          // trigger.* and event.*.
+          const triggerData = type === 'EVENT' ? exposeEvent(details, flow.trigger.details.exposeData) : details;
+          const extra = type === 'EVENT' ? { event: triggerData } : undefined;
+          runs.push(
+            runFlow(flow, triggerData, { device: deviceSnapshot(), now: new Date(), extra }, {
+              execute: (action, data, trusted) => runAction(flow.id, action, data, trusted, addLog),
+              log,
+              schedule: (item) => get().scheduleRun(item),
+              cancelScheduled: (identifier) => get().cancelScheduled(identifier),
+              labelFor: actionLabel,
+            }).then((outcome) => {
+              if (outcome.status === 'gated') log('success', `${flow.name}: stopped by a condition.`);
+            }),
+          );
         }
+        await Promise.all(runs);
+      },
+
+      scheduleRun: (item: ScheduledRun) => {
+        const id = uuidv4();
+        set((state) => ({ scheduled: [...state.scheduled, { ...item, id }] }));
+        const wait = Math.max(0, item.dueAt - Date.now());
+        // Timers only cover the time the app stays open; `runDueScheduled`
+        // picks up anything that comes due while it is closed.
+        if (wait < 2 ** 31 - 1) {
+          scheduleTimers.set(id, setTimeout(() => void get().runDueScheduled(), wait));
+        }
+        get().addLog({ flowId: item.flowId, status: 'success', message: `Scheduled ${item.action.type} as "${item.identifier}".` });
+      },
+
+      cancelScheduled: (identifier) => {
+        const cancelled = get().scheduled.filter((item) => item.identifier === identifier);
+        if (!cancelled.length) return;
+        for (const item of cancelled) {
+          clearTimeout(scheduleTimers.get(item.id));
+          scheduleTimers.delete(item.id);
+          get().addLog({ flowId: item.flowId, status: 'success', message: `Cancelled scheduled "${identifier}".` });
+        }
+        set((state) => ({ scheduled: state.scheduled.filter((item) => item.identifier !== identifier) }));
+      },
+
+      runDueScheduled: async (now = Date.now()) => {
+        const due = get().scheduled.filter((item) => item.dueAt <= now);
+        if (!due.length) return;
+        const dueIds = new Set(due.map((item) => item.id));
+        set((state) => ({ scheduled: state.scheduled.filter((item) => !dueIds.has(item.id)) }));
+
+        const { addLog, flows } = get();
+        await Promise.all(
+          due.map(async (item) => {
+            scheduleTimers.delete(item.id);
+            if (item.expiresAt !== undefined && item.expiresAt < now) {
+              addLog({ flowId: item.flowId, status: 'failure', message: `Skipped scheduled "${item.identifier}": it expired before the app was open.` });
+              return;
+            }
+            const flow = flows.find((f) => f.id === item.flowId);
+            if (!flow?.active) return; // deleted or switched off since
+            const result = await runAction(item.flowId, item.action, item.data, new Set(item.trustedRoots), addLog);
+            if (!result.success) {
+              addLog({ flowId: item.flowId, status: 'failure', message: `${actionLabel(item.action)} failed: ${result.message ?? 'unknown error'}` });
+            }
+          }),
+        );
       },
 
     }),
     {
       name: 'flow-state-v2', // New storage name
       storage: resilientStorage,
+      version: STORE_VERSION,
+      // 0 → 1: v1 flows (enabled/actions/parameters) become the v2 step model.
+      migrate: (persisted, version) => {
+        const state = (persisted ?? {}) as Partial<PersistedState> & { flows?: unknown[] };
+        if (version < 1) {
+          state.flows = (state.flows ?? []).map((f) => (isV1Flow(f) ? migrateFlowV1(f) : f)) as Flow[];
+          state.scheduled = [];
+        }
+        return state as PersistedState;
+      },
       // Persist the entire state except for the 'initialized' flag and transient device status
       partialize: (state) =>
         Object.fromEntries(Object.entries(state).filter(([key]) =>

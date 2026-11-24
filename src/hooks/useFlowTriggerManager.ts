@@ -21,7 +21,7 @@ export function useFlowTriggerManager() {
   const triggerFlows = useAppStore((state) => state.triggerFlows);
   const flows = useAppStore((state) => state.flows);
 
-  const lastBatteryCharging = useRef(battery.charging);
+  const lastBattery = useRef({ charging: battery.charging, level: battery.level });
   const lastNetworkOnline = useRef(network.online);
   const lastIdleUserState = useRef(idle.userState);
   const lastIdleScreenState = useRef(idle.screenState);
@@ -36,21 +36,34 @@ export function useFlowTriggerManager() {
   // so a flow fires at most once per scheduled minute.
   const scheduleFired = useRef<Map<string, string>>(new Map());
 
-  // Trigger for battery charging status
+  // Battery: report charging changes and level changes together with the
+  // previous state, so a flow can fire on *entering* its configured state
+  // (e.g. unplugged AND at or below 20%) — see `matchesTrigger`.
   useEffect(() => {
     if (battery.supported && !battery.pending) {
-      if (battery.charging !== lastBatteryCharging.current) {
-        triggerFlows('NATIVE_BATTERY', { charging: battery.charging });
-        lastBatteryCharging.current = battery.charging;
+      const previous = lastBattery.current;
+      if (battery.charging !== previous.charging || battery.level !== previous.level) {
+        void triggerFlows('NATIVE_BATTERY', { charging: battery.charging, level: battery.level, previous });
+        lastBattery.current = { charging: battery.charging, level: battery.level };
       }
     }
-  }, [battery.charging, battery.supported, battery.pending, triggerFlows]);
+  }, [battery.charging, battery.level, battery.supported, battery.pending, triggerFlows]);
+
+  // Deferred (scheduled) action steps: run what came due while the app was
+  // closed, then keep checking while it is open. Timers set at schedule time
+  // cover the common case; this is the backstop.
+  const runDueScheduled = useAppStore((state) => state.runDueScheduled);
+  useEffect(() => {
+    void runDueScheduled();
+    const id = setInterval(() => void runDueScheduled(), SCHEDULE_CHECK_MS);
+    return () => clearInterval(id);
+  }, [runDueScheduled]);
 
   // Trigger for network online/offline status
   useEffect(() => {
     if (network.supported && !network.pending) {
       if (network.online !== lastNetworkOnline.current) {
-        triggerFlows('NETWORK', { online: network.online });
+        void triggerFlows('NETWORK', { online: network.online });
         lastNetworkOnline.current = network.online;
       }
     }
@@ -60,7 +73,7 @@ export function useFlowTriggerManager() {
   useEffect(() => {
     if (geolocation.supported && !geolocation.pending && geolocation.latitude !== null && geolocation.longitude !== null) {
       flows.forEach(flow => {
-        if (flow.enabled && flow.trigger.type === 'GEOLOCATION') {
+        if (flow.active && flow.trigger.type === 'GEOLOCATION') {
           const { latitude, longitude, radius, event } = flow.trigger.details;
           if (latitude === undefined || longitude === undefined || radius === undefined) return;
 
@@ -82,9 +95,9 @@ export function useFlowTriggerManager() {
 
           // Detect transitions
           if (isInside && !wasInside && event === 'ENTER') {
-            triggerFlows('GEOLOCATION', { event: 'ENTER', distance }, flow.id);
+            void triggerFlows('GEOLOCATION', { event: 'ENTER', distance }, flow.id);
           } else if (!isInside && wasInside && event === 'EXIT') {
-            triggerFlows('GEOLOCATION', { event: 'EXIT', distance }, flow.id);
+            void triggerFlows('GEOLOCATION', { event: 'EXIT', distance }, flow.id);
           }
 
           zoneStates.current.set(flow.id, isInside);
@@ -100,7 +113,7 @@ export function useFlowTriggerManager() {
       const screenChanged = idle.screenState !== lastIdleScreenState.current;
 
       if (userChanged || screenChanged) {
-        triggerFlows('IDLE', { userState: idle.userState, screenState: idle.screenState });
+        void triggerFlows('IDLE', { userState: idle.userState, screenState: idle.screenState });
         lastIdleUserState.current = idle.userState;
         lastIdleScreenState.current = idle.screenState;
       }
@@ -110,7 +123,7 @@ export function useFlowTriggerManager() {
   // Trigger for device motion gestures
   useEffect(() => {
     if (motion.supported && motion.gesture && motion.gesture !== lastMotionGesture.current) {
-      triggerFlows('DEVICE_MOTION', { gesture: motion.gesture });
+      void triggerFlows('DEVICE_MOTION', { gesture: motion.gesture });
     }
     lastMotionGesture.current = motion.gesture;
   }, [motion.gesture, motion.supported, triggerFlows]);
@@ -126,7 +139,7 @@ export function useFlowTriggerManager() {
       const dateKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
 
       flows.forEach((flow) => {
-        if (!flow.enabled || flow.trigger.type !== 'TIME') return;
+        if (!flow.active || flow.trigger.type !== 'TIME') return;
         const { time, days } = flow.trigger.details as { time?: string; days?: number[] };
         if (!time || time !== current) return;
 
@@ -137,7 +150,7 @@ export function useFlowTriggerManager() {
         if (scheduleFired.current.get(flow.id) === occurrence) return;
         scheduleFired.current.set(flow.id, occurrence);
 
-        triggerFlows(
+        void triggerFlows(
           'TIME',
           { time, date: now.toLocaleDateString(), day: DAY_LABELS[dow], timestamp: now.getTime() },
           flow.id,
@@ -154,7 +167,7 @@ export function useFlowTriggerManager() {
   useEffect(() => {
     if (orientation.supported && orientation.type !== lastOrientationType.current) {
       const mapped = orientation.type.startsWith('portrait') ? 'portrait' : 'landscape';
-      triggerFlows('SCREEN_ORIENTATION', { orientation: mapped, angle: orientation.angle });
+      void triggerFlows('SCREEN_ORIENTATION', { orientation: mapped, angle: orientation.angle });
       lastOrientationType.current = orientation.type;
     }
   }, [orientation.type, orientation.angle, orientation.supported, triggerFlows]);

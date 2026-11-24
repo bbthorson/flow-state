@@ -369,7 +369,7 @@ Weights (`w1–w4`) are stored as a `com.intent.flow` passive flow record on the
 
 ```
 app.flowstate.flow          ─── retained, the publishable automation unit
-app.flowstate.install       ─── retained
+app.flowstate.install       ─── dropped (Nov 2026: nothing read it)
 
 com.intent.flow.trigger     ─── new Phase 1, replaces app.flowstate.trigger.*
 com.intent.flow.action      ─── new Phase 1, replaces app.flowstate.action.*

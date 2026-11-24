@@ -28,22 +28,42 @@ Deploys are handled by Cloudflare's GitHub integration — pushing to `master` t
 
 - `src/types/` — Core types derived from lexicon schemas. `battery.d.ts` is an ambient
   declaration picked up via tsconfig, not imported anywhere — don't "clean it up".
-- `src/lexicons/` — AT Protocol lexicon JSON files (app.flowstate.flow, app.flowstate.install, triggers, actions)
+- `src/lexicons/` — AT Protocol lexicon JSON files: `app.flowstate.automation` (the v2 flow record),
+  `app.flowstate.event`, triggers and actions. `app.flowstate.flow` is the superseded v1 record.
+  `src/lib/lexicons.test.ts` fails if the code's NSID tables and these files drift apart. Space
+  types are still drafts in `docs/design/lexicons/` (see `docs/design/private-automation-layer.md`).
 - `src/store/useAppStore.ts` — Zustand store for flows, day-plan blocks, logs, vault import/export (persisted to localStorage). `blocks` is the recurring daily Focus/Care/Triage plan.
 - `src/store/useDeviceStore.ts` — Zustand store for device sensor state
 - `src/store/useAuthStore.ts` — Zustand store for AT Protocol OAuth (did, handle, published flows map, network discovery)
 - `src/hooks/` — Device sensor hooks (battery, network, geo, idle, motion, orientation), useFlowTriggerManager connects sensor data to flow execution
-- `src/services/actions.ts` — Action executors, all return ActionResult
+- **Flow model (v2):** a flow is a trigger plus an ordered list of **steps** — `action` (optionally
+  deferred with `schedule`), `condition` (a gate, or a branch with `then`/`else`), `variable`, and
+  `cancelScheduled` — with `active` and `dryRun` flags. Locally triggers/actions stay
+  `{ type: 'NATIVE_BATTERY', details }`; `src/lib/automation-record.ts` converts to/from the record's
+  `$type` unions. Persisted v1 flows (`enabled`/`actions`/`parameters`) are migrated by
+  `src/lib/migrate.ts` (store `version: 1`) and on vault import.
+- `src/lib/engine.ts` — Pure run engine: `matchesTrigger` (per-type; battery fires on *entering* its
+  configured state) and `runFlow` (walks steps, evaluates assertions, handles dry run and
+  scheduling). Run data roots: `trigger.*` and `event.*` are **untrusted**; `device.*`, `time.*`,
+  `secrets.*` and variables are trusted unless a variable was built from untrusted data.
+- `src/services/actions.ts` — Action executors, all return ActionResult. **Webhook URLs and headers
+  only accept placeholders from trusted roots** (`templateTrusted`); trigger data goes in bodies and
+  text only. Don't loosen this — a deep link's query string is attacker-controlled.
+- **Local events:** the `EMIT_EVENT` action writes an `app.flowstate.event` and delivers it (on a
+  fresh task) to flows with an `EVENT` trigger. Receivers see only the `data` keys listed in their
+  trigger's `exposeData`, as `event.*`/`trigger.*` (untrusted). Chains stop at `MAX_EVENT_HOPS` (5).
+  Only the local source exists; spaces and the hub are designed in `docs/design/` but not built.
+- Secrets live in `Flow.secrets` (device-only) and are referenced through `kind: 'secret'` variables.
+  They are never written to any record — `toAutomationRecord` and `sanitizeForRecipeExport` strip them.
 - `src/services/atproto.ts` — AT Protocol operations: publish/unpublish flows, record installs, discover flows from follows
-- `src/lib/flow-schema.ts` — **Trust boundary.** Zod validation for `app.flowstate.flow`
-  records, mirroring `src/lexicons/`. Discovery reads records off other people's PDSes, so
-  everything arriving from the network goes through `parseFlowRecord` before it reaches the
-  store or the UI; invalid records are skipped (with a console warning) rather than failing
-  the whole crawl. This is load-bearing: `FlowCard` calls `triggerType.replace(...)` and
-  `actions.map(...)`, so one malformed record used to take out the entire Discover surface.
-  Detail objects use `passthrough()` — don't switch to strict/stripping, since `DEEP_LINK`
-  matching compares every key of `trigger.details`. Vault import is *not* yet validated
-  through this.
+- `src/lib/flow-schema.ts` — **Trust boundary.** Zod validation for automations (v2). Discovery
+  reads records off other people's PDSes, so everything arriving from the network goes through
+  `parseAutomationRecord` (`$type` → local form, then `parseRecipe`) before it reaches the store or
+  the UI; invalid records are skipped (with a console warning) rather than failing the whole crawl.
+  This is load-bearing: `FlowCard` calls `triggerType.replace(...)` and maps action steps, so one
+  malformed record used to take out the entire Discover surface. Detail objects use
+  `passthrough()` — don't switch to strict/stripping, since `DEEP_LINK` matching compares every key
+  of `trigger.details`. Vault import also validates through `parseRecipe` (after v1 migration).
 - `src/lib/atproto.ts` — BrowserOAuthClient singleton (handles PKCE/PAR/DPoP automatically).
   **Loaded via dynamic `import()` and deliberately off the initial load path** — the client
   is ~1.1 MB raw / ~242 kB gzip, more than React and the app combined. `useAuthStore.init()`
@@ -66,8 +86,11 @@ Deploys are handled by Cloudflare's GitHub integration — pushing to `master` t
 - OAuth via `@atproto/oauth-client-browser` — user signs in with Bluesky handle
 - Client metadata at `public/oauth/client-metadata.json` (public client, no secrets)
 - Handle resolution through Bluesky's public API (`https://bsky.social`)
-- Flows are published to the user's PDS as `app.flowstate.flow` records
-- Installs are recorded as `app.flowstate.install` records (AT URI reference + timestamp)
+- Flows are published to the user's PDS as `app.flowstate.automation` records (v2). Discovery reads
+  only that collection; old `app.flowstate.flow` records are ignored but can still be unpublished.
+  `republishFlow` replaces a v1 record (write v2 first, then delete v1) or overwrites a v2 record in
+  place with `putRecord`, so its URI — and anything forked from it — stays stable
+- Installs are not recorded on the network (the old `app.flowstate.install` records were dropped: nothing read them, and they told the network what you run)
 - Discovery crawls the user's follow list client-side — no backend indexer. Records are
   validated against `src/lib/flow-schema.ts` on the way in; unknown trigger/action types are
   rejected even though the lexicon unions are open, because this build can't represent them

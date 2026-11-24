@@ -1,0 +1,66 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.event",
+  "description": "Something that happened, written by a person, app, or device so that flows can react to it. Events are written into a private space (a flow's inbox, a group, or the owner's personal space), never into the public repo.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A single event. The record author (the DID whose space repo it lives in) is the sender; there is deliberately no self-declared 'from' field.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": [
+          "event",
+          "createdAt"
+        ],
+        "properties": {
+          "event": {
+            "type": "string",
+            "description": "Event name that triggers match on, e.g. 'arrived-home' or 'deploy-failed'. Same role as the deepLink trigger's 'event'.",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary. Safe to show in a notification.",
+            "maxLength": 120
+          },
+          "body": {
+            "type": "string",
+            "description": "Longer human-readable text.",
+            "maxLength": 1000
+          },
+          "urgency": {
+            "type": "string",
+            "description": "Delivery hint. 'high' may wake the device via Web Push; 'low' waits for the next foreground sync.",
+            "knownValues": [
+              "low",
+              "normal",
+              "high"
+            ],
+            "default": "normal"
+          },
+          "data": {
+            "type": "ref",
+            "ref": "#eventData",
+            "description": "Optional flat key/value payload. Only keys a trigger explicitly allows are exposed to action templates."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "After this time the event must not fire flows (e.g. 'I'm 5 minutes away' is useless an hour later)."
+          }
+        }
+      }
+    },
+    "eventData": {
+      "type": "object",
+      "description": "Flat map of string/number/boolean values. Nested objects are rejected so templates stay predictable. Max 16 keys, values max 256 chars (enforced by the client schema).",
+      "properties": {}
+    }
+  }
+}

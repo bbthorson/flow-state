@@ -2,9 +2,12 @@ import { useState } from 'react';
 import { useParams, useNavigate, Navigate, Link } from 'react-router';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { isLegacyFlowUri } from '@/services/atproto';
 import { usePermissions } from '@/hooks/usePermissions';
 import { getFlowPermissions, PERMISSION_LABELS } from '@/lib/permissions';
-import { TRIGGER_LABELS, ACTION_LABELS, triggerSummary } from '@/lib/flow-constants';
+import { TRIGGER_LABELS, triggerSummary } from '@/lib/flow-constants';
+import { StepsSummary } from '@/components/steps-summary';
+import { walkSteps } from '@/lib/steps';
 import { TriggerType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -28,7 +31,8 @@ import {
   Globe,
   GlobeLock,
   ShieldAlert,
-  ChevronRight,
+  FlaskConical,
+  RefreshCw,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -42,6 +46,7 @@ const MOCK_DATA: Record<TriggerType, Record<string, any>> = {
   DEVICE_MOTION: { gesture: 'SHAKE', accelerationX: 0, accelerationY: 0, accelerationZ: 15 },
   SCREEN_ORIENTATION: { orientation: 'landscape', angle: 90 },
   TIME: { time: '09:00', date: 'Jan 1, 2026', day: 'Mon' },
+  EVENT: { event: 'test', title: 'Test event', body: 'Sent from the Test button', author: 'self', data: {}, createdAt: new Date(0).toISOString(), hops: 0 },
 };
 
 export function FlowDetailPage() {
@@ -60,6 +65,7 @@ export function FlowDetailPage() {
   const publishedFlows = useAuthStore((s) => s.publishedFlows);
   const publishFlow = useAuthStore((s) => s.publishFlow);
   const unpublishFlow = useAuthStore((s) => s.unpublishFlow);
+  const republishFlow = useAuthStore((s) => s.republishFlow);
 
   const permissions = usePermissions();
 
@@ -71,8 +77,8 @@ export function FlowDetailPage() {
     return (
       <FlowForm
         flow={flow}
-        onSave={(data) => {
-          updateFlow({ ...data, id: flow.id });
+        onSave={(changes) => {
+          updateFlow({ ...flow, ...changes });
           setIsEditing(false);
         }}
         onCancel={() => setIsEditing(false)}
@@ -81,19 +87,42 @@ export function FlowDetailPage() {
   }
 
   const isPublished = !!publishedFlows[flow.id];
+  const isLegacy = isPublished && isLegacyFlowUri(publishedFlows[flow.id].uri);
   const requiredPerms = getFlowPermissions(flow);
   const unmetPerms = requiredPerms.filter((p) => permissions[p] !== 'granted');
 
-  const handleToggle = (enabled: boolean) => updateFlow({ ...flow, enabled });
+  const handleToggle = (active: boolean) => updateFlow({ ...flow, active });
+  const stepCount = [...walkSteps(flow.steps)].length;
 
   const handleTest = () => {
-    triggerFlows(flow.trigger.type, MOCK_DATA[flow.trigger.type], flow.id);
+    void triggerFlows(flow.trigger.type, MOCK_DATA[flow.trigger.type], flow.id);
     toast({ title: 'Test triggered', description: `Running "${flow.name}" with mock data.` });
   };
 
   const handleDelete = () => {
     deleteFlow(flow.id);
     navigate('/');
+  };
+
+  const handleRepublish = async () => {
+    setPublishing(true);
+    try {
+      await republishFlow(flow);
+      toast({
+        title: isLegacy ? 'Republished' : 'Published copy updated',
+        description: isLegacy
+          ? `"${flow.name}" is published in the new format; the old record was removed.`
+          : `The network copy of "${flow.name}" now matches this flow.`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Update failed',
+        description: err instanceof Error ? err.message : 'Something went wrong.',
+        variant: 'destructive',
+      });
+    } finally {
+      setPublishing(false);
+    }
   };
 
   const handlePublishToggle = async () => {
@@ -126,8 +155,18 @@ export function FlowDetailPage() {
           </Link>
         </Button>
         <h2 className="text-2xl font-bold tracking-tight flex-1 truncate">{flow.name}</h2>
-        <Switch checked={flow.enabled} onCheckedChange={handleToggle} aria-label={`Enable ${flow.name}`} />
+        <Switch checked={flow.active} onCheckedChange={handleToggle} aria-label={`Enable ${flow.name}`} />
       </div>
+
+      {flow.dryRun && (
+        <div className="flex items-center gap-2 rounded-md border p-3 text-sm text-muted-foreground">
+          <FlaskConical className="h-4 w-4 shrink-0" />
+          <span className="flex-1">Dry run: runs are logged, nothing executes.</span>
+          <Button variant="ghost" size="sm" onClick={() => updateFlow({ ...flow, dryRun: false })}>
+            Go live
+          </Button>
+        </div>
+      )}
 
       {unmetPerms.length > 0 && (
         <div className="flex items-center gap-2 rounded-md border border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950 p-3 text-sm text-yellow-700 dark:text-yellow-400">
@@ -145,14 +184,9 @@ export function FlowDetailPage() {
 
         <div className="p-4 space-y-2">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            Actions ({flow.actions.length})
+            Steps ({stepCount})
           </p>
-          {flow.actions.map((action, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
-              <span className="text-sm">{ACTION_LABELS[action.type]}</span>
-            </div>
-          ))}
+          <StepsSummary steps={flow.steps} />
         </div>
       </div>
 
@@ -167,6 +201,19 @@ export function FlowDetailPage() {
             Edit
           </Button>
         </div>
+
+        {agent && isLegacy && (
+          <p className="text-xs text-muted-foreground">
+            Published in the old format, which this version of Flow State no longer reads — nobody can discover it until you republish.
+          </p>
+        )}
+
+        {agent && isPublished && (
+          <Button variant="outline" onClick={handleRepublish} disabled={publishing}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            {isLegacy ? 'Republish in the new format' : 'Update published copy'}
+          </Button>
+        )}
 
         {agent && (
           <Button

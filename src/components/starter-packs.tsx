@@ -8,6 +8,7 @@ import { getFlowPermissions, PERMISSION_LABELS, requestPermission, DevicePermiss
 import { triggerIcon } from '@/lib/flow-constants';
 import { FlowCard } from '@/components/flow-card';
 import { PermissionHint } from '@/components/permission-hint';
+import { actionSteps } from '@/lib/steps';
 
 function StarterFlowCard({ template, permissions }: {
   template: FlowTemplate;
@@ -17,6 +18,7 @@ function StarterFlowCard({ template, permissions }: {
   const { toast } = useToast();
 
   const requiredPerms = getFlowPermissions(template);
+  const actions = actionSteps(template.steps).map((s) => s.action);
   const unmetPerms = requiredPerms.filter((p) => permissions[p] !== 'granted');
   const canInstall = unmetPerms.length === 0;
 
@@ -42,8 +44,8 @@ function StarterFlowCard({ template, permissions }: {
       icon={triggerIcon(template.trigger.type)}
       triggerType={template.trigger.type}
       title={template.name}
-      subtitle={`${template.actions.length} ${template.actions.length === 1 ? 'Action' : 'Actions'}`}
-      actions={template.actions}
+      subtitle={`${actions.length} ${actions.length === 1 ? 'Action' : 'Actions'}`}
+      actions={actions}
       footer={
         <Button
           onClick={handleInstall}

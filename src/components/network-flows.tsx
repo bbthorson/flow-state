@@ -9,20 +9,15 @@ import { PublishedFlow } from '@/services/atproto';
 import { useNavigate } from 'react-router';
 import { FlowCard } from '@/components/flow-card';
 import { EmptyState } from '@/components/empty-state';
+import { instantiateRecipe } from '@/lib/recipe';
+import { actionSteps } from '@/lib/steps';
 
 function NetworkFlowCard({ flow }: { flow: PublishedFlow }) {
   const addFlowFromTemplate = useAppStore((s) => s.addFlowFromTemplate);
-  const installFromNetwork = useAuthStore((s) => s.installFromNetwork);
   const { toast } = useToast();
 
-  const handleInstall = async () => {
-    addFlowFromTemplate({
-      name: flow.name,
-      enabled: false,
-      trigger: flow.trigger,
-      actions: flow.actions,
-    });
-    await installFromNetwork(flow);
+  const handleInstall = () => {
+    addFlowFromTemplate(instantiateRecipe(flow));
     toast({
       title: 'Flow Installed',
       description: `"${flow.name}" has been added to your flows.`,
@@ -35,7 +30,7 @@ function NetworkFlowCard({ flow }: { flow: PublishedFlow }) {
       triggerType={flow.trigger.type}
       title={flow.name}
       subtitle={`by ${flow.did.slice(0, 20)}...`}
-      actions={flow.actions}
+      actions={actionSteps(flow.steps).map((s) => s.action)}
       footer={
         <Button onClick={handleInstall} variant="secondary" size="sm" className="w-full">
           <Plus className="mr-2 h-3 w-3" />

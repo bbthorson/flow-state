@@ -1,8 +1,12 @@
 import { useState } from 'react';
-import { useForm, useFieldArray, UseFormReturn } from 'react-hook-form';
+import { useForm, UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Flow, TriggerType, ActionType } from '@/types';
+import { Flow, TriggerType, ActionType, FlowStep } from '@/types';
+import { Switch } from '@/components/ui/switch';
+import { StepsEditor } from '@/components/steps-editor';
+import { actionSteps, newStepId, walkSteps } from '@/lib/steps';
+import { parseRecipe } from '@/lib/flow-schema';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,11 +19,12 @@ import {
     FormLabel,
     FormMessage,
 } from '@/components/ui/form';
-import { Trash2, PlusCircle, ShieldAlert, Sparkles, Loader2, ArrowLeft } from 'lucide-react';
+import { ShieldAlert, Sparkles, Loader2, ArrowLeft } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { VariableHints } from './variable-hints';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useLanguageModel, generateFlow } from '@/hooks/useLanguageModel';
+import type { GeneratedFlow } from '@/lib/generated-flow';
 import {
     TRIGGER_PERMISSIONS,
     ACTION_PERMISSIONS,
@@ -27,7 +32,7 @@ import {
     DevicePermission,
     PermissionState,
 } from '@/lib/permissions';
-import { TRIGGER_LABELS, ACTION_LABELS, TRIGGER_TYPES, ACTION_TYPES } from '@/lib/flow-constants';
+import { TRIGGER_LABELS, TRIGGER_TYPES } from '@/lib/flow-constants';
 import { PermissionHint } from '@/components/permission-hint';
 import { DAY_LABELS } from '@/lib/schedule';
 import { cn } from '@/lib/utils';
@@ -35,21 +40,55 @@ import { cn } from '@/lib/utils';
 const flowSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     trigger: z.object({
-        type: z.enum(['NATIVE_BATTERY', 'NETWORK', 'GEOLOCATION', 'DEEP_LINK', 'MANUAL', 'IDLE', 'DEVICE_MOTION', 'SCREEN_ORIENTATION', 'TIME']),
+        type: z.enum(TRIGGER_TYPES as [TriggerType, ...TriggerType[]]),
         details: z.record(z.any()),
     }),
-    actions: z.array(z.object({
-        type: z.enum(['WEBHOOK', 'NOTIFICATION', 'LOG', 'VIBRATION', 'CLIPBOARD', 'WEB_SHARE', 'WAKE_LOCK', 'SPEECH']),
-        details: z.record(z.any()),
-    })).min(1, 'At least one action is required'),
+    // Steps are validated structurally on save by the engine's schema; the
+    // editor keeps them loosely typed so partially filled rows don't block typing.
+    steps: z.array(z.any()),
+    dryRun: z.boolean(),
+    secrets: z.record(z.string()),
 });
 
-type FlowFormValues = z.infer<typeof flowSchema>;
+export type FlowFormValues = z.infer<typeof flowSchema>;
+
+export type FlowFormResult = Pick<Flow, 'name' | 'trigger' | 'steps' | 'dryRun' | 'secrets'>;
 
 interface FlowFormProps {
     flow?: Flow;
-    onSave: (flow: Omit<Flow, 'id'>) => void;
+    onSave: (changes: FlowFormResult) => void;
     onCancel: () => void;
+}
+
+/**
+ * Turn a schema path like `steps.0.then.1.assertions.0.field: …` into
+ * "Step 1 → then step 2: …" so the person can find the step.
+ */
+function describeSaveError(reason: string, steps: FlowStep[]): string {
+    const [rawPath, ...rest] = reason.split(': ');
+    const raw = rest.join(': ') || reason;
+    const message = /at least 1 character/.test(raw) ? 'is empty' : raw;
+    const parts = rawPath.split('.');
+    if (parts[0] !== 'steps' || parts.length < 2) return `Can't save: ${reason}`;
+    const labels: string[] = [];
+    let list: FlowStep[] | undefined = steps;
+    let i = 1;
+    while (i < parts.length && list) {
+        const index = Number(parts[i]);
+        if (Number.isNaN(index)) break;
+        labels.push(`${labels.length ? `${parts[i - 1] === 'else' ? 'otherwise' : 'then'} step` : 'Step'} ${index + 1}`);
+        const step: FlowStep | undefined = list[index];
+        const next = parts[i + 1];
+        if (step?.type === 'condition' && (next === 'then' || next === 'else')) {
+            list = step[next];
+            i += 2;
+        } else {
+            i += 1;
+            break;
+        }
+    }
+    const field = parts.slice(i).join('.');
+    return `Can't save — ${labels.join(' → ')}${field ? ` (${field})` : ''}: ${message}`;
 }
 
 function PermissionWarning({ unmet, permissions }: {
@@ -77,7 +116,7 @@ function PermissionWarning({ unmet, permissions }: {
     );
 }
 
-function AiFlowInput({ onGenerated }: { onGenerated: (data: { name: string; trigger: any; actions: any[] }) => void }) {
+function AiFlowInput({ onGenerated }: { onGenerated: (data: GeneratedFlow) => void }) {
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -123,43 +162,56 @@ function AiFlowInput({ onGenerated }: { onGenerated: (data: { name: string; trig
 export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
     const permissions = usePermissions();
     const aiAvailability = useLanguageModel();
-    const defaultValues: Partial<FlowFormValues> = flow
-        ? {
-            name: flow.name,
-            trigger: flow.trigger,
-            actions: flow.actions,
-        }
-        : {
-            name: '',
-            trigger: { type: 'MANUAL', details: {} },
-            actions: [{ type: 'LOG', details: {} }],
-        };
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const defaultValues: FlowFormValues = {
+        name: flow?.name ?? '',
+        trigger: flow?.trigger ?? { type: 'MANUAL', details: {} },
+        steps: flow?.steps?.length
+            ? structuredClone(flow.steps)
+            : [{ type: 'action', id: newStepId(), action: { type: 'LOG', details: {} } }],
+        dryRun: flow?.dryRun ?? false,
+        secrets: { ...(flow?.secrets ?? {}) },
+    };
 
     const form = useForm<FlowFormValues>({
         resolver: zodResolver(flowSchema),
         defaultValues,
     });
 
-    const { fields, append, remove } = useFieldArray({
-        control: form.control,
-        name: 'actions',
-    });
-
     const triggerType = form.watch('trigger.type');
-    const watchedActions = form.watch('actions');
+    const watchedSteps = (form.watch('steps') ?? []) as FlowStep[];
+    const stepCount = [...walkSteps(watchedSteps)].length;
 
     // Compute unmet permissions for current form state
     const allPerms = new Set<DevicePermission>();
     for (const p of TRIGGER_PERMISSIONS[triggerType as TriggerType] || []) allPerms.add(p);
-    for (const action of watchedActions || []) {
+    for (const { action } of actionSteps(watchedSteps)) {
         for (const p of ACTION_PERMISSIONS[action.type as ActionType] || []) allPerms.add(p);
     }
     const unmetPerms = Array.from(allPerms).filter((p) => permissions[p] !== 'granted');
 
     function onSubmit(data: FlowFormValues) {
+        // Same check records get on the way in, so an unfinished step (an empty
+        // condition field, a webhook with no URL) can't be saved and fail at run time.
+        const checked = parseRecipe({ name: data.name, trigger: data.trigger, steps: data.steps });
+        if (!checked.ok) {
+            setSaveError(describeSaveError(checked.reason, data.steps as FlowStep[]));
+            return;
+        }
+        setSaveError(null);
+        // Secrets only for variables that still exist and are secret.
+        const secretNames = new Set(
+            (data.steps as FlowStep[]).filter((s) => s.type === 'variable' && s.kind === 'secret').map((s) => (s as { name: string }).name),
+        );
+        const secrets = Object.fromEntries(
+            Object.entries(data.secrets ?? {}).filter(([k, v]) => (secretNames.has(k) || k === 'securityKey') && v !== ''),
+        );
         onSave({
-            ...data,
-            enabled: flow ? flow.enabled : true, // Default to enabled for new flows
+            name: data.name,
+            trigger: data.trigger as Flow['trigger'],
+            steps: data.steps as FlowStep[],
+            dryRun: data.dryRun,
+            ...(Object.keys(secrets).length ? { secrets } : { secrets: undefined }),
         });
     }
 
@@ -179,10 +231,9 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                 {!flow && aiAvailability !== 'unavailable' && (
                     <AiFlowInput onGenerated={(data) => {
                         form.setValue('name', data.name);
-                        form.setValue('trigger.type', data.trigger.type as any);
-                        form.setValue('trigger.details', data.trigger.details || {});
-                        while (fields.length > 0) remove(0);
-                        data.actions.forEach((action) => append({ type: action.type as any, details: action.details || {} }));
+                        form.setValue('trigger.type', data.trigger.type);
+                        form.setValue('trigger.details', data.trigger.details);
+                        form.setValue('steps', data.steps);
                     }} />
                 )}
 
@@ -349,6 +400,50 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                                 </FormItem>
                             )}
                         />
+                    )}
+
+                    {triggerType === 'EVENT' && (
+                        <div className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="trigger.details.event"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Event Name</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., arrived-home, or * for any" {...field} value={field.value || ''} />
+                                        </FormControl>
+                                        <FormDescription>
+                                            Fires when another flow on this device emits this event.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="trigger.details.exposeData"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Readable data keys</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="e.g., room, minutes"
+                                                defaultValue={Array.isArray(field.value) ? field.value.join(', ') : ''}
+                                                onBlur={(e) => {
+                                                    const keys = e.target.value.split(',').map((k) => k.trim()).filter(Boolean);
+                                                    field.onChange(keys.length ? keys : undefined);
+                                                }}
+                                            />
+                                        </FormControl>
+                                        <FormDescription>
+                                            Only these keys of the event's data are visible, as {'{{event.data.<key>}}'}.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
                     )}
 
                     {triggerType === 'TIME' && (
@@ -537,70 +632,40 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
                     </AccordionContent>
                   </AccordionItem>
 
-                  <AccordionItem value="actions">
+                  <AccordionItem value="steps">
                     <AccordionTrigger className="text-sm">
-                      ...do this — <span className="text-muted-foreground ml-1">{fields.length} action{fields.length !== 1 ? 's' : ''}</span>
+                      ...do this — <span className="text-muted-foreground ml-1">{stepCount} step{stepCount !== 1 ? 's' : ''}</span>
                     </AccordionTrigger>
                     <AccordionContent className="space-y-4">
                         <VariableHints type={triggerType} />
-
-                        {fields.map((field, index) => (
-                            <div key={field.id} className="space-y-3 rounded-md border p-3">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-medium text-muted-foreground shrink-0">#{index + 1}</span>
-                                    <div className="flex-1">
-                                        <FormField
-                                            control={form.control}
-                                            name={`actions.${index}.type`}
-                                            render={({ field }) => (
-                                                <Select
-                                                    onValueChange={(value) => {
-                                                        field.onChange(value);
-                                                        form.setValue(`actions.${index}.details`, {});
-                                                    }}
-                                                    defaultValue={field.value}
-                                                >
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select an action" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        {ACTION_TYPES.map((type) => (
-                                                            <SelectItem key={type} value={type}>
-                                                                {ACTION_LABELS[type]}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            )}
-                                        />
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="shrink-0 text-destructive h-8 w-8"
-                                        onClick={() => remove(index)}
-                                        disabled={fields.length === 1}
-                                        aria-label={`Remove action ${index + 1}`}
-                                    >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                </div>
-
-                                <ActionDetails index={index} form={form} />
-                            </div>
-                        ))}
-
-                        <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => append({ type: 'LOG', details: {} })}>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Add Action
-                        </Button>
+                        <StepsEditor form={form} renderActionDetails={(prefix) => <ActionDetails prefix={prefix} form={form} />} />
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
 
+                <FormField
+                    control={form.control}
+                    name="dryRun"
+                    render={({ field }) => (
+                        <FormItem className="flex items-center justify-between gap-3 rounded-md border p-3">
+                            <div className="space-y-0.5">
+                                <FormLabel>Dry run</FormLabel>
+                                <FormDescription className="text-xs">Log what would happen without running any action.</FormDescription>
+                            </div>
+                            <FormControl>
+                                <Switch checked={field.value} onCheckedChange={field.onChange} aria-label="Dry run" />
+                            </FormControl>
+                        </FormItem>
+                    )}
+                />
+
                 <PermissionWarning unmet={unmetPerms} permissions={permissions} />
+
+                {saveError && (
+                    <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+                        {saveError}
+                    </p>
+                )}
 
                 <Button type="submit" className="w-full" disabled={!isValid}>
                     Save Flow
@@ -610,14 +675,17 @@ export function FlowForm({ flow, onSave, onCancel }: FlowFormProps) {
     );
 }
 
-function ActionDetails({ index, form }: { index: number, form: UseFormReturn<FlowFormValues> }) {
-    const type = form.watch(`actions.${index}.type`);
+// Field paths are built from a step prefix (e.g. `steps.2.action`), which
+// react-hook-form can't type against the loosely typed steps array.
+function ActionDetails({ prefix, form: typedForm }: { prefix: string, form: UseFormReturn<FlowFormValues> }) {
+    const form = typedForm as unknown as UseFormReturn<any>;
+    const type = form.watch(`${prefix}.type`);
 
     if (type === 'WEBHOOK') {
         return (
             <FormField
                 control={form.control}
-                name={`actions.${index}.details.url`}
+                name={`${prefix}.details.url`}
                 render={({ field }) => (
                     <FormItem>
                         <FormLabel>Webhook URL</FormLabel>
@@ -636,7 +704,7 @@ function ActionDetails({ index, form }: { index: number, form: UseFormReturn<Flo
             <>
                 <FormField
                     control={form.control}
-                    name={`actions.${index}.details.title`}
+                    name={`${prefix}.details.title`}
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Title</FormLabel>
@@ -649,7 +717,7 @@ function ActionDetails({ index, form }: { index: number, form: UseFormReturn<Flo
                 />
                 <FormField
                     control={form.control}
-                    name={`actions.${index}.details.body`}
+                    name={`${prefix}.details.body`}
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Body</FormLabel>
@@ -668,7 +736,7 @@ function ActionDetails({ index, form }: { index: number, form: UseFormReturn<Flo
         return (
             <FormField
                 control={form.control}
-                name={`actions.${index}.details.message`}
+                name={`${prefix}.details.message`}
                 render={({ field }) => (
                     <FormItem>
                         <FormLabel>Log Message</FormLabel>
@@ -686,7 +754,7 @@ function ActionDetails({ index, form }: { index: number, form: UseFormReturn<Flo
         return (
             <FormField
                 control={form.control}
-                name={`actions.${index}.details.duration`}
+                name={`${prefix}.details.duration`}
                 render={({ field }) => (
                     <FormItem>
                         <FormLabel>Duration (ms)</FormLabel>
@@ -712,7 +780,7 @@ function ActionDetails({ index, form }: { index: number, form: UseFormReturn<Flo
         return (
             <FormField
                 control={form.control}
-                name={`actions.${index}.details.text`}
+                name={`${prefix}.details.text`}
                 render={({ field }) => (
                     <FormItem>
                         <FormLabel>Text</FormLabel>
@@ -731,7 +799,7 @@ function ActionDetails({ index, form }: { index: number, form: UseFormReturn<Flo
             <>
                 <FormField
                     control={form.control}
-                    name={`actions.${index}.details.title`}
+                    name={`${prefix}.details.title`}
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Title</FormLabel>
@@ -744,7 +812,7 @@ function ActionDetails({ index, form }: { index: number, form: UseFormReturn<Flo
                 />
                 <FormField
                     control={form.control}
-                    name={`actions.${index}.details.text`}
+                    name={`${prefix}.details.text`}
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Text</FormLabel>
@@ -757,7 +825,7 @@ function ActionDetails({ index, form }: { index: number, form: UseFormReturn<Flo
                 />
                 <FormField
                     control={form.control}
-                    name={`actions.${index}.details.url`}
+                    name={`${prefix}.details.url`}
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>URL</FormLabel>
@@ -776,7 +844,7 @@ function ActionDetails({ index, form }: { index: number, form: UseFormReturn<Flo
         return (
             <FormField
                 control={form.control}
-                name={`actions.${index}.details.duration`}
+                name={`${prefix}.details.duration`}
                 render={({ field }) => (
                     <FormItem>
                         <FormLabel>Duration (seconds, optional)</FormLabel>
@@ -801,12 +869,69 @@ function ActionDetails({ index, form }: { index: number, form: UseFormReturn<Flo
         );
     }
 
+    if (type === 'EMIT_EVENT') {
+        const dataLines = Object.entries((form.watch(`${prefix}.details.data`) ?? {}) as Record<string, string>)
+            .map(([k, v]) => `${k}=${v}`)
+            .join('\n');
+        return (
+            <>
+                <FormField
+                    control={form.control}
+                    name={`${prefix}.details.event`}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Event Name</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g., arrived-home" {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormDescription>Flows with an Event trigger for this name will run.</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name={`${prefix}.details.title`}
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Title</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Optional — supports {{variables}}" {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormItem>
+                    <FormLabel>Data</FormLabel>
+                    <FormControl>
+                        <textarea
+                            className="flex min-h-[64px] w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs placeholder:text-muted-foreground"
+                            placeholder={'room={{trigger.room}}\nminutes=10'}
+                            defaultValue={dataLines}
+                            onBlur={(e) => {
+                                const entries = e.target.value
+                                    .split('\n')
+                                    .map((line) => line.trim())
+                                    .filter((line) => line.includes('='))
+                                    .map((line) => [line.slice(0, line.indexOf('=')).trim(), line.slice(line.indexOf('=') + 1).trim()] as const)
+                                    .filter(([k]) => k);
+                                form.setValue(`${prefix}.details.data`, entries.length ? Object.fromEntries(entries) : undefined, { shouldDirty: true });
+                            }}
+                        />
+                    </FormControl>
+                    <FormDescription>One key=value per line. Receivers only see keys they list.</FormDescription>
+                </FormItem>
+            </>
+        );
+    }
+
     if (type === 'SPEECH') {
         return (
             <>
                 <FormField
                     control={form.control}
-                    name={`actions.${index}.details.text`}
+                    name={`${prefix}.details.text`}
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Text</FormLabel>
@@ -820,7 +945,7 @@ function ActionDetails({ index, form }: { index: number, form: UseFormReturn<Flo
                 <div className="grid grid-cols-3 gap-4">
                     <FormField
                         control={form.control}
-                        name={`actions.${index}.details.rate`}
+                        name={`${prefix}.details.rate`}
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Rate</FormLabel>
@@ -842,7 +967,7 @@ function ActionDetails({ index, form }: { index: number, form: UseFormReturn<Flo
                     />
                     <FormField
                         control={form.control}
-                        name={`actions.${index}.details.pitch`}
+                        name={`${prefix}.details.pitch`}
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Pitch</FormLabel>
@@ -864,7 +989,7 @@ function ActionDetails({ index, form }: { index: number, form: UseFormReturn<Flo
                     />
                     <FormField
                         control={form.control}
-                        name={`actions.${index}.details.volume`}
+                        name={`${prefix}.details.volume`}
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Volume</FormLabel>

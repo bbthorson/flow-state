@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { executeWebhook, executeNotification } from './actions';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { executeWebhook, executeNotification, templateTrusted } from './actions';
 
 describe('ActionExecutor', () => {
   describe('executeWebhook', () => {
@@ -106,6 +106,58 @@ describe('ActionExecutor', () => {
       
       expect(result.success).toBe(false);
       expect(result.message).toContain('denied');
+    });
+  });
+});describe('templateTrusted', () => {
+  it('resolves secrets', () => {
+    expect(templateTrusted('https://x.test/{{secrets.token}}', { secrets: { token: 'abc' } })).toEqual({
+      ok: true,
+      value: 'https://x.test/abc',
+    });
+  });
+
+  it('refuses trigger data', () => {
+    expect(templateTrusted('https://{{host}}/hook', { host: 'evil.test' })).toEqual({
+      ok: false,
+      placeholder: 'host',
+    });
+  });
+});
+
+describe('executeWebhook — trusted templating', () => {
+  const fetchMock = vi.fn();
+
+  beforeEach(() => {
+    fetchMock.mockReset().mockResolvedValue({ ok: true, status: 200, statusText: 'OK' });
+    vi.stubGlobal('fetch', fetchMock);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('does not let trigger data choose the URL', async () => {
+    const result = await executeWebhook({ url: 'https://{{host}}/hook' }, { host: 'evil.test' });
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/URL can't use \{\{host\}\}/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('does not let trigger data into headers', async () => {
+    const result = await executeWebhook(
+      { url: 'https://ok.test', headers: { Authorization: 'Bearer {{token}}' } },
+      { token: 'attacker' },
+    );
+    expect(result.success).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('templates headers per value, so quotes in data cannot break out', async () => {
+    await executeWebhook(
+      { url: 'https://ok.test/{{secrets.path}}', headers: { 'X-Key': '{{secrets.key}}' }, body: '{"level":"{{level}}"}' },
+      { level: '0.2', secrets: { path: 'p', key: 'k"v' } },
+    );
+    expect(fetchMock).toHaveBeenCalledWith('https://ok.test/p', {
+      method: 'POST',
+      headers: { 'X-Key': 'k"v' },
+      body: '{"level":"0.2"}',
     });
   });
 });

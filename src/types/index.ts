@@ -1,6 +1,6 @@
 // ── Trigger types (derived from app.flowstate.trigger.* lexicons) ──
 
-export type TriggerType = 'NATIVE_BATTERY' | 'NETWORK' | 'GEOLOCATION' | 'DEEP_LINK' | 'MANUAL' | 'IDLE' | 'DEVICE_MOTION' | 'SCREEN_ORIENTATION' | 'TIME';
+export type TriggerType = 'NATIVE_BATTERY' | 'NETWORK' | 'GEOLOCATION' | 'DEEP_LINK' | 'MANUAL' | 'IDLE' | 'DEVICE_MOTION' | 'SCREEN_ORIENTATION' | 'TIME' | 'EVENT';
 
 export interface BatteryTriggerDetails {
   level: number;
@@ -38,6 +38,17 @@ export interface ScreenOrientationTriggerDetails {
   orientation: 'portrait' | 'landscape';
 }
 
+/**
+ * Fires on an app.flowstate.event. Only `source: local` (emitted by another flow
+ * on this device) exists so far; spaces and the hub come later.
+ */
+export interface EventTriggerDetails {
+  /** Event name to match, or '*' for any. */
+  event: string;
+  /** Keys of the event's `data` that actions may read as {{event.data.<key>}}. */
+  exposeData?: string[];
+}
+
 export interface ScheduleTriggerDetails {
   time: string; // 'HH:MM' 24-hour
   days: number[]; // 0-6 (Sun-Sat); empty = every day
@@ -45,7 +56,7 @@ export interface ScheduleTriggerDetails {
 
 // ── Action types (derived from app.flowstate.action.* lexicons) ──
 
-export type ActionType = 'WEBHOOK' | 'NOTIFICATION' | 'LOG' | 'VIBRATION' | 'CLIPBOARD' | 'WEB_SHARE' | 'WAKE_LOCK' | 'SPEECH';
+export type ActionType = 'WEBHOOK' | 'NOTIFICATION' | 'LOG' | 'VIBRATION' | 'CLIPBOARD' | 'WEB_SHARE' | 'WAKE_LOCK' | 'SPEECH' | 'EMIT_EVENT';
 
 export interface WebhookActionDetails {
   url: string;
@@ -83,6 +94,31 @@ export interface WakeLockActionDetails {
   duration?: number; // ms, optional auto-release
 }
 
+export interface EmitEventActionDetails {
+  event: string;
+  title?: string;
+  body?: string;
+  urgency?: 'low' | 'normal' | 'high';
+  ttlSeconds?: number;
+  /** Flat key/value payload; values may use templates. */
+  data?: Record<string, string>;
+}
+
+/** An app.flowstate.event as flows receive it. */
+export interface FlowEvent {
+  event: string;
+  title?: string;
+  body?: string;
+  urgency?: 'low' | 'normal' | 'high';
+  data?: Record<string, string | number | boolean>;
+  createdAt: string;
+  expiresAt?: string;
+  /** Who wrote it: 'self' for local events; a DID once events arrive from spaces. */
+  author: string;
+  /** How many emitEvent hops produced this event (loop guard). */
+  hops: number;
+}
+
 export interface SpeechActionDetails {
   text: string;
   rate?: number; // 0.1-10
@@ -90,71 +126,121 @@ export interface SpeechActionDetails {
   volume?: number; // 0-1
 }
 
-// ── Social & Federated Automation Types (ATProto Spaces & Recipes) ──
+// ── Automation model (v2, mirrors src/lexicons/app/flowstate/automation.json) ──
+//
+// The local shape keeps `{ type, details }` for triggers and actions because the
+// form, labels and permission registry are keyed by those enums; conversion to
+// the lexicon's `$type` unions happens at the record boundary
+// (`src/lib/automation-record.ts`).
 
-export type FlowScope = 'local' | 'space';
-export type FlowVisibility = 'public' | 'space' | 'private';
+export type AssertionOperator =
+  | 'eq' | 'neq' | 'contains' | 'notContains' | 'startsWith' | 'endsWith'
+  | 'gt' | 'gte' | 'lt' | 'lte' | 'exists' | 'notExists';
 
-export interface FlowParameterDefinition {
-  key: string;
-  label: string;
-  description?: string;
-  type: 'string' | 'number' | 'boolean' | 'secret';
-  required?: boolean;
-  default?: string | number | boolean;
+export interface Assertion {
+  /** Dot path: trigger.*, device.*, time.*, event.*, or a variable name. */
+  field: string;
+  operator?: AssertionOperator;
+  value?: string;
+  comment?: string;
 }
 
+export interface RelativeDelay {
+  unit: 'ms' | 's' | 'm' | 'h' | 'd' | 'w';
+  value: { kind: 'literal'; n: number } | { kind: 'template'; expr: string } | { kind: 'sum'; expr: string; offset: number };
+}
+
+export interface ScheduleModifier {
+  identifier: string;
+  delay: RelativeDelay;
+  expireAfter?: RelativeDelay;
+}
+
+export interface ConditionStep {
+  type: 'condition';
+  id: string;
+  match?: 'all' | 'any';
+  assertions: Assertion[];
+  then?: FlowStep[];
+  else?: FlowStep[];
+  comment?: string;
+}
+
+export type VariableKind = 'string' | 'number' | 'boolean' | 'secret';
+
+export interface VariableStep {
+  type: 'variable';
+  id: string;
+  name: string;
+  kind?: VariableKind;
+  /** Literal or template. Never set for secrets — those resolve from `Flow.secrets[name]`. */
+  value?: string;
+  label?: string;
+  note?: string;
+  required?: boolean;
+  preserveOnDuplication?: boolean;
+  comment?: string;
+}
+
+export interface FlowAction {
+  type: ActionType;
+  details: Record<string, any>;
+}
+
+export interface ActionStep {
+  type: 'action';
+  id: string;
+  name?: string;
+  action: FlowAction;
+  schedule?: ScheduleModifier;
+  comment?: string;
+}
+
+export interface CancelScheduledStep {
+  type: 'cancelScheduled';
+  id: string;
+  identifier: string;
+  comment?: string;
+}
+
+export type FlowStep = ConditionStep | VariableStep | ActionStep | CancelScheduledStep;
+
+export interface FlowTrigger {
+  type: TriggerType;
+  details: Record<string, any>;
+}
+
+/** Shareable content of a flow: what gets published as an automation record. */
 export interface FlowRecipe {
-  id?: string; // or AT URI when published (at://did:plc:.../app.flowstate.flow/rkey)
+  /** AT URI when this came from the network. */
+  id?: string;
+  authorDid?: string;
   name: string;
   description?: string;
-  authorDid?: string;
   tags?: string[];
   forkedFromUri?: string;
-  visibility?: FlowVisibility;
-  parameters?: FlowParameterDefinition[];
-  trigger: {
-    type: TriggerType;
-    details: Record<string, any>;
-  };
-  actions: Array<{
-    type: ActionType;
-    details: Record<string, any>;
-  }>;
+  trigger: FlowTrigger;
+  steps: FlowStep[];
 }
-
-// ── Flow record (derived from app.flowstate.flow lexicon, with Spaces & Social extensions) ──
 
 export interface Flow {
   id: string;
   name: string;
   description?: string;
-  enabled: boolean;
-  securityKey?: string;
-  /** Provenance: AT URI of the recipe or flow this instance was installed/forked from */
-  forkedFromUri?: string;
-  /** Storage & execution scope: 'local' (device only) or 'space' (ATProto Spaces repository) */
-  scope?: FlowScope;
-  /** Identifier of the ATProto Space if scope === 'space' */
-  spaceId?: string;
-  /** Discoverable category or tag labels */
   tags?: string[];
-  /** Optional parameter declarations required by this flow */
-  parameters?: FlowParameterDefinition[];
+  /** Root automation this was duplicated from (flattened lineage). */
+  forkedFromUri?: string;
+  active: boolean;
+  /** Evaluate and log runs without executing any action. */
+  dryRun: boolean;
+  trigger: FlowTrigger;
+  steps: FlowStep[];
   /**
-   * Sensitive credentials (API tokens, webhooks, auth keys).
-   * Strictly local to the device or synced to private ATProto Spaces.
-   * NEVER published to public ATProto repositories or public recipes.
+   * Values for `kind: 'secret'` variables, keyed by variable name. Device-only:
+   * never written to any record, public or private.
    */
   secrets?: Record<string, string>;
-  trigger: {
-    type: TriggerType;
-    details: Record<string, any>;
-  };
-  actions: Array<{
-    type: ActionType;
-    details: Record<string, any>;
-  }>;
+  createdAt: string;
 }
 
 // ── Day timeline (local, recurring daily plan) ──

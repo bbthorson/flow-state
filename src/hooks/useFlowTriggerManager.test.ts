@@ -15,7 +15,8 @@ describe('useFlowTriggerManager', () => {
     useAppStore.setState({ flows: [], logs: [] });
     
     // Mock triggerFlows
-    useAppStore.getState().triggerFlows = vi.fn();
+    useAppStore.getState().triggerFlows = vi.fn().mockResolvedValue(undefined);
+    useAppStore.getState().runDueScheduled = vi.fn().mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -37,7 +38,11 @@ describe('useFlowTriggerManager', () => {
       vi.advanceTimersByTime(5000);
     });
 
-    expect(useAppStore.getState().triggerFlows).toHaveBeenCalledWith('NATIVE_BATTERY', { charging: true });
+    expect(useAppStore.getState().triggerFlows).toHaveBeenCalledWith('NATIVE_BATTERY', {
+      charging: true,
+      level: 1,
+      previous: { charging: false, level: 1 },
+    });
   });
 
   it('should trigger flows when network online status changes', async () => {
@@ -61,7 +66,9 @@ describe('useFlowTriggerManager', () => {
       flows: [{
         id: flowId,
         name: 'Home Flow',
-        enabled: true,
+        active: true,
+        dryRun: false,
+        createdAt: '2026-11-24T00:00:00.000Z',
         trigger: {
           type: 'GEOLOCATION',
           details: {
@@ -71,7 +78,7 @@ describe('useFlowTriggerManager', () => {
             event: 'ENTER'
           }
         },
-        actions: []
+        steps: []
       } as any]
     });
 
@@ -106,7 +113,9 @@ describe('useFlowTriggerManager', () => {
       flows: [{
         id: flowId,
         name: 'Leave Home Flow',
-        enabled: true,
+        active: true,
+        dryRun: false,
+        createdAt: '2026-11-24T00:00:00.000Z',
         trigger: {
           type: 'GEOLOCATION',
           details: {
@@ -116,7 +125,7 @@ describe('useFlowTriggerManager', () => {
             event: 'EXIT'
           }
         },
-        actions: []
+        steps: []
       } as any]
     });
 

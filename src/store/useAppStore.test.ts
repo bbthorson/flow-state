@@ -1,10 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useAppStore, MAX_LOGS, writePersisted } from './useAppStore';
 import * as actions from '@/services/actions';
+import { migrateFlowV1 } from '@/lib/migrate';
+
+/** Tests are written against the v1 shape for readability; the store takes v2. */
+const v2 = (f: any) => {
+  const { id: _id, createdAt: _c, ...rest } = migrateFlowV1(f);
+  return rest;
+};
+const flush = () => new Promise((r) => setTimeout(r, 0));
 
 // Every executor must be present: the store builds its dispatch table at module
 // load, so a missing one is a TypeError rather than a quiet no-op.
-vi.mock('@/services/actions', () => ({
+vi.mock('@/services/actions', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/actions')>()),
   executeWebhook: vi.fn().mockResolvedValue({ success: true }),
   executeNotification: vi.fn().mockResolvedValue({ success: true }),
   executeVibration: vi.fn().mockResolvedValue({ success: true }),
@@ -40,14 +49,19 @@ describe('useAppStore', () => {
       ],
     };
 
-    useAppStore.getState().addFlow(flow);
+    useAppStore.getState().addFlow(v2(flow));
     const addedFlow = useAppStore.getState().flows[0];
 
     const params = new URLSearchParams(`event=test&secret=${secret}`);
     useAppStore.getState().processDeepLink(params);
+    await flush();
 
-    // Verify action was called
-    expect(actions.executeWebhook).toHaveBeenCalledWith(flow.actions[0].details, { event: 'test' });
+    // Verify action was called, with trigger data namespaced under `trigger`
+    expect(actions.executeWebhook).toHaveBeenCalledWith(
+      flow.actions[0].details,
+      expect.objectContaining({ trigger: { event: 'test' } }),
+      expect.anything(),
+    );
     
     // Verify log was added
     const logs = useAppStore.getState().logs;
@@ -73,7 +87,7 @@ describe('useAppStore', () => {
       ],
     };
 
-    useAppStore.getState().addFlow(flow);
+    useAppStore.getState().addFlow(v2(flow));
 
     const params = new URLSearchParams('event=secret&secret=wrong-secret');
     useAppStore.getState().processDeepLink(params);
@@ -99,7 +113,7 @@ describe('useAppStore', () => {
       actions: [],
     };
 
-    useAppStore.getState().addFlow(flow);
+    useAppStore.getState().addFlow(v2(flow));
 
     // 1. Correct secret
     const paramsOk = new URLSearchParams(`event=global_test&secret=${secret}`);
@@ -131,7 +145,7 @@ describe('useAppStore', () => {
       ],
     };
 
-    useAppStore.getState().addFlow(flow);
+    useAppStore.getState().addFlow(v2(flow));
 
     const payload = JSON.stringify({ custom_data: 'value123' });
     const params = new URLSearchParams(`event=payload_test&payload=${encodeURIComponent(payload)}&secret=${secret}`);
@@ -142,11 +156,13 @@ describe('useAppStore', () => {
     
     // For now, let's just implement the parsing in useAppStore first.
     useAppStore.getState().processDeepLink(params);
+    await flush();
 
     // Verify action was called with the parsed payload data
     expect(actions.executeWebhook).toHaveBeenCalledWith(
       flow.actions[0].details,
-      expect.objectContaining({ event: 'payload_test', custom_data: 'value123' })
+      expect.objectContaining({ trigger: expect.objectContaining({ event: 'payload_test', custom_data: 'value123' }) }),
+      expect.anything(),
     );
   });
 
@@ -166,14 +182,15 @@ describe('useAppStore', () => {
       ],
     };
 
-    useAppStore.getState().addFlow(flow);
+    useAppStore.getState().addFlow(v2(flow));
 
-    useAppStore.getState().triggerFlows('NATIVE_BATTERY', { charging: true });
+    await useAppStore.getState().triggerFlows('NATIVE_BATTERY', { charging: true });
 
     // Verify action was called with details
     expect(actions.executeNotification).toHaveBeenCalledWith(
       flow.actions[0].details,
-      { charging: true }
+      expect.objectContaining({ trigger: { charging: true } }),
+      expect.anything(),
     );
     
     // Verify log was added
@@ -193,7 +210,7 @@ describe('useAppStore', () => {
       actions: [],
     };
 
-    useAppStore.getState().addFlowFromTemplate(template);
+    useAppStore.getState().addFlowFromTemplate(v2(template));
     
     const flows = useAppStore.getState().flows;
     expect(flows).toHaveLength(1);
@@ -235,7 +252,7 @@ describe('log retention', () => {
     expect(useAppStore.getState().logs).toHaveLength(MAX_LOGS);
   });
 
-  it('filters malformed flows coming in from a vault import', () => {
+  it('migrates v1 flows and filters malformed ones coming in from a vault import', () => {
     const validFlow = {
       id: 'f1',
       name: 'Valid flow',
@@ -261,6 +278,8 @@ describe('log retention', () => {
     const imported = useAppStore.getState().flows;
     expect(imported).toHaveLength(1);
     expect(imported[0].name).toBe('Valid flow');
+    expect(imported[0].active).toBe(true);
+    expect(imported[0].steps[0]).toMatchObject({ type: 'action', action: { type: 'NOTIFICATION' } });
   });
 });
 
@@ -293,10 +312,14 @@ describe('processDeepLink logging', () => {
   it('still reports a bad secret against a matching flow', () => {
     useAppStore.setState({
       flows: [{
-        id: 'f1', name: 'Deep', enabled: true,
-        trigger: { type: 'DEEP_LINK', details: { event: 'go' } },
-        actions: [{ type: 'LOG', details: {} }],
-      }] as never,
+        ...v2({
+          name: 'Deep', enabled: true,
+          trigger: { type: 'DEEP_LINK', details: { event: 'go' } },
+          actions: [{ type: 'LOG', details: {} }],
+        }),
+        id: 'f1',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      }],
     });
 
     const logs = run('event=go&secret=wrong');
@@ -352,36 +375,38 @@ describe('action execution', () => {
     vi.clearAllMocks();
   });
 
-  const runFlowWith = (action: { type: string; details: Record<string, unknown> }) => {
-    useAppStore.getState().addFlow({
-      name: 'Test Flow',
-      enabled: true,
-      trigger: { type: 'MANUAL', details: {} },
-      actions: [action],
-    } as never);
+  const runFlowWith = async (action: { type: string; details: Record<string, unknown> }) => {
+    useAppStore.getState().addFlow(
+      v2({
+        name: 'Test Flow',
+        enabled: true,
+        trigger: { type: 'MANUAL', details: {} },
+        actions: [action],
+      }),
+    );
     const flowId = useAppStore.getState().flows[0].id;
-    useAppStore.getState().triggerFlows('MANUAL', {}, flowId);
+    await useAppStore.getState().triggerFlows('MANUAL', {}, flowId);
     return flowId;
   };
 
-  it('runs an action whose details are valid', () => {
-    runFlowWith({ type: 'WEBHOOK', details: { url: 'https://example.com' } });
+  it('runs an action whose details are valid', async () => {
+    await runFlowWith({ type: 'WEBHOOK', details: { url: 'https://example.com' } });
 
     expect(actions.executeWebhook).toHaveBeenCalledOnce();
   });
 
-  it('skips an action with invalid details instead of calling the executor', () => {
+  it('skips an action with invalid details instead of calling the executor', async () => {
     // A webhook with no url reached executeWebhook as `{} as any` before, and
     // failed somewhere inside fetch with a far less useful message.
-    runFlowWith({ type: 'WEBHOOK', details: { method: 'POST' } });
+    await runFlowWith({ type: 'WEBHOOK', details: { method: 'POST' } });
 
     expect(actions.executeWebhook).not.toHaveBeenCalled();
     const logs = useAppStore.getState().logs;
     expect(logs.some((l) => l.status === 'failure' && /invalid settings/.test(l.message))).toBe(true);
   });
 
-  it('names the offending field when it skips', () => {
-    runFlowWith({ type: 'SPEECH', details: {} });
+  it('names the offending field when it skips', async () => {
+    await runFlowWith({ type: 'SPEECH', details: {} });
 
     const failure = useAppStore.getState().logs.find((l) => l.status === 'failure');
     expect(failure?.message).toContain('Speech');
@@ -393,7 +418,7 @@ describe('action execution', () => {
     // the other five became an unhandled rejection with nothing logged.
     vi.mocked(actions.executeVibration).mockRejectedValueOnce(new Error('motor on fire'));
 
-    runFlowWith({ type: 'VIBRATION', details: { duration: 100 } });
+    await runFlowWith({ type: 'VIBRATION', details: { duration: 100 } });
     await vi.waitFor(() => {
       const logs = useAppStore.getState().logs;
       expect(logs.some((l) => l.message.includes('motor on fire'))).toBe(true);
@@ -403,10 +428,83 @@ describe('action execution', () => {
   it('logs a failed result from an executor that previously had no catch', async () => {
     vi.mocked(actions.executeClipboard).mockResolvedValueOnce({ success: false, message: 'denied' });
 
-    runFlowWith({ type: 'CLIPBOARD', details: { text: 'hi' } });
+    await runFlowWith({ type: 'CLIPBOARD', details: { text: 'hi' } });
     await vi.waitFor(() => {
       const logs = useAppStore.getState().logs;
       expect(logs.some((l) => l.message === 'Clipboard failed: denied')).toBe(true);
     });
+  });
+});
+
+describe('local events', () => {
+  beforeEach(() => {
+    useAppStore.setState({ flows: [], logs: [] });
+    vi.clearAllMocks();
+  });
+
+  const add = (flow: object) =>
+    useAppStore.getState().addFlow({ active: true, dryRun: false, ...flow } as never);
+
+  it('delivers an emitted event to matching event flows, exposing only listed data keys', async () => {
+    add({
+      name: 'Sender',
+      trigger: { type: 'MANUAL', details: {} },
+      steps: [
+        {
+          type: 'action',
+          id: 'e1',
+          action: { type: 'EMIT_EVENT', details: { event: 'arrived', title: 'Home', data: { room: '{{trigger.room}}', secret: 'x' } } },
+        },
+      ],
+    });
+    add({
+      name: 'Receiver',
+      trigger: { type: 'EVENT', details: { event: 'arrived', exposeData: ['room'] } },
+      steps: [{ type: 'action', id: 'n1', action: { type: 'NOTIFICATION', details: { title: '{{event.title}} {{event.data.room}}' } } }],
+    });
+    add({
+      name: 'Other event',
+      trigger: { type: 'EVENT', details: { event: 'left' } },
+      steps: [{ type: 'action', id: 'n2', action: { type: 'NOTIFICATION', details: { title: 'wrong' } } }],
+    });
+
+    const sender = useAppStore.getState().flows[0].id;
+    await useAppStore.getState().triggerFlows('MANUAL', { room: 'kitchen' }, sender);
+
+    await vi.waitFor(() => expect(actions.executeNotification).toHaveBeenCalledOnce());
+    const [, data] = vi.mocked(actions.executeNotification).mock.calls[0];
+    expect(data?.event).toMatchObject({ event: 'arrived', title: 'Home', author: 'self', hops: 1, data: { room: 'kitchen' } });
+    expect(data?.event.data).not.toHaveProperty('secret');
+  });
+
+  it('stops a flow that keeps re-emitting its own event', async () => {
+    add({
+      name: 'Echo',
+      trigger: { type: 'EVENT', details: { event: 'loop' } },
+      steps: [{ type: 'action', id: 'e', action: { type: 'EMIT_EVENT', details: { event: 'loop' } } }],
+    });
+    await useAppStore.getState().triggerFlows('EVENT', { event: 'loop', author: 'self', hops: 0, createdAt: new Date().toISOString() });
+
+    await vi.waitFor(() =>
+      expect(useAppStore.getState().logs.some((l) => l.status === 'failure' && /events deep/.test(l.message))).toBe(true),
+    );
+    const emitted = useAppStore.getState().logs.filter((l) => l.message.startsWith('Emitted event'));
+    expect(emitted.length).toBe(5);
+  });
+
+  it('ignores expired events', async () => {
+    add({
+      name: 'Late',
+      trigger: { type: 'EVENT', details: { event: '*' } },
+      steps: [{ type: 'action', id: 'n', action: { type: 'NOTIFICATION', details: { title: 'late' } } }],
+    });
+    await useAppStore.getState().triggerFlows('EVENT', {
+      event: 'stale',
+      author: 'self',
+      hops: 0,
+      createdAt: '2020-01-01T00:00:00.000Z',
+      expiresAt: '2020-01-01T00:05:00.000Z',
+    });
+    expect(actions.executeNotification).not.toHaveBeenCalled();
   });
 });

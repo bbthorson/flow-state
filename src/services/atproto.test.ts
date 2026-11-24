@@ -1,12 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Agent } from '@atproto/api';
 import { listPublishedFlows } from './atproto';
+import { actionSteps } from '@/lib/steps';
 
 const goodRecord = (name: string) => ({
+  $type: 'app.flowstate.automation',
   name,
-  enabled: true,
-  trigger: { type: 'NATIVE_BATTERY', details: { level: 0.2, charging: false } },
-  actions: [{ type: 'NOTIFICATION', details: { title: 'Battery low' } }],
+  trigger: { $type: 'app.flowstate.trigger.battery', level: 0.2, charging: false },
+  steps: [
+    {
+      $type: 'app.flowstate.automation#actionStep',
+      id: 'a1',
+      action: { $type: 'app.flowstate.action.notification', title: 'Battery low' },
+    },
+  ],
+  createdAt: '2026-11-24T00:00:00.000Z',
 });
 
 /** Minimal stand-in for the bits of Agent that listPublishedFlows touches. */
@@ -26,7 +34,7 @@ describe('listPublishedFlows', () => {
 
   it('returns well-formed flows', async () => {
     const agent = agentReturning([
-      { uri: 'at://did:plc:abc/app.flowstate.flow/rk1', value: goodRecord('First') },
+      { uri: 'at://did:plc:abc/app.flowstate.automation/rk1', value: goodRecord('First') },
     ]);
 
     const flows = await listPublishedFlows(agent, 'did:plc:abc');
@@ -39,10 +47,10 @@ describe('listPublishedFlows', () => {
     // The whole point: someone you follow publishing one broken record used to
     // take out the entire Discover surface.
     const agent = agentReturning([
-      { uri: 'at://did:plc:abc/app.flowstate.flow/rk1', value: goodRecord('Keeper') },
-      { uri: 'at://did:plc:abc/app.flowstate.flow/rk2', value: { name: 'Broken' } },
-      { uri: 'at://did:plc:abc/app.flowstate.flow/rk3', value: null },
-      { uri: 'at://did:plc:abc/app.flowstate.flow/rk4', value: goodRecord('Other keeper') },
+      { uri: 'at://did:plc:abc/app.flowstate.automation/rk1', value: goodRecord('Keeper') },
+      { uri: 'at://did:plc:abc/app.flowstate.automation/rk2', value: { name: 'Broken' } },
+      { uri: 'at://did:plc:abc/app.flowstate.automation/rk3', value: null },
+      { uri: 'at://did:plc:abc/app.flowstate.automation/rk4', value: goodRecord('Other keeper') },
     ]);
 
     const flows = await listPublishedFlows(agent, 'did:plc:abc');
@@ -51,25 +59,25 @@ describe('listPublishedFlows', () => {
   });
 
   it('every returned flow is safe for the UI to render', async () => {
-    // FlowCard does triggerType.replace(...) and actions.map(...); NetworkFlowCard
+    // FlowCard does triggerType.replace(...) and maps the action steps; NetworkFlowCard
     // reads flow.trigger.type. All of those threw on a malformed record.
     const agent = agentReturning([
-      { uri: 'at://did:plc:abc/app.flowstate.flow/rk1', value: { name: 'no trigger', enabled: true, actions: [] } },
-      { uri: 'at://did:plc:abc/app.flowstate.flow/rk2', value: goodRecord('Fine') },
+      { uri: 'at://did:plc:abc/app.flowstate.automation/rk1', value: { name: 'no trigger', steps: [] } },
+      { uri: 'at://did:plc:abc/app.flowstate.automation/rk2', value: goodRecord('Fine') },
     ]);
 
     const flows = await listPublishedFlows(agent, 'did:plc:abc');
 
     for (const flow of flows) {
       expect(() => flow.trigger.type.replace(/_/g, ' ')).not.toThrow();
-      expect(() => flow.actions.map((a) => a.type)).not.toThrow();
-      expect(flow.actions.length).toBeGreaterThan(0);
+      expect(() => actionSteps(flow.steps).map((s) => s.action.type)).not.toThrow();
+      expect(flow.steps.length).toBeGreaterThan(0);
     }
   });
 
   it('says which record it skipped and why', async () => {
     const agent = agentReturning([
-      { uri: 'at://did:plc:abc/app.flowstate.flow/rk2', value: { name: 'Broken' } },
+      { uri: 'at://did:plc:abc/app.flowstate.automation/rk2', value: { name: 'Broken' } },
     ]);
 
     await listPublishedFlows(agent, 'did:plc:abc');

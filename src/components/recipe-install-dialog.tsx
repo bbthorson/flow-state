@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
-import { useAuthStore } from '@/store/useAuthStore';
-import { instantiateRecipe } from '@/lib/recipe';
-import type { FlowRecipe, FlowScope, FlowParameterDefinition } from '@/types';
+import { instantiateRecipe, recipeBlanks } from '@/lib/recipe';
+import type { FlowRecipe, VariableStep } from '@/types';
 import type { PublishedFlow } from '@/services/atproto';
 import {
   Dialog,
@@ -17,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Lock, Sparkles, SlidersHorizontal, Check } from 'lucide-react';
+import { Lock, SlidersHorizontal } from 'lucide-react';
 
 interface RecipeInstallDialogProps {
   recipe: FlowRecipe | PublishedFlow | null;
@@ -33,30 +32,28 @@ export function RecipeInstallDialog({
   onSuccess,
 }: RecipeInstallDialogProps) {
   const addFlow = useAppStore((s) => s.addFlow);
-  const installFromNetwork = useAuthStore((s) => s.installFromNetwork);
   const { toast } = useToast();
 
   const [flowName, setFlowName] = useState(recipe?.name ?? '');
   const [paramValues, setParamValues] = useState<Record<string, string>>({});
   const [secretValues, setSecretValues] = useState<Record<string, string>>({});
-  const [scope, setScope] = useState<FlowScope>('local');
-  const [spaceId, setSpaceId] = useState('');
 
   if (!recipe) return null;
 
-  const parameters: FlowParameterDefinition[] = recipe.parameters ?? [];
-  const secretParams = parameters.filter((p) => p.type === 'secret');
-  const regularParams = parameters.filter((p) => p.type !== 'secret');
+  const parameters: VariableStep[] = recipeBlanks(recipe);
+  const secretParams = parameters.filter((p) => p.kind === 'secret');
+  const regularParams = parameters.filter((p) => p.kind !== 'secret');
+  const labelOf = (p: VariableStep) => p.label ?? p.name;
 
   const handleInstall = async () => {
     // Validate required parameters
     for (const param of parameters) {
-      if (param.required) {
-        const val = param.type === 'secret' ? secretValues[param.key] : paramValues[param.key];
+      if (param.required !== false) {
+        const val = param.kind === 'secret' ? secretValues[param.name] : paramValues[param.name];
         if (!val || val.trim() === '') {
           toast({
             title: 'Missing Required Field',
-            description: `Please provide a value for "${param.label}".`,
+            description: `Please provide a value for "${labelOf(param)}".`,
             variant: 'destructive',
           });
           return;
@@ -68,17 +65,9 @@ export function RecipeInstallDialog({
       name: flowName.trim() || recipe.name,
       values: paramValues,
       secrets: secretValues,
-      scope,
-      spaceId: scope === 'space' && spaceId.trim() ? spaceId.trim() : undefined,
-      enabled: false,
     });
 
     addFlow(flowToInstall);
-
-    // If this is a published flow from ATProto, track install record on user's PDS
-    if ('uri' in recipe && recipe.uri) {
-      await installFromNetwork(recipe as PublishedFlow);
-    }
 
     toast({
       title: 'Recipe Installed',
@@ -129,23 +118,23 @@ export function RecipeInstallDialog({
                 Parameters
               </div>
               {regularParams.map((param) => (
-                <div key={param.key} className="space-y-1">
+                <div key={param.name} className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor={`param-${param.key}`} className="text-xs font-medium">
-                      {param.label}
-                      {param.required && <span className="text-destructive ml-1">*</span>}
+                    <Label htmlFor={`param-${param.name}`} className="text-xs font-medium">
+                      {labelOf(param)}
+                      {param.required !== false && <span className="text-destructive ml-1">*</span>}
                     </Label>
                   </div>
-                  {param.description && (
-                    <p className="text-[11px] text-muted-foreground">{param.description}</p>
+                  {param.note && (
+                    <p className="text-[11px] text-muted-foreground">{param.note}</p>
                   )}
                   <Input
-                    id={`param-${param.key}`}
-                    value={paramValues[param.key] ?? ''}
+                    id={`param-${param.name}`}
+                    value={paramValues[param.name] ?? ''}
                     onChange={(e) =>
-                      setParamValues((prev) => ({ ...prev, [param.key]: e.target.value }))
+                      setParamValues((prev) => ({ ...prev, [param.name]: e.target.value }))
                     }
-                    placeholder={`Enter ${param.label.toLowerCase()}...`}
+                    placeholder={`Enter ${labelOf(param).toLowerCase()}...`}
                   />
                 </div>
               ))}
@@ -165,74 +154,33 @@ export function RecipeInstallDialog({
                 </span>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                These secrets will be stored in your local vault or private space and will never be shared publicly.
+                These are stored only on this device and are never written to any record, public or private.
               </p>
               {secretParams.map((param) => (
-                <div key={param.key} className="space-y-1">
+                <div key={param.name} className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor={`secret-${param.key}`} className="text-xs font-medium">
-                      {param.label}
-                      {param.required && <span className="text-destructive ml-1">*</span>}
+                    <Label htmlFor={`secret-${param.name}`} className="text-xs font-medium">
+                      {labelOf(param)}
+                      {param.required !== false && <span className="text-destructive ml-1">*</span>}
                     </Label>
                   </div>
-                  {param.description && (
-                    <p className="text-[11px] text-muted-foreground">{param.description}</p>
+                  {param.note && (
+                    <p className="text-[11px] text-muted-foreground">{param.note}</p>
                   )}
                   <Input
-                    id={`secret-${param.key}`}
+                    id={`secret-${param.name}`}
                     type="password"
-                    value={secretValues[param.key] ?? ''}
+                    value={secretValues[param.name] ?? ''}
                     onChange={(e) =>
-                      setSecretValues((prev) => ({ ...prev, [param.key]: e.target.value }))
+                      setSecretValues((prev) => ({ ...prev, [param.name]: e.target.value }))
                     }
-                    placeholder={`Enter ${param.label.toLowerCase()}...`}
+                    placeholder={`Enter ${labelOf(param).toLowerCase()}...`}
                   />
                 </div>
               ))}
             </div>
           )}
 
-          {/* Execution Scope (Local vs ATProto Spaces) */}
-          <div className="space-y-2 pt-1 border-t">
-            <Label className="text-xs font-semibold">Storage & Execution Scope</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                type="button"
-                variant={scope === 'local' ? 'default' : 'outline'}
-                size="sm"
-                className="justify-start text-xs h-9"
-                onClick={() => setScope('local')}
-              >
-                {scope === 'local' && <Check className="mr-1.5 h-3.5 w-3.5" />}
-                Local (On-Device)
-              </Button>
-              <Button
-                type="button"
-                variant={scope === 'space' ? 'default' : 'outline'}
-                size="sm"
-                className="justify-start text-xs h-9"
-                onClick={() => setScope('space')}
-              >
-                {scope === 'space' && <Check className="mr-1.5 h-3.5 w-3.5" />}
-                <Sparkles className="mr-1 h-3.5 w-3.5 text-amber-500" />
-                ATProto Space
-              </Button>
-            </div>
-            {scope === 'space' && (
-              <div className="space-y-1 pt-1">
-                <Label htmlFor="space-id" className="text-[11px] text-muted-foreground">
-                  Space Authority DID or Key
-                </Label>
-                <Input
-                  id="space-id"
-                  value={spaceId}
-                  onChange={(e) => setSpaceId(e.target.value)}
-                  placeholder="did:plc:... or space key"
-                  className="text-xs"
-                />
-              </div>
-            )}
-          </div>
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t">

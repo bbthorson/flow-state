@@ -1,0 +1,40 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.space",
+  "description": "DRAFT — space type declarations per AT Protocol proposal 0016. Syntax ('type': 'space', 'collections') follows the draft proposal and will need re-checking at launch.",
+  "defs": {
+    "main": {
+      "type": "space",
+      "description": "Placeholder main def; the three concrete space types are below. Proposal 0016 declares one space type per lexicon, so at implementation time these split into app.flowstate.space.personal / .group / .inbox.",
+      "key": "any",
+      "title": "Flow State",
+      "collections": ["app.flowstate.flow", "app.flowstate.event"]
+    },
+    "personal": {
+      "type": "space",
+      "key": "literal:self",
+      "title": "Flow State (personal)",
+      "description": "One per user, authority = the user's own DID. Holds their flow instances (minus secrets), day-plan blocks and event history so every device they sign into has the same setup. Replaces manual vault export/import for signed-in users. app.flowstate.block (day-plan block) and app.flowstate.device (registered device + push capability) are not yet defined.",
+      "collections": [
+        "app.flowstate.flow",
+        "app.flowstate.event",
+        "app.flowstate.block",
+        "app.flowstate.device"
+      ]
+    },
+    "group": {
+      "type": "space",
+      "key": "tid",
+      "title": "Flow State group",
+      "description": "One per group (household, team). Members share flows and emit events to each other. Authority is the creator's DID for v1; moves to a dedicated group DID once group hosts exist.",
+      "collections": ["app.flowstate.flow", "app.flowstate.event"]
+    },
+    "inbox": {
+      "type": "space",
+      "key": "tid",
+      "title": "Flow inbox",
+      "description": "One per flow that accepts outside events. Authority = flow owner. Writers are the specific DIDs (people, bots, services) allowed to trigger that one flow; revoking one writer affects nothing else.",
+      "collections": ["app.flowstate.event"]
+    }
+  }
+}

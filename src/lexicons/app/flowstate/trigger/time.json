@@ -1,0 +1,32 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.trigger.time",
+  "description": "Fires at a local time of day, optionally on chosen weekdays. Runs while the app is foregrounded (or, once the hub schedules pushes, in the background). Shape mirrors ScheduleTriggerDetails in src/types/index.ts.",
+  "defs": {
+    "main": {
+      "type": "object",
+      "required": [
+        "time"
+      ],
+      "properties": {
+        "time": {
+          "type": "string",
+          "description": "Local time of day, 24-hour 'HH:MM'.",
+          "minLength": 5,
+          "maxLength": 5
+        },
+        "days": {
+          "type": "array",
+          "description": "Days of week, 0 (Sunday) to 6. Empty or omitted means every day.",
+          "maxLength": 7,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 6
+          }
+        }
+      },
+      "permissions": []
+    }
+  }
+}
