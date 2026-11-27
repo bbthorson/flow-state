@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppLayout } from '@/components/AppLayout';
-import { CompassShell } from '@/components/compass-shell';
+import { ContextHome } from '@/vnext/ContextHome';
 import { Toaster } from '@/components/ui/toaster';
 import { useAuthStore } from '@/store/useAuthStore';
 
@@ -39,7 +39,7 @@ function IndexGate() {
   const { did, loading, onboardingSkipped } = useAuthStore();
   if (loading) return null;
   if (!did && !onboardingSkipped) return <Navigate to="/welcome" replace />;
-  return <CompassShell />;
+  return <ContextHome />;
 }
 
 /** Standard scroll container for secondary (drill-in) routes. */

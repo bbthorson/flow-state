@@ -1,7 +1,7 @@
-import { render } from '@testing-library/react';
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { Globe } from 'lucide-react';
-import { FlowCard } from './flow-card';
+import { render } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach } from "vite-plus/test";
+import { Globe } from "lucide-react";
+import { FlowCard } from "./flow-card";
 
 /**
  * Documents *why* network records are validated before they reach the UI
@@ -9,34 +9,34 @@ import { FlowCard } from './flow-card';
  * unvalidated record from anyone the user follows would take down the whole
  * Discover list, not just its own card.
  */
-describe('FlowCard with malformed input', () => {
+describe("FlowCard with malformed input", () => {
   afterEach(() => vi.restoreAllMocks());
 
   const renderWith = (props: Partial<Parameters<typeof FlowCard>[0]>) => {
     // React logs the thrown error; keep the test output readable.
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
     return render(
       <FlowCard
         icon={Globe}
-        triggerType={'NATIVE_BATTERY'}
+        triggerType={"NATIVE_BATTERY"}
         title="A flow"
         subtitle="by someone"
-        actions={[{ type: 'LOG', details: {} }]}
+        actions={[{ type: "LOG", details: {} }]}
         footer={null}
         {...props}
       />,
     );
   };
 
-  it('renders a well-formed flow', () => {
+  it("renders a well-formed flow", () => {
     expect(() => renderWith({})).not.toThrow();
   });
 
-  it('throws when the trigger type is missing', () => {
+  it("throws when the trigger type is missing", () => {
     expect(() => renderWith({ triggerType: undefined as never })).toThrow();
   });
 
-  it('throws when actions is not an array', () => {
+  it("throws when actions is not an array", () => {
     expect(() => renderWith({ actions: undefined as never })).toThrow();
   });
 });

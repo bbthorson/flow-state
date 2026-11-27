@@ -1,0 +1,17 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.space.personal",
+  "description": "Personal Space (literal:self, authority = user DID). Strictly private to the user's own devices — no external apps are invited here.",
+  "defs": {
+    "main": {
+      "type": "space",
+      "key": "literal:self",
+      "title": "Flow State Personal Space",
+      "collections": [
+        "app.flowstate.automation",
+        "app.flowstate.block",
+        "app.flowstate.event"
+      ]
+    }
+  }
+}

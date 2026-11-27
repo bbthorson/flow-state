@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { useDeviceStore } from './useDeviceStore';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vite-plus/test";
+import { useDeviceStore } from "./useDeviceStore";
 
-describe('useDeviceStore', () => {
+describe("useDeviceStore", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     useDeviceStore.setState({
       battery: { level: 1, charging: false, supported: false },
-      network: { online: true, type: 'unknown', effectiveType: 'unknown', supported: false },
-      visibility: { state: 'visible', supported: false },
+      network: { online: true, type: "unknown", effectiveType: "unknown", supported: false },
+      visibility: { state: "visible", supported: false },
     });
   });
 
@@ -15,7 +15,7 @@ describe('useDeviceStore', () => {
     vi.useRealTimers();
   });
 
-  it('should have initial state', () => {
+  it("should have initial state", () => {
     const state = useDeviceStore.getState();
     expect(state.battery).toEqual({
       level: 1,
@@ -24,20 +24,20 @@ describe('useDeviceStore', () => {
     });
     expect(state.network).toEqual({
       online: true,
-      type: 'unknown',
-      effectiveType: 'unknown',
+      type: "unknown",
+      effectiveType: "unknown",
       supported: false,
     });
     expect(state.visibility).toEqual({
-      state: 'visible',
+      state: "visible",
       supported: false,
     });
   });
 
-  it('should update battery state', () => {
+  it("should update battery state", () => {
     const { updateBattery } = useDeviceStore.getState();
     updateBattery({ level: 0.5, charging: true });
-    
+
     vi.advanceTimersByTime(5000);
 
     const state = useDeviceStore.getState();
@@ -45,22 +45,22 @@ describe('useDeviceStore', () => {
     expect(state.battery.charging).toBe(true);
   });
 
-  it('should update network state', () => {
+  it("should update network state", () => {
     const { updateNetwork } = useDeviceStore.getState();
-    updateNetwork({ online: false, type: 'wifi' });
-    
+    updateNetwork({ online: false, type: "wifi" });
+
     vi.advanceTimersByTime(5000);
 
     const state = useDeviceStore.getState();
     expect(state.network.online).toBe(false);
-    expect(state.network.type).toBe('wifi');
+    expect(state.network.type).toBe("wifi");
   });
 
-  it('should update visibility state', () => {
+  it("should update visibility state", () => {
     const { updateVisibility } = useDeviceStore.getState();
-    updateVisibility({ state: 'hidden' });
-    
+    updateVisibility({ state: "hidden" });
+
     const state = useDeviceStore.getState();
-    expect(state.visibility.state).toBe('hidden');
+    expect(state.visibility.state).toBe("hidden");
   });
 });

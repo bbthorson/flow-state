@@ -1,0 +1,17 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.space.context",
+  "description": "Context / Group Space (channel model). Users invite people and/or app/bridge DIDs into a focused Context Space where participants exchange typed events and commands.",
+  "defs": {
+    "main": {
+      "type": "space",
+      "key": "tid",
+      "title": "Flow State Context Space",
+      "collections": [
+        "app.flowstate.automation",
+        "app.flowstate.event",
+        "app.flowstate.command"
+      ]
+    }
+  }
+}
