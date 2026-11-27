@@ -1,13 +1,34 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "flow-state",
+  "main": "./apps/hub/src/worker.ts",
   "compatibility_date": "2026-07-03",
   "observability": {
     "enabled": true
   },
   "assets": {
-    "not_found_handling": "single-page-application"
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/hub/*"
+    ]
   },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "USER_HUB",
+        "class_name": "UserHubDO"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "UserHubDO"
+      ]
+    }
+  ],
   "compatibility_flags": [
     "nodejs_compat"
   ]
