@@ -29,13 +29,16 @@ export default defineConfig({
   plugins: lazyPlugins(() => [
     react(),
     VitePWA({
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
       registerType: "autoUpdate",
       devOptions: { enabled: false },
       manifest: {
         name: "Flow State",
         short_name: "Flow State",
         description:
-          "On-device automations that connect device events to actions. Runs entirely in your browser — your data never leaves your device.",
+          "Local-first deterministic automations and Context Spaces for the open web.",
         theme_color: "#F8F6F2",
         background_color: "#F8F6F2",
         display: "standalone",
@@ -54,9 +57,8 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
+      injectManifest: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        navigateFallback: "/index.html",
       },
     }),
     cloudflare(),

@@ -1,153 +1,61 @@
 # Flow State
 
-An Android-first PWA for on-device automations. Connects device triggers (battery, network, geolocation, idle, motion, orientation, schedule) to actions (webhooks, notifications, vibration, clipboard, share, wake lock, speech). Everything runs locally — no server unless the user adds a webhook action. The `TIME`/schedule trigger fires while the app is foregrounded only — a PWA cannot wake in the background.
+A local-first, deterministic automation engine and Context-First PWA for the open web. Organize functions from your device and invited AT Protocol apps/bridges into focused **Contexts** (backed by AT Protocol Spaces), rendered as calm, brand-stripped cards and schema-driven app primitives.
 
-## Stack
+## Stack & Toolchain
 
-- Vite + React 19 + React Router
-- Shadcn/ui components (Radix primitives + Tailwind). Only the primitives actually in use
-  are vendored under `src/components/ui/` — unused ones were removed. Re-add any you need
-  with `npx shadcn@latest add <name>` rather than hand-writing one.
-- Zustand for state (persisted to localStorage)
-- Deployed to Cloudflare Workers
-- AT Protocol lexicon schemas define the flow format
+- **Toolchain:** Vite+ (`vp` CLI) — Rolldown bundler, Vitest 5, Oxlint, Oxfmt, `tsgo`
+- **Workspaces:** npm workspaces (`packages/*`, `apps/*`)
+- **UI (Layer 4):** React 19, Tailwind CSS, shadcn/ui (Radix primitives)
+- **Persistence:** IndexedDB (`IndexedDBStorage` in `@flowstate/runtime`, with automatic one-time migration from legacy `localStorage['flow-state-v2']`)
+- **PWA:** `vite-plugin-pwa` (`injectManifest`) with custom Service Worker push executor (`src/sw.ts`)
+- **Hosting & Optional Hub:** Cloudflare Workers + Durable Objects (`wrangler.jsonc`)
 
 ## Commands
 
-- `npm run dev` — local dev server (port 9002)
-- `npm run build` — production build
-- `npm run typecheck` — TypeScript check
-- `npm test` — Vitest test suite
-- `npm run lint` — ESLint
+- `npm run dev` — Vite+ dev server on port 9002 (`vp dev --port 9002`)
+- `npm run build` — Production build (`vp build`)
+- `npm test` — Run all Vitest suites (`vp test --run`)
+- `npm run check` — Format, lint, and typecheck (`vp check`)
+- `npm run lint` — Oxlint + `tsgo` type-aware lint (`vp lint`)
+- `npm run preview` — Build and serve locally via `wrangler dev`
 
-## Deployment
+## 4-Layer Architecture & The 7 Primitives
 
-Deploys are handled by Cloudflare's GitHub integration — pushing to `master` triggers a build and deploy automatically. Cloudflare runs `npm run build` then `npx wrangler versions upload`, which reads `wrangler.jsonc` (a static-assets Worker named `flow-state` with SPA fallback). The `@cloudflare/vite-plugin` wires the build output to the Worker. There is no local `deploy` script.
+Keep dependencies strictly downward: `Layer 4 (UI)` → `Layer 3 (Runtime/Hub)` → `Layer 2 (Adapters)` → `Layer 1 (Core)`.
 
-## Architecture
+1. **Layer 1 — Pure Core (`packages/core`, `@flowstate/core`)**
+   - **Zero React, zero browser APIs, zero network I/O.** Runs identically in Browser, Service Worker, Cloudflare Hub Durable Objects, and tests.
+   - **7 Primitives (`src/primitives.ts`):** `Event`, `Capability`, `Command`, `Flow`, `Context`/`Block`, `Checkpoint`/`RunTrace`, `SecretRef`/`TrustLevel`.
+   - **Taint & Tier-0 Secrets (`src/taint.ts`):** External/space/deep-link events carry `trust: 'untrusted'`. Untrusted roots (and variables derived from them) are blocked from `sensitive` command inputs (e.g., Webhook URLs/headers). `{{secrets.*}}` placeholders are never materialized in `Command.input`, `Checkpoint`, or `RunTrace` — only resolved from Tier-0 storage at adapter dispatch time.
+   - **Pure Engine (`src/engine.ts`):** `matchesEvent` (supports stateful `edgeTriggered` transitions), `executeFlow`, `resumeCheckpoint` (`delay` and `awaitReply` correlated Space replies), `dryRun`, and `MAX_EVENT_HOPS` (5).
+   - **Trust Boundary (`src/schema.ts`):** Zod parsers (`parseEvent`, `parseCapability`, `parseCommand`, `parseFlow`, `parseContext`, `parseBlock`, `parseCheckpoint`). Everything arriving from a Space, Hub inbox, or Vault import MUST pass through these.
+   - **Unified Lexicons (`packages/core/lexicons/app/flowstate/`):** `capability`, `command`, `block`, `space.personal`, `space.context`.
 
-- `src/types/` — Core types derived from lexicon schemas. `battery.d.ts` is an ambient
-  declaration picked up via tsconfig, not imported anywhere — don't "clean it up".
-- `src/lexicons/` — AT Protocol lexicon JSON files: `app.flowstate.automation` (the v2 flow record),
-  `app.flowstate.event`, triggers and actions. `app.flowstate.flow` is the superseded v1 record.
-  `src/lib/lexicons.test.ts` fails if the code's NSID tables and these files drift apart. Space
-  types are still drafts in `docs/design/lexicons/` (see `docs/design/private-automation-layer.md`).
-- `src/store/useAppStore.ts` — Zustand store for flows, day-plan blocks, logs, vault import/export (persisted to localStorage). `blocks` is the recurring daily Focus/Care/Triage plan.
-- `src/store/useDeviceStore.ts` — Zustand store for device sensor state
-- `src/store/useAuthStore.ts` — Zustand store for AT Protocol OAuth (did, handle, published flows map, network discovery)
-- `src/hooks/` — Device sensor hooks (battery, network, geo, idle, motion, orientation), useFlowTriggerManager connects sensor data to flow execution
-- **Flow model (v2):** a flow is a trigger plus an ordered list of **steps** — `action` (optionally
-  deferred with `schedule`), `condition` (a gate, or a branch with `then`/`else`), `variable`, and
-  `cancelScheduled` — with `active` and `dryRun` flags. Locally triggers/actions stay
-  `{ type: 'NATIVE_BATTERY', details }`; `src/lib/automation-record.ts` converts to/from the record's
-  `$type` unions. Persisted v1 flows (`enabled`/`actions`/`parameters`) are migrated by
-  `src/lib/migrate.ts` (store `version: 1`) and on vault import.
-- `src/lib/engine.ts` — Pure run engine: `matchesTrigger` (per-type; battery fires on *entering* its
-  configured state) and `runFlow` (walks steps, evaluates assertions, handles dry run and
-  scheduling). Run data roots: `trigger.*` and `event.*` are **untrusted**; `device.*`, `time.*`,
-  `secrets.*` and variables are trusted unless a variable was built from untrusted data.
-- `src/services/actions.ts` — Action executors, all return ActionResult. **Webhook URLs and headers
-  only accept placeholders from trusted roots** (`templateTrusted`); trigger data goes in bodies and
-  text only. Don't loosen this — a deep link's query string is attacker-controlled.
-- **Local events:** the `EMIT_EVENT` action writes an `app.flowstate.event` and delivers it (on a
-  fresh task) to flows with an `EVENT` trigger. Receivers see only the `data` keys listed in their
-  trigger's `exposeData`, as `event.*`/`trigger.*` (untrusted). Chains stop at `MAX_EVENT_HOPS` (5).
-  Only the local source exists; spaces and the hub are designed in `docs/design/` but not built.
-- Secrets live in `Flow.secrets` (device-only) and are referenced through `kind: 'secret'` variables.
-  They are never written to any record — `toAutomationRecord` and `sanitizeForRecipeExport` strip them.
-- `src/services/atproto.ts` — AT Protocol operations: publish/unpublish flows, record installs, discover flows from follows
-- `src/lib/flow-schema.ts` — **Trust boundary.** Zod validation for automations (v2). Discovery
-  reads records off other people's PDSes, so everything arriving from the network goes through
-  `parseAutomationRecord` (`$type` → local form, then `parseRecipe`) before it reaches the store or
-  the UI; invalid records are skipped (with a console warning) rather than failing the whole crawl.
-  This is load-bearing: `FlowCard` calls `triggerType.replace(...)` and maps action steps, so one
-  malformed record used to take out the entire Discover surface. Detail objects use
-  `passthrough()` — don't switch to strict/stripping, since `DEEP_LINK` matching compares every key
-  of `trigger.details`. Vault import also validates through `parseRecipe` (after v1 migration).
-- `src/lib/atproto.ts` — BrowserOAuthClient singleton (handles PKCE/PAR/DPoP automatically).
-  **Loaded via dynamic `import()` and deliberately off the initial load path** — the client
-  is ~1.1 MB raw / ~242 kB gzip, more than React and the app combined. `useAuthStore.init()`
-  decides whether it's needed using `bootedOnOAuthCallback()` and `hasOAuthSessionToRestore()`,
-  which are plain URL/localStorage reads, so a signed-out user never downloads it. Don't add a
-  static import of `@atproto/*` outside a dynamic `import()` or an `import type`, and don't
-  put `@atproto` back into a `manualChunks` group — forcing the chunk makes Rollup hoist
-  shared helpers into it and reintroduces a static edge from the entry chunk.
-- `src/lib/permissions.ts` — Permission registry mapping trigger/action types to browser capabilities
-- `src/components/AppLayout.tsx` — Persistent shell. Mounts all device hooks and auth init once and keeps them alive across navigation; renders the routed `<Outlet />`. Uses `h-dvh` for mobile viewport.
-- `src/components/compass-shell.tsx` — The home surface (`/`): a single Timeline day view under a stable header (brand on the left, Control drawer trigger on the right) plus the swipe-up Flows drawer. Reads `?panel=control` to deep-link the Control drawer open. (The earlier three-pane Triage ◄ Timeline ► Execution compass was collapsed to just Timeline; Triage/Execution are parked in `src/routes/` for reintroduction once the native shell makes them real.)
-- `src/components/day-timeline.tsx` — The day-plan surface rendered at the top of `TimelinePage`: a time-sorted list of Focus/Care/Triage blocks with a live "now" marker and an add/edit/delete dialog. Blocks are a recurring daily template (time-of-day, no dates); kind styling lives in `src/lib/blocks.ts`, time helpers in `src/lib/schedule.ts`.
-- `src/components/flows-sheet.tsx` — Swipe-up "booking drawer": a bottom bar (branded `bg-primary`) that opens a Sheet listing flows. Lives inside the compass only. Create-new and the Discover link live here.
-- `src/components/control-drawer.tsx` — Gear-triggered / swipe-down top Sheet holding the eyes-free utility layer (media/transit/wallet placeholder) and the embedded `SettingsPanel`. The gear shows a green dot when signed in.
-- `src/components/settings-panel.tsx` — `SettingsPanel`: account, webhook secret, permissions, vault, about. Rendered inside the Control drawer, not as its own route.
-- `src/routes/` — Page components. Timeline is the home surface (rendered by `compass-shell`). Secondary surfaces (Discover, flow detail, docs) are drill-in routes rendered in a `ScrollFrame` with a back arrow → parent. Settings is not a route — it lives in the Control drawer. `TriagePage`/`ExecutionPage` are parked (not currently routed or rendered).
+2. **Layer 2 — Capability Adapters (`packages/adapters`, `@flowstate/adapters`)**
+   - Uniform `CapabilityAdapter` plugin contract (`manifest`, `start`, `stop`, `getSnapshot`, `execute`).
+   - Built-in device sensors (`device.battery`, `device.network`) and local actions (`local.webhook`, `local.notification`, `local.clipboard`, `local.event`, `local.log`).
+   - `platform.ts`: transparent Android/iOS/Desktop capability matrix probe.
+   - `atproto-space.ts`: `SpaceTransport` abstraction, `createSpaceParticipantAdapter` (invited App/Bridge DIDs), and `createReferenceBridge`.
 
-## AT Protocol Integration
+3. **Layer 3 — Headless Runtime (`packages/runtime`, `@flowstate/runtime`)**
+   - `storage.ts`: `RuntimeStorage` interface with `IndexedDBStorage` (shared by PWA + Service Worker) and `MemoryStorage` (tests), plus `migrateLegacyLocalStorage`.
+   - `host.ts`: `RuntimeHost` owns the event bus, persisted `triggerState` (edge transitions survive reloads), `Checkpoint` scheduler, Day Block → Context transitions, Tier-0 `secrets`, structured `RunTrace`s, and Vault export/import. Exposes `subscribe`/`getSnapshot` for React `useSyncExternalStore`.
 
-- OAuth via `@atproto/oauth-client-browser` — user signs in with Bluesky handle
-- Client metadata at `public/oauth/client-metadata.json` (public client, no secrets)
-- Handle resolution through Bluesky's public API (`https://bsky.social`)
-- Flows are published to the user's PDS as `app.flowstate.automation` records (v2). Discovery reads
-  only that collection; old `app.flowstate.flow` records are ignored but can still be unpublished.
-  `republishFlow` replaces a v1 record (write v2 first, then delete v1) or overwrites a v2 record in
-  place with `putRecord`, so its URI — and anything forked from it — stays stable
-- Installs are not recorded on the network (the old `app.flowstate.install` records were dropped: nothing read them, and they told the network what you run)
-- Discovery crawls the user's follow list client-side — no backend indexer. Records are
-  validated against `src/lib/flow-schema.ts` on the way in; unknown trigger/action types are
-  rejected even though the lexicon unions are open, because this build can't represent them
-- OAuth callback route at `/oauth/callback`, processed by `BrowserOAuthClient.init()` on app load.
-  The response comes back in the **URL fragment** (`responseMode` defaults to `'fragment'`), and
-  the client matches `location.pathname` against its registered `redirect_uris` — so the route must
-  NOT navigate away until init settles. `App.tsx`'s `OAuthCallback` holds position while
-  `useAuthStore.loading` is true, and the store starts in the loading state on a callback boot so
-  this works from the first render rather than depending on effect ordering.
-- Auth state persists `did`, `handle`, and `publishedFlows` map; session/agent are runtime-only
+4. **Layer 4 — Context-First PWA Surface (`src/vnext/`, `src/App.tsx`)**
+   - Thin reactive view over `getRuntimeHost()` (instantiated outside React in `src/vnext/runtime.ts`, including deep-link query-param ingest).
+   - **Rule:** Never put sensor hooks, `localStorage` writes, or execution logic inside React components.
+   - `ContextHome.tsx`: Active Focus Context, pinned App Primitives (with schema-driven form sheet), Context Stream, Day Plan linked to Contexts, App DID invitations, Capability Matrix, and Vault backup with 6-day staleness warning.
+   - `PipelineEditor.tsx`: Visual `WHEN → IF → DO` editor with taint-aware token pills and Live Dry-Run Simulator.
+   - `TraceViewer.tsx`: Step-by-step `RunTrace` waterfall ("No Magic").
 
-## UI/Styling Conventions
+5. **Optional Cloudflare Hub (`apps/hub`, `@flowstate/hub`)**
+   - Worker + per-user `UserHubDO` Durable Object bound in `wrangler.jsonc` under `/hub/*`.
+   - Handles revocable per-sender HTTPS inboxes (`POST /hub/e/:senderToken`), Web Push subscription registry + fan-out, and opt-in Hub execution (`executionTarget: 'hub'`) reusing `@flowstate/core`.
 
-### Spacing
-- Page-level vertical gaps: `space-y-4`
-- Section internal gaps: `space-y-2`
-- Empty states: centered, `p-10 space-y-1`
-- Consistent gap values within a component — don't mix `gap-2` and `gap-4` at the same level
+## UI Conventions
 
-### Page Headers
-- `h2 text-2xl font-bold tracking-tight` for page titles
-- Optional `p text-muted-foreground` subtitle below
-
-### Section Headers (settings-style flat pages)
-- `h3 text-sm font-semibold` with `p text-xs text-muted-foreground` description
-- Use `divide-y` between sections, not Card wrappers
-
-### Cards
-- Use Cards for list containers (flow list, history list) and empty states
-- Never nest Card inside Card
-- For form sections, use plain divs with `border-t` or accordions — not Cards
-
-### Forms
-- Back navigation: ghost icon button with ArrowLeft at top-left
-- Submit button: full-width at bottom, disabled until valid
-- Use accordions for collapsible sections (trigger config, actions) with summary labels in the trigger text
-- Action items: inline row layout with `#N [select] [trash]`
-
-### Secondary surfaces (drill-in routes)
-- Discover, flow detail, and docs are routes rendered inside `ScrollFrame` (`flex-1 min-h-0 overflow-y-auto p-4`). Settings is not a route — it lives in the Control drawer.
-- Each starts with a back row: ghost icon button with ArrowLeft → parent route (use `<Link to="/">`, not `navigate(-1)`)
-- AppLayout stays mounted underneath (keeps device hooks alive)
-
-### Drawers (Sheets)
-- Swipe-up = Flows (bottom Sheet, branded `bg-primary` trigger bar); the Control drawer = gear-triggered top Sheet (utility layer + Settings)
-- Both live inside `compass-shell` and only appear on the home surface
-
-### Buttons
-- Create-new lives in the Flows drawer header, not a floating action button
-- Don't put primary action buttons in page headers — keep headers stable
-
-### Permissions
-- Use `PERMISSION_LABELS` and `PERMISSION_DESCRIPTIONS` from `src/lib/permissions.ts` for display
-- Show grant buttons for promptable permissions, "check browser settings" hint for denied
-
-### General
-- Android-first — test layouts at mobile widths
-- No emojis in UI unless user requests them
-- Prefer `text-muted-foreground` for secondary text, `text-xs` or `text-[10px]` for tertiary
-- Use lucide-react icons consistently
+- Android-first — test layouts at mobile widths (`max-w-lg`)
+- No emojis in UI unless requested; use `lucide-react` icons consistently
+- Keep `src/components/ui/` to only the shadcn/ui primitives actively in use
+- Personal Spaces are strictly private (no external apps invited); external apps/bridges are invited into Context Spaces

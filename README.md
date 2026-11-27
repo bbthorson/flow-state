@@ -1,110 +1,49 @@
 # Flow State
 
-An Android-first PWA for on-device automations. It connects device triggers (battery,
-network, geolocation, idle, motion, orientation, schedule) to actions (webhooks,
-notifications, vibration, clipboard, share, wake lock, speech).
+A local-first, deterministic automation engine and Context-First PWA for the open web.
 
-Everything runs locally in the browser. Nothing is sent to a server unless you add a
-webhook action or sign in to publish flows.
+Flow State treats **flows as app primitives**: organize deterministic functions from your device and invited AT Protocol apps or bridges into focused **Contexts** (backed by AT Protocol Spaces), rendered as calm, brand-stripped cards and schema-driven action forms.
 
-## Core ideas
+## Core Principles
 
-1. **Local-first.** Flows, day-plan blocks, and logs live in `localStorage`. No analytics,
-   no backend of our own.
-2. **Web native.** Built on standard Web APIs — no app store, no native wrapper.
-3. **Federated, not centralised.** Sharing flows is optional and runs over AT Protocol:
-   flows are records on *your* PDS, and discovery crawls your follow graph client-side.
-   There is no indexer in the middle.
+1. **Local-first & Sovereign.** Flows, contexts, day blocks, run traces, and Tier-0 secrets live in IndexedDB on your device. Secrets never leave the device—even when syncing or exporting a Vault backup.
+2. **Deterministic & Transparent ("No Magic").** Every trigger evaluation and step execution produces a structured `RunTrace` waterfall. Test any flow safely with the Live Dry-Run Simulator before activating it.
+3. **Private Spaces by Default.** Your Personal Space stays strictly yours. External apps and bridges (by AT Protocol DID) are invited into scoped Context Spaces where they exchange typed `Event`s and `Command`s.
+4. **Optional, Self-Hostable Hub.** The PWA works 100% locally with no server. Enable the included Cloudflare Worker + Durable Object Hub (`apps/hub`) for revocable HTTPS inboxes, Web Push wakeups into the Service Worker, and opt-in always-on Space-to-Space flows.
 
-## Capabilities
+## Architecture
 
-### Triggers
+| Layer | Package | Responsibility |
+| --- | --- | --- |
+| **1. Pure Core** | `packages/core` | 7 primitives (`Event`, `Capability`, `Command`, `Flow`, `Context/Block`, `Checkpoint/RunTrace`, `SecretRef/TrustLevel`), taint tracker, pure deterministic engine, Zod trust boundaries, ATProto lexicons |
+| **2. Adapters** | `packages/adapters` | Pluggable `CapabilityAdapter`s for browser sensors, local actions, platform capability probe, ATProto Space participants, and Reference Bridge DIDs |
+| **3. Runtime** | `packages/runtime` | Headless `RuntimeHost`, IndexedDB storage (shared with Service Worker), persisted edge-trigger state, checkpoint scheduler, legacy `localStorage` migration |
+| **4. Surface** | `src/vnext/` | Thin React 19 + Radix UI Context-First PWA (`ContextHome`, `PipelineEditor`, `TraceViewer`) + Service Worker push executor (`src/sw.ts`) |
+| **Optional Hub** | `apps/hub` | Cloudflare Worker + `UserHubDO` Durable Object (`/hub/e/:token`, Web Push fan-out, opt-in Hub runner) |
 
-| Trigger | Notes |
-| --- | --- |
-| `NATIVE_BATTERY` | Level thresholds, charging state |
-| `NETWORK` | Online/offline, connection type changes |
-| `GEOLOCATION` | Enter/exit a radius |
-| `IDLE` | Idle Detection API |
-| `DEVICE_MOTION` | Accelerometer thresholds |
-| `SCREEN_ORIENTATION` | Portrait/landscape, face up/down |
-| `TIME` | Time-of-day schedule |
-| `DEEP_LINK` | External trigger via URL params (used by Apple Shortcuts) |
-| `MANUAL` | Run from the UI |
-
-### Actions
-
-`WEBHOOK` (POST/GET with data templating) · `NOTIFICATION` · `LOG` · `VIBRATION` ·
-`CLIPBOARD` · `WEB_SHARE` · `WAKE_LOCK` · `SPEECH`
-
-### Known limits
-
-- **The `TIME` trigger only fires while the app is in the foreground.** A PWA cannot wake
-  itself in the background; this is a platform constraint, not a bug.
-- iOS restricts several of the sensor APIs above. The `DEEP_LINK` trigger exists so Apple
-  Shortcuts can act as the sensor and hand data to Flow State.
-- Browsers evict storage for unused sites. Use **Vault** (Control drawer → Settings) to
-  export a JSON backup.
-
-## Stack
-
-- **Build:** Vite 6
-- **UI:** React 19, React Router 7, Tailwind CSS, shadcn/ui (Radix primitives)
-- **State:** Zustand, persisted to `localStorage`
-- **PWA:** `vite-plugin-pwa` (Workbox `generateSW`)
-- **Identity/sharing:** AT Protocol via `@atproto/oauth-client-browser`
-- **Hosting:** Cloudflare Workers static assets (`wrangler.jsonc`)
-
-## Getting started
+## Getting Started
 
 Requires Node.js 22+.
 
 ```bash
 npm install
-npm run dev        # http://localhost:9002
+npm run dev        # http://localhost:9002 (Vite+)
 ```
-
-No environment variables are needed for local development. The app has no secrets — the
-AT Protocol client is a public OAuth client described by
-`public/oauth/client-metadata.json`.
 
 ### Scripts
 
 | Command | Does |
 | --- | --- |
-| `npm run dev` | Dev server on port 9002 |
-| `npm run build` | Production build to `dist/` |
-| `npm run preview` | Build, then serve via `wrangler dev` |
-| `npm test` | Vitest |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run lint` | ESLint |
+| `npm run dev` | Vite+ dev server on port 9002 |
+| `npm run build` | Production build (`vp build`) to `dist/` |
+| `npm run preview` | Build and serve via `wrangler dev` |
+| `npm test` | Run all Vitest suites (`vp test --run`) |
+| `npm run check` | Oxfmt + Oxlint + `tsgo` (`vp check`) |
+| `npm run lint` | Oxlint + `tsgo` (`vp lint`) |
 
 ## Deployment
 
-Cloudflare's GitHub integration deploys on push to `master`. It runs `npm run build`, then
-`npx wrangler versions upload` against `wrangler.jsonc` (a static-assets Worker named
-`flow-state` with SPA fallback). There is no manual deploy step.
-
-## Repo layout
-
-```
-src/
-  components/   UI, including the compass shell and its drawers
-    ui/         shadcn/ui primitives (re-add more with `npx shadcn@latest add <name>`)
-  hooks/        Device sensor hooks + useFlowTriggerManager
-  lexicons/     AT Protocol lexicon JSON (app.flowstate.*)
-  lib/          OAuth client, permissions registry, schedule/block helpers
-  routes/       Page components
-  services/     Action executors, AT Protocol operations
-  store/        Zustand stores (app, device, auth)
-  types/        Types derived from the lexicons
-docs/
-  kairos-roadmap.md   Where this is going (Phases 1–4)
-  archive/            Superseded specs, kept for history
-conductor/      Product notes and past work tracks
-constitution.md Non-negotiable product principles
-CLAUDE.md       Conventions for AI assistants working in this repo
-```
+Cloudflare's GitHub integration builds with `npm run build` (`vp build`) and deploys via `wrangler.jsonc` (serving static PWA assets alongside `/hub/*` Worker routes and the `UserHubDO` Durable Object).
 
 ## License
 
