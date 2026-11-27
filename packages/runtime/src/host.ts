@@ -41,6 +41,7 @@ export interface RuntimeSnapshot {
   events: Event[];
   checkpoints: Checkpoint[];
   secretKeys: string[];
+  hubUserId: string;
   deviceSnapshot: Record<string, unknown>;
   lastBackupTimestamp: number | null;
 }
@@ -99,6 +100,7 @@ export class RuntimeHost {
     events: [],
     checkpoints: [],
     secretKeys: [],
+    hubUserId: '',
     deviceSnapshot: {},
     lastBackupTimestamp: null,
   };
@@ -159,15 +161,23 @@ export class RuntimeHost {
       contexts = [personal, ...contexts];
     }
 
-    const [flows, blocks, runs, events, checkpoints, lastBackupTimestamp, secretKeys] = await Promise.all([
-      this.storage.getAll<Flow>('flows'),
-      this.storage.getAll<Block>('blocks'),
-      this.storage.getAll<RunTrace>('runs'),
-      this.storage.getAll<Event>('events'),
-      this.storage.getAll<Checkpoint>('checkpoints'),
-      this.storage.get<number>('meta', 'lastBackupTimestamp'),
-      this.storage.get<string[]>('meta', 'secretKeyIndex'),
-    ]);
+    const [flows, blocks, runs, events, checkpoints, lastBackupTimestamp, secretKeys, storedHubUserId] =
+      await Promise.all([
+        this.storage.getAll<Flow>('flows'),
+        this.storage.getAll<Block>('blocks'),
+        this.storage.getAll<RunTrace>('runs'),
+        this.storage.getAll<Event>('events'),
+        this.storage.getAll<Checkpoint>('checkpoints'),
+        this.storage.get<number>('meta', 'lastBackupTimestamp'),
+        this.storage.get<string[]>('meta', 'secretKeyIndex'),
+        this.storage.get<string>('meta', 'hubUserId'),
+      ]);
+
+    let hubUserId = storedHubUserId;
+    if (!hubUserId) {
+      hubUserId = `dev-${makeId().replace(/-/g, '').slice(0, 12)}`;
+      await this.storage.put('meta', 'hubUserId', hubUserId);
+    }
 
     runs.sort((a, b) => b.startedAt - a.startedAt);
     events.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
@@ -186,6 +196,7 @@ export class RuntimeHost {
       events,
       checkpoints,
       secretKeys: secretKeys ?? [],
+      hubUserId,
       deviceSnapshot: this.collectDeviceSnapshot(),
       lastBackupTimestamp: lastBackupTimestamp ?? null,
     });
