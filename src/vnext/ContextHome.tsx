@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import type { Block, Context, Flow, RunTrace } from '@flowstate/core';
-import { probePlatformCapabilities } from '@flowstate/adapters';
+import { probePlatformCapabilities, resolveAppCapability } from '@flowstate/adapters';
 import { useRuntime } from './runtime';
 import { PipelineEditor } from './PipelineEditor';
 import { TraceViewer } from './TraceViewer';
+import { createStarterFlows } from './starters';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,13 +15,16 @@ import {
   CheckCircle2,
   Clock,
   Download,
+  KeyRound,
   Layers,
   Pin,
   Play,
   Plus,
+  Radio,
   Settings,
   ShieldAlert,
   Sparkles,
+  Trash2,
   Upload,
   Users,
   XCircle,
@@ -50,6 +54,10 @@ export function ContextHome() {
   const [newContextName, setNewContextName] = useState('');
   const [inviteDid, setInviteDid] = useState('');
   const [inviteLabel, setInviteLabel] = useState('');
+  const [inviteStatus, setInviteStatus] = useState<string | null>(null);
+  const [secretName, setSecretName] = useState('');
+  const [secretValue, setSecretValue] = useState('');
+  const [hubStatus, setHubStatus] = useState<string | null>(null);
   const [vaultMessage, setVaultMessage] = useState<string | null>(null);
   const [newBlockTitle, setNewBlockTitle] = useState('');
   const [newBlockStart, setNewBlockStart] = useState('09:00');
@@ -86,6 +94,7 @@ export function ContextHome() {
         <PipelineEditor
           initialFlow={editingFlow}
           capabilities={state.capabilities}
+          secretKeys={state.secretKeys}
           onSave={async (updated) => {
             await host.saveFlow(updated);
             setEditingFlow(null);
@@ -111,6 +120,16 @@ export function ContextHome() {
       createdAt: new Date().toISOString(),
     };
     setEditingFlow(newFlow);
+  };
+
+  const handleInstallStarters = async () => {
+    const { flows, pinIds } = createStarterFlows(activeContext.id);
+    for (const f of flows) {
+      await host.saveFlow(f);
+    }
+    for (const id of pinIds) {
+      await host.togglePinnedFlow(activeContext.id, id);
+    }
   };
 
   const handleRunPrimitive = async (flow: Flow) => {
@@ -140,36 +159,55 @@ export function ContextHome() {
   };
 
   const handleInviteApp = async () => {
-    const did = inviteDid.trim();
-    if (!did) return;
-    await host.inviteParticipant(
-      activeContext.id,
-      {
-        did,
-        kind: 'app',
-        label: inviteLabel.trim() || did,
-        role: 'writer',
-        addedAt: new Date().toISOString(),
-      },
-      {
-        id: did,
-        kind: 'app',
-        name: inviteLabel.trim() || did,
-        did,
-        emits: [{ type: `${did}.event`, label: 'App Event', fields: [] }],
-        accepts: [
-          {
-            action: 'dispatch',
-            label: 'Send Command',
-            inputs: [{ name: 'payload', label: 'Payload', type: 'string' }],
-          },
-        ],
-        runtimes: ['remote-did'],
-        permissions: [],
-      },
-    );
-    setInviteDid('');
-    setInviteLabel('');
+    const raw = inviteDid.trim();
+    if (!raw) return;
+    setInviteStatus('Resolving AT Protocol identity & capability manifest…');
+    try {
+      const resolved = await resolveAppCapability(raw, inviteLabel);
+      await host.inviteParticipant(
+        activeContext.id,
+        {
+          did: resolved.did,
+          handle: resolved.handle,
+          kind: resolved.capability.kind === 'bridge' ? 'bridge' : 'app',
+          label: inviteLabel.trim() || resolved.capability.name,
+          role: 'writer',
+          addedAt: new Date().toISOString(),
+        },
+        resolved.capability,
+      );
+      setInviteStatus(
+        resolved.fromNetwork
+          ? `Invited ${resolved.capability.name} (loaded published capability manifest).`
+          : `Invited ${resolved.capability.name} (default capability stub).`,
+      );
+      setInviteDid('');
+      setInviteLabel('');
+    } catch (err) {
+      setInviteStatus(err instanceof Error ? err.message : 'Could not resolve DID/handle');
+    }
+  };
+
+  const handleAddSecret = async () => {
+    const name = secretName.trim().replace(/[^a-zA-Z0-9_]/g, '');
+    if (!name || !secretValue) return;
+    await host.setSecret(name, secretValue);
+    setSecretName('');
+    setSecretValue('');
+  };
+
+  const handleCheckHub = async () => {
+    setHubStatus('Checking /hub/health…');
+    try {
+      const res = await fetch('/hub/health');
+      if (res.ok) {
+        setHubStatus('Hub Worker reachable (/hub/health OK).');
+      } else {
+        setHubStatus(`Hub responded ${res.status}.`);
+      }
+    } catch {
+      setHubStatus('Running in local-only mode (no Hub Worker reachable).');
+    }
   };
 
   const handleAddBlock = async () => {
@@ -295,8 +333,75 @@ export function ContextHome() {
                     Invite
                   </Button>
                 </div>
+                {inviteStatus && <p className="text-xs text-muted-foreground">{inviteStatus}</p>}
               </section>
             )}
+
+            {/* Tier-0 Local Secrets Vault */}
+            <section className="space-y-2 border-t pt-4">
+              <div className="flex items-center gap-1.5">
+                <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Tier-0 Secrets (Device Only)</h3>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Referenced as <code className="font-mono">{'{{secrets.name}}'}</code> in Webhook URLs/headers.
+                Never exported or synced.
+              </p>
+              {state.secretKeys.length > 0 && (
+                <div className="divide-y rounded-md border">
+                  {state.secretKeys.map((k) => (
+                    <div key={k} className="flex items-center justify-between px-2.5 py-1.5 text-xs">
+                      <code className="font-mono">{k}</code>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        aria-label={`Delete secret ${k}`}
+                        onClick={() => void host.deleteSecret(k)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-1.5">
+                <Input
+                  value={secretName}
+                  onChange={(e) => setSecretName(e.target.value)}
+                  placeholder="Key (e.g. haToken)"
+                  className="h-8 font-mono text-xs"
+                />
+                <Input
+                  type="password"
+                  value={secretValue}
+                  onChange={(e) => setSecretValue(e.target.value)}
+                  placeholder="Secret value"
+                  className="h-8 text-xs"
+                />
+                <Button size="sm" variant="outline" className="h-8" onClick={() => void handleAddSecret()}>
+                  Save
+                </Button>
+              </div>
+            </section>
+
+            {/* Optional Cloudflare Hub */}
+            <section className="space-y-2 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Radio className="h-3.5 w-3.5 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold">Cloudflare Hub (Optional)</h3>
+                </div>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void handleCheckHub()}>
+                  Check
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Enables revocable HTTPS inboxes (<code className="font-mono">POST /hub/e/:token</code>), Web Push
+                wakeups, and opt-in Hub execution.
+              </p>
+              {hubStatus && <p className="text-xs text-muted-foreground">{hubStatus}</p>}
+            </section>
 
             {/* Capability Matrix */}
             <section className="space-y-2 border-t pt-4">
@@ -423,12 +528,16 @@ export function ContextHome() {
             </h2>
           </div>
           {contextFlows.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-6 text-center space-y-1">
+            <div className="rounded-lg border border-dashed p-6 text-center space-y-2">
               <Zap className="mx-auto h-5 w-5 text-muted-foreground" />
               <p className="text-sm font-medium">No flows in {activeContext.name}</p>
               <p className="text-xs text-muted-foreground">
-                Create a deterministic flow or pin an app primitive here.
+                Create a deterministic flow or install starter primitives to try Flow State immediately.
               </p>
+              <Button size="sm" variant="outline" onClick={() => void handleInstallStarters()}>
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                Install Starter Primitives
+              </Button>
             </div>
           ) : (
             <div className="divide-y rounded-lg border">

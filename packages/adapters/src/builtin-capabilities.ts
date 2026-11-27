@@ -353,14 +353,29 @@ export function createLogAdapter(): CapabilityAdapter {
   };
 }
 
+import {
+  createGeolocationAdapter,
+  createScheduleTimeAdapter,
+  createShareAdapter,
+  createSpeechAdapter,
+  createVibrationAdapter,
+  createWakeLockAdapter,
+} from './extra-capabilities';
+
 /** Return the standard set of built-in browser adapters. */
 export function createBuiltinAdapters(): CapabilityAdapter[] {
   return [
     createBatteryAdapter(),
     createNetworkAdapter(),
+    createScheduleTimeAdapter(),
+    createGeolocationAdapter(),
     createWebhookAdapter(),
     createNotificationAdapter(),
     createClipboardAdapter(),
+    createVibrationAdapter(),
+    createShareAdapter(),
+    createWakeLockAdapter(),
+    createSpeechAdapter(),
     createLocalEventAdapter(),
     createLogAdapter(),
   ];
