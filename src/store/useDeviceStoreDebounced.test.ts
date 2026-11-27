@@ -1,12 +1,18 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useDeviceStore } from './useDeviceStore';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vite-plus/test";
+import { useDeviceStore } from "./useDeviceStore";
 
-describe('useDeviceStore Debouncing', () => {
+describe("useDeviceStore Debouncing", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     useDeviceStore.setState({
       battery: { level: 1, charging: false, supported: true, pending: undefined },
-      network: { online: true, type: 'wifi', effectiveType: '4g', supported: true, pending: undefined },
+      network: {
+        online: true,
+        type: "wifi",
+        effectiveType: "4g",
+        supported: true,
+        pending: undefined,
+      },
     });
   });
 
@@ -14,12 +20,12 @@ describe('useDeviceStore Debouncing', () => {
     vi.useRealTimers();
   });
 
-  it('should debounce battery level updates', () => {
+  it("should debounce battery level updates", () => {
     const { updateBattery } = useDeviceStore.getState();
-    
+
     // Initial update should set pending state
     updateBattery({ level: 0.9 });
-    
+
     // Immediate check - should not be updated yet
     expect(useDeviceStore.getState().battery.level).toBe(1);
     expect(useDeviceStore.getState().battery.pending).toEqual({ level: 0.9 });
@@ -40,11 +46,11 @@ describe('useDeviceStore Debouncing', () => {
     expect(useDeviceStore.getState().battery.pending).toBeUndefined();
   });
 
-  it('should debounce network online status updates', () => {
+  it("should debounce network online status updates", () => {
     const { updateNetwork } = useDeviceStore.getState();
-    
+
     updateNetwork({ online: false });
-    
+
     expect(useDeviceStore.getState().network.online).toBe(true);
     expect(useDeviceStore.getState().network.pending).toEqual({ online: false });
 
