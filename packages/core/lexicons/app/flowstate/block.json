@@ -1,0 +1,23 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.block",
+  "description": "A recurring daily Focus/Care/Triage time block in the user's Personal Space, optionally linked to a Context Space.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["title", "kind", "startMin", "endMin"],
+        "properties": {
+          "title": { "type": "string", "maxLength": 120 },
+          "kind": { "type": "string", "knownValues": ["focus", "care", "triage"] },
+          "startMin": { "type": "integer", "minimum": 0, "maximum": 1439 },
+          "endMin": { "type": "integer", "minimum": 1, "maximum": 1440 },
+          "days": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 6 } },
+          "contextId": { "type": "string", "maxLength": 128 }
+        }
+      }
+    }
+  }
+}

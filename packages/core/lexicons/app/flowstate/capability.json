@@ -1,0 +1,63 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.capability",
+  "description": "Published on an app or bridge DID to declare the typed events it emits and typed commands it accepts when invited into a Flow State Context Space.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "any",
+      "record": {
+        "type": "object",
+        "required": ["name", "kind", "emits", "accepts"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 120 },
+          "description": { "type": "string", "maxLength": 500 },
+          "kind": { "type": "string", "knownValues": ["app", "bridge", "device"] },
+          "emits": {
+            "type": "array",
+            "items": { "type": "ref", "ref": "#eventSchema" }
+          },
+          "accepts": {
+            "type": "array",
+            "items": { "type": "ref", "ref": "#commandSchema" }
+          },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    },
+    "fieldSchema": {
+      "type": "object",
+      "required": ["name", "label", "type"],
+      "properties": {
+        "name": { "type": "string", "maxLength": 64 },
+        "label": { "type": "string", "maxLength": 120 },
+        "type": { "type": "string", "knownValues": ["string", "number", "boolean", "enum", "secret", "url"] },
+        "description": { "type": "string", "maxLength": 300 },
+        "required": { "type": "boolean" },
+        "sensitive": { "type": "boolean" },
+        "options": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "eventSchema": {
+      "type": "object",
+      "required": ["type", "label"],
+      "properties": {
+        "type": { "type": "string", "maxLength": 128 },
+        "label": { "type": "string", "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 300 },
+        "fields": { "type": "array", "items": { "type": "ref", "ref": "#fieldSchema" } }
+      }
+    },
+    "commandSchema": {
+      "type": "object",
+      "required": ["action", "label"],
+      "properties": {
+        "action": { "type": "string", "maxLength": 128 },
+        "label": { "type": "string", "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 300 },
+        "inputs": { "type": "array", "items": { "type": "ref", "ref": "#fieldSchema" } },
+        "outputs": { "type": "array", "items": { "type": "ref", "ref": "#fieldSchema" } }
+      }
+    }
+  }
+}

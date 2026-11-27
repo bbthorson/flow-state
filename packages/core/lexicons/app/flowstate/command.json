@@ -1,0 +1,23 @@
+{
+  "lexicon": 1,
+  "id": "app.flowstate.command",
+  "description": "A deterministic command dispatched into a Context Space targeting an invited app or bridge DID. Replies arrive as correlated app.flowstate.event records with replyTo set to this record's commandId.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["commandId", "targetDid", "action", "input", "createdAt"],
+        "properties": {
+          "commandId": { "type": "string", "maxLength": 128 },
+          "targetDid": { "type": "string", "format": "did" },
+          "action": { "type": "string", "maxLength": 128 },
+          "input": { "type": "unknown" },
+          "expiresAt": { "type": "string", "format": "datetime" },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}
