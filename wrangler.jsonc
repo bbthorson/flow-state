@@ -13,22 +13,6 @@
       "/hub/*"
     ]
   },
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "USER_HUB",
-        "class_name": "UserHubDO"
-      }
-    ]
-  },
-  "migrations": [
-    {
-      "tag": "v1",
-      "new_sqlite_classes": [
-        "UserHubDO"
-      ]
-    }
-  ],
   "compatibility_flags": [
     "nodejs_compat"
   ]

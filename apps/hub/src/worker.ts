@@ -25,7 +25,7 @@ interface DurableObjectNamespaceLike {
 
 export interface HubWorkerEnv {
   ASSETS: { fetch(request: Request): Promise<Response> };
-  USER_HUB: DurableObjectNamespaceLike;
+  USER_HUB?: DurableObjectNamespaceLike;
 }
 
 interface PersistedHubState {
@@ -159,6 +159,12 @@ export default {
     // External HTTPS inbox: POST /hub/e/<userId>.<tokenSecret>
     const ingressMatch = url.pathname.match(/^\/hub\/e\/([^/]+)$/);
     if (request.method === 'POST' && ingressMatch) {
+      if (!env.USER_HUB) {
+        return Response.json(
+          { error: 'Hub Durable Object not bound — deploy with wrangler.hub.jsonc' },
+          { status: 503 },
+        );
+      }
       const fullToken = decodeURIComponent(ingressMatch[1]!);
       const dotIdx = fullToken.indexOf('.');
       if (dotIdx <= 0) {
@@ -178,6 +184,12 @@ export default {
     // User Hub management routes: /hub/u/<userId>/(tokens|push/subscribe|flows)
     const userMatch = url.pathname.match(/^\/hub\/u\/([^/]+)(\/.*)$/);
     if (userMatch) {
+      if (!env.USER_HUB) {
+        return Response.json(
+          { error: 'Hub Durable Object not bound — deploy with wrangler.hub.jsonc' },
+          { status: 503 },
+        );
+      }
       const userId = decodeURIComponent(userMatch[1]!);
       const subPath = userMatch[2]!;
       const stub = env.USER_HUB.get(env.USER_HUB.idFromName(userId));

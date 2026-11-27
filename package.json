@@ -16,7 +16,8 @@
     "check": "vp check",
     "lint": "vp lint",
     "typecheck": "tsc --noEmit",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:hub": "npm run build && wrangler deploy -c wrangler.hub.jsonc"
   },
   "dependencies": {
     "@atproto/api": "^0.19.4",
@@ -72,6 +73,7 @@
     "vite": "npm:@voidzero-dev/vite-plus-core@8.3.8001",
     "vite-plugin-pwa": "^1.0.0",
     "vitest": "5.1.1",
+    "workbox-precaching": "^7.4.0",
     "wrangler": "^4.107.0",
     "vite-plus": "1.8.0"
   },
