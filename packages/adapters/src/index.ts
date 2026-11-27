@@ -4,3 +4,4 @@ export * from './extra-capabilities';
 export * from './platform';
 export * from './atproto-space';
 export * from './atproto-http';
+export * from './hub-client';

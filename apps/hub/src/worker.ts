@@ -94,6 +94,13 @@ export class UserHubDO {
       return Response.json(res, { status: res.status });
     }
 
+    // GET /tokens — list active (non-revoked) sender tokens
+    if (request.method === 'GET' && url.pathname === '/tokens') {
+      return Response.json({
+        tokens: this.persisted.tokens.filter((t) => !t.revoked),
+      });
+    }
+
     // POST /tokens — register a scoped per-sender HTTPS inbox token
     if (request.method === 'POST' && url.pathname === '/tokens') {
       const body = (await request.json()) as Partial<SenderTokenRecord>;
@@ -111,6 +118,21 @@ export class UserHubDO {
       ];
       await this.saveState();
       return Response.json(record, { status: 201 });
+    }
+
+    // DELETE /tokens/:token — revoke one sender token without affecting any other sender
+    const deleteTokenMatch = url.pathname.match(/^\/tokens\/([^/]+)$/);
+    if (request.method === 'DELETE' && deleteTokenMatch) {
+      const token = decodeURIComponent(deleteTokenMatch[1]!);
+      const revoked = engine.revokeToken(token);
+      if (!revoked) {
+        return Response.json({ error: 'Token not found' }, { status: 404 });
+      }
+      this.persisted.tokens = this.persisted.tokens.map((t) =>
+        t.token === token ? { ...t, revoked: true } : t,
+      );
+      await this.saveState();
+      return Response.json({ ok: true, revoked: token });
     }
 
     // POST /push/subscribe — register a device Web Push subscription

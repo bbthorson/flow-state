@@ -98,7 +98,7 @@ export class UserHubEngine {
 
     const rawEvent: Event = {
       id: typeof body.id === 'string' ? body.id : `hub-${nowMs}`,
-      type: typeof body.event === 'string' ? body.event : String(body.type ?? ''),
+      type: typeof body.event === 'string' ? body.event : typeof body.type === 'string' ? body.type : '',
       source: 'hub',
       author: `hub-sender:${rec.label}`,
       space: typeof body.space === 'string' ? body.space : rec.allowedContexts?.[0],
