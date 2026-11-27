@@ -38,6 +38,7 @@ export function PipelineEditor({
   secretKeys = [],
   onSave,
   onCancel,
+  onDelete,
   onDryRun,
 }: {
   initialFlow: Flow;
@@ -45,9 +46,11 @@ export function PipelineEditor({
   secretKeys?: string[];
   onSave: (flow: Flow) => void;
   onCancel: () => void;
+  onDelete?: () => void;
   onDryRun: (draft: Flow, mockEvent: Event) => RunTrace;
 }) {
   const [draft, setDraft] = useState<Flow>(initialFlow);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [newInputLabel, setNewInputLabel] = useState('');
   const [mockTrust, setMockTrust] = useState<'trusted' | 'untrusted'>('trusted');
   const [mockPayloadText, setMockPayloadText] = useState('{"level": 0.15, "charging": false, "value": "hello"}');
@@ -533,14 +536,33 @@ export function PipelineEditor({
         </div>
       )}
 
-      {/* Save Footer */}
-      <Button
-        className="w-full"
-        disabled={!draft.name.trim()}
-        onClick={() => onSave({ ...draft, updatedAt: new Date().toISOString() })}
-      >
-        Save Flow
-      </Button>
+      {/* Save & Delete Footer */}
+      <div className="space-y-2">
+        <Button
+          className="w-full"
+          disabled={!draft.name.trim()}
+          onClick={() => onSave({ ...draft, updatedAt: new Date().toISOString() })}
+        >
+          Save Flow
+        </Button>
+        {onDelete && (
+          <Button
+            type="button"
+            variant={confirmDelete ? 'destructive' : 'ghost'}
+            className="w-full text-xs"
+            onClick={() => {
+              if (confirmDelete) {
+                onDelete();
+              } else {
+                setConfirmDelete(true);
+              }
+            }}
+          >
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+            {confirmDelete ? 'Confirm Delete Flow' : 'Delete Flow'}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

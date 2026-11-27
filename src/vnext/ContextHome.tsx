@@ -7,7 +7,12 @@ import {
   type Flow,
   type RunTrace,
 } from '@flowstate/core';
-import { probePlatformCapabilities, resolveAppCapability } from '@flowstate/adapters';
+import {
+  HubClient,
+  probePlatformCapabilities,
+  resolveAppCapability,
+  type HubSenderToken,
+} from '@flowstate/adapters';
 import { useRuntime } from './runtime';
 import { PipelineEditor } from './PipelineEditor';
 import { TraceViewer } from './TraceViewer';
@@ -21,6 +26,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import {
   CheckCircle2,
   Clock,
+  Copy,
   Download,
   KeyRound,
   Layers,
@@ -66,6 +72,9 @@ export function ContextHome() {
   const [secretName, setSecretName] = useState('');
   const [secretValue, setSecretValue] = useState('');
   const [hubStatus, setHubStatus] = useState<string | null>(null);
+  const [hubTokens, setHubTokens] = useState<HubSenderToken[]>([]);
+  const [newTokenLabel, setNewTokenLabel] = useState('');
+  const [shortcutCopied, setShortcutCopied] = useState<string | null>(null);
   const [recipeJson, setRecipeJson] = useState('');
   const [recipeStatus, setRecipeStatus] = useState<string | null>(null);
   const [vaultMessage, setVaultMessage] = useState<string | null>(null);
@@ -74,6 +83,10 @@ export function ContextHome() {
   const [newBlockEnd, setNewBlockEnd] = useState('11:00');
 
   const platformReport = useMemo(() => probePlatformCapabilities(), []);
+  const hubClient = useMemo(
+    () => (state.hubUserId ? new HubClient({ userId: state.hubUserId }) : null),
+    [state.hubUserId],
+  );
 
   if (!state.initialized) {
     return (
@@ -99,6 +112,7 @@ export function ContextHome() {
     (state.lastBackupTimestamp === null || Date.now() - state.lastBackupTimestamp > SIX_DAYS_MS);
 
   if (editingFlow) {
+    const isExisting = state.flows.some((f) => f.id === editingFlow.id);
     return (
       <div className="mx-auto max-w-lg px-4 py-4">
         <PipelineEditor
@@ -107,8 +121,19 @@ export function ContextHome() {
           secretKeys={state.secretKeys}
           onSave={async (updated) => {
             await host.saveFlow(updated);
+            if (updated.executionTarget === 'hub' && hubClient) {
+              void hubClient.syncHubFlow(updated).catch(() => {});
+            }
             setEditingFlow(null);
           }}
+          onDelete={
+            isExisting
+              ? async () => {
+                  await host.deleteFlow(editingFlow.id);
+                  setEditingFlow(null);
+                }
+              : undefined
+          }
           onCancel={() => setEditingFlow(null)}
           onDryRun={(draft, mockEvent) => host.dryRunFlow(draft, mockEvent)}
         />
@@ -207,17 +232,59 @@ export function ContextHome() {
   };
 
   const handleCheckHub = async () => {
+    if (!hubClient) return;
     setHubStatus('Checking /hub/health…');
-    try {
-      const res = await fetch('/hub/health');
-      if (res.ok) {
-        setHubStatus('Hub Worker reachable (/hub/health OK).');
-      } else {
-        setHubStatus(`Hub responded ${res.status}.`);
-      }
-    } catch {
+    const ok = await hubClient.health();
+    if (!ok) {
       setHubStatus('Running in local-only mode (no Hub Worker reachable).');
+      return;
     }
+    try {
+      const tokens = await hubClient.listSenderTokens();
+      setHubTokens(tokens);
+      setHubStatus(`Hub connected (${tokens.length} active sender token${tokens.length === 1 ? '' : 's'}).`);
+    } catch {
+      setHubStatus('Hub Worker reachable (/hub/health OK; Durable Object not bound yet).');
+    }
+  };
+
+  const handleCreateHubToken = async () => {
+    if (!hubClient) return;
+    const label = newTokenLabel.trim();
+    if (!label) return;
+    try {
+      const created = await hubClient.createSenderToken(label, [activeContext.id]);
+      setHubTokens((prev) => [...prev, created]);
+      setNewTokenLabel('');
+      const url = hubClient.inboxUrl(created.token);
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+      }
+      setHubStatus(`Created & copied inbox URL for "${label}".`);
+    } catch (err) {
+      setHubStatus(err instanceof Error ? err.message : 'Failed to create token');
+    }
+  };
+
+  const handleRevokeHubToken = async (token: string) => {
+    if (!hubClient) return;
+    try {
+      await hubClient.revokeSenderToken(token);
+      setHubTokens((prev) => prev.filter((t) => t.token !== token));
+      setHubStatus('Sender token revoked.');
+    } catch (err) {
+      setHubStatus(err instanceof Error ? err.message : 'Failed to revoke token');
+    }
+  };
+
+  const handleCopyShortcutUrl = async (capId: string) => {
+    const origin = typeof location !== 'undefined' ? location.origin : 'https://flowstate.app';
+    const url = `${origin}/?event=${encodeURIComponent(capId)}&value=1`;
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      await navigator.clipboard.writeText(url);
+    }
+    setShortcutCopied(capId);
+    setTimeout(() => setShortcutCopied((curr) => (curr === capId ? null : curr)), 2000);
   };
 
   const handleCopyRecipe = async (flow: Flow) => {
@@ -441,9 +508,56 @@ export function ContextHome() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Enables revocable HTTPS inboxes (<code className="font-mono">POST /hub/e/:token</code>), Web Push
-                wakeups, and opt-in Hub execution.
+                Hub ID: <code className="font-mono">{state.hubUserId}</code>. Create scoped per-sender HTTPS
+                inboxes (<code className="font-mono">POST /hub/e/:token</code>) for Home Assistant, CI, or scripts.
               </p>
+              {hubTokens.length > 0 && (
+                <div className="divide-y rounded-md border">
+                  {hubTokens.map((t) => (
+                    <div key={t.token} className="flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs">
+                      <span className="truncate font-medium">{t.label}</span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          aria-label={`Copy inbox URL for ${t.label}`}
+                          onClick={async () => {
+                            if (!hubClient) return;
+                            const url = hubClient.inboxUrl(t.token);
+                            if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                              await navigator.clipboard.writeText(url);
+                            }
+                            setHubStatus(`Copied inbox URL for "${t.label}".`);
+                          }}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          aria-label={`Revoke ${t.label}`}
+                          onClick={() => void handleRevokeHubToken(t.token)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-1.5">
+                <Input
+                  value={newTokenLabel}
+                  onChange={(e) => setNewTokenLabel(e.target.value)}
+                  placeholder="Sender name (e.g. Home Assistant)"
+                  className="h-8 text-xs"
+                />
+                <Button size="sm" variant="outline" className="h-8" onClick={() => void handleCreateHubToken()}>
+                  Create
+                </Button>
+              </div>
               {hubStatus && <p className="text-xs text-muted-foreground">{hubStatus}</p>}
             </section>
 
@@ -482,9 +596,21 @@ export function ContextHome() {
                       <p className="font-medium">{cap.label}</p>
                       {cap.note && <p className="text-[11px] text-muted-foreground">{cap.note}</p>}
                     </div>
-                    <Badge variant={cap.supported ? 'secondary' : 'outline'} className="text-[10px]">
-                      {cap.supported ? 'Native' : 'Bridge'}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {!cap.supported && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2 text-[10px]"
+                          onClick={() => void handleCopyShortcutUrl(cap.id)}
+                        >
+                          {shortcutCopied === cap.id ? 'Copied!' : 'Shortcut URL'}
+                        </Button>
+                      )}
+                      <Badge variant={cap.supported ? 'secondary' : 'outline'} className="text-[10px]">
+                        {cap.supported ? 'Native' : 'Bridge'}
+                      </Badge>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -704,9 +830,20 @@ export function ContextHome() {
                           {b.kind}
                         </Badge>
                       </div>
-                      <span className="font-mono text-muted-foreground">
-                        {formatMins(b.startMin)}–{formatMins(b.endMin)}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-muted-foreground">
+                          {formatMins(b.startMin)}–{formatMins(b.endMin)}
+                        </span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          aria-label={`Delete block ${b.title}`}
+                          onClick={() => void host.deleteBlock(b.id)}
+                        >
+                          <Trash2 className="h-3 w-3 text-muted-foreground" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
               </div>
