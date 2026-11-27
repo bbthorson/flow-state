@@ -21,7 +21,27 @@ export function getRuntimeHost(): RuntimeHost {
     });
   }
   if (!startPromise) {
-    startPromise = hostInstance.start();
+    startPromise = hostInstance.start().then(async () => {
+      // Ingest deep-link query params (e.g., Apple Shortcuts -> Open URL) as an untrusted Event
+      if (typeof window !== 'undefined' && window.location.search.length > 1) {
+        const params = new URLSearchParams(window.location.search);
+        const payload: Record<string, string> = {};
+        params.forEach((v, k) => {
+          payload[k] = v;
+        });
+        window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+        await hostInstance!.ingestEvent({
+          id: `deeplink-${Date.now()}`,
+          type: 'system.deeplink.received',
+          source: 'deep-link',
+          author: 'external.deeplink',
+          trust: 'untrusted',
+          hops: 0,
+          payload,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    });
   }
   return hostInstance;
 }
