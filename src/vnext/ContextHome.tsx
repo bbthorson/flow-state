@@ -1,5 +1,12 @@
 import { useMemo, useState } from 'react';
-import type { Block, Context, Flow, RunTrace } from '@flowstate/core';
+import {
+  parseFlow,
+  sanitizeFlowForExport,
+  type Block,
+  type Context,
+  type Flow,
+  type RunTrace,
+} from '@flowstate/core';
 import { probePlatformCapabilities, resolveAppCapability } from '@flowstate/adapters';
 import { useRuntime } from './runtime';
 import { PipelineEditor } from './PipelineEditor';
@@ -22,6 +29,7 @@ import {
   Plus,
   Radio,
   Settings,
+  Share2,
   ShieldAlert,
   Sparkles,
   Trash2,
@@ -58,6 +66,8 @@ export function ContextHome() {
   const [secretName, setSecretName] = useState('');
   const [secretValue, setSecretValue] = useState('');
   const [hubStatus, setHubStatus] = useState<string | null>(null);
+  const [recipeJson, setRecipeJson] = useState('');
+  const [recipeStatus, setRecipeStatus] = useState<string | null>(null);
   const [vaultMessage, setVaultMessage] = useState<string | null>(null);
   const [newBlockTitle, setNewBlockTitle] = useState('');
   const [newBlockStart, setNewBlockStart] = useState('09:00');
@@ -207,6 +217,40 @@ export function ContextHome() {
       }
     } catch {
       setHubStatus('Running in local-only mode (no Hub Worker reachable).');
+    }
+  };
+
+  const handleCopyRecipe = async (flow: Flow) => {
+    const sanitized = sanitizeFlowForExport(flow);
+    const json = JSON.stringify(sanitized, null, 2);
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      await navigator.clipboard.writeText(json);
+    }
+    setRecipeStatus(`Copied sanitized recipe for "${flow.name}" (Tier-0 secrets stripped).`);
+  };
+
+  const handleForkRecipe = async () => {
+    const raw = recipeJson.trim();
+    if (!raw) return;
+    try {
+      const parsedJson = JSON.parse(raw) as Record<string, unknown>;
+      const checked = parseFlow({
+        ...parsedJson,
+        id: `fork-${Date.now()}`,
+        contextId: activeContext.id,
+        active: false,
+        dryRun: false,
+        createdAt: new Date().toISOString(),
+      });
+      if (!checked.ok) {
+        setRecipeStatus(`Invalid recipe: ${checked.error}`);
+        return;
+      }
+      await host.saveFlow(checked.data);
+      setRecipeJson('');
+      setRecipeStatus(`Forked "${checked.data.name}" into ${activeContext.name} (paused for review).`);
+    } catch {
+      setRecipeStatus('Invalid JSON recipe.');
     }
   };
 
@@ -403,6 +447,26 @@ export function ContextHome() {
               {hubStatus && <p className="text-xs text-muted-foreground">{hubStatus}</p>}
             </section>
 
+            {/* Fork / Import Recipe */}
+            <section className="space-y-2 border-t pt-4">
+              <h3 className="text-sm font-semibold">Fork a Shared Recipe</h3>
+              <p className="text-xs text-muted-foreground">
+                Paste a sanitized Flow State recipe JSON. Validated via Zod and installed paused so you can inspect it first.
+              </p>
+              <div className="flex gap-1.5">
+                <Input
+                  value={recipeJson}
+                  onChange={(e) => setRecipeJson(e.target.value)}
+                  placeholder='{"name":"...","trigger":{...}}'
+                  className="h-8 font-mono text-xs"
+                />
+                <Button size="sm" variant="outline" className="h-8" onClick={() => void handleForkRecipe()}>
+                  Fork
+                </Button>
+              </div>
+              {recipeStatus && <p className="text-xs text-muted-foreground">{recipeStatus}</p>}
+            </section>
+
             {/* Capability Matrix */}
             <section className="space-y-2 border-t pt-4">
               <div className="flex items-center justify-between">
@@ -559,6 +623,15 @@ export function ContextHome() {
                         {flow.trigger.eventType} · {flow.steps.length} step{flow.steps.length === 1 ? '' : 's'}
                       </p>
                     </button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => void handleCopyRecipe(flow)}
+                      aria-label={`Share recipe for ${flow.name}`}
+                    >
+                      <Share2 className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"

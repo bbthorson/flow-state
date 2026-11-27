@@ -44,7 +44,7 @@ describe('Phase 5 E2E — AT Protocol Space + Invited Reference Bridge DID', () 
       spaceUri,
       transport,
       async handleCommand(cmd) {
-        const title = String(cmd.input.title ?? 'Untitled');
+        const title = typeof cmd.input.title === 'string' ? cmd.input.title : 'Untitled';
         return {
           eventType: 'linear.issue.created',
           title: `Created: ${title}`,
