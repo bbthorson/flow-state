@@ -40,6 +40,7 @@ export interface RuntimeSnapshot {
   runs: RunTrace[];
   events: Event[];
   checkpoints: Checkpoint[];
+  secretKeys: string[];
   deviceSnapshot: Record<string, unknown>;
   lastBackupTimestamp: number | null;
 }
@@ -97,6 +98,7 @@ export class RuntimeHost {
     runs: [],
     events: [],
     checkpoints: [],
+    secretKeys: [],
     deviceSnapshot: {},
     lastBackupTimestamp: null,
   };
@@ -157,13 +159,14 @@ export class RuntimeHost {
       contexts = [personal, ...contexts];
     }
 
-    const [flows, blocks, runs, events, checkpoints, lastBackupTimestamp] = await Promise.all([
+    const [flows, blocks, runs, events, checkpoints, lastBackupTimestamp, secretKeys] = await Promise.all([
       this.storage.getAll<Flow>('flows'),
       this.storage.getAll<Block>('blocks'),
       this.storage.getAll<RunTrace>('runs'),
       this.storage.getAll<Event>('events'),
       this.storage.getAll<Checkpoint>('checkpoints'),
       this.storage.get<number>('meta', 'lastBackupTimestamp'),
+      this.storage.get<string[]>('meta', 'secretKeyIndex'),
     ]);
 
     runs.sort((a, b) => b.startedAt - a.startedAt);
@@ -182,6 +185,7 @@ export class RuntimeHost {
       runs,
       events,
       checkpoints,
+      secretKeys: secretKeys ?? [],
       deviceSnapshot: this.collectDeviceSnapshot(),
       lastBackupTimestamp: lastBackupTimestamp ?? null,
     });
@@ -538,11 +542,21 @@ export class RuntimeHost {
   async setSecret(key: string, value: string, flowId?: string): Promise<void> {
     const storageKey = flowId ? `${flowId}:${key}` : key;
     await this.storage.put('secrets', storageKey, value);
+    if (!flowId && !this.snapshot.secretKeys.includes(key)) {
+      const next = [...this.snapshot.secretKeys, key].sort((a, b) => a.localeCompare(b));
+      await this.storage.put('meta', 'secretKeyIndex', next);
+      this.emitSnapshot({ secretKeys: next });
+    }
   }
 
   async deleteSecret(key: string, flowId?: string): Promise<void> {
     const storageKey = flowId ? `${flowId}:${key}` : key;
     await this.storage.delete('secrets', storageKey);
+    if (!flowId && this.snapshot.secretKeys.includes(key)) {
+      const next = this.snapshot.secretKeys.filter((k) => k !== key);
+      await this.storage.put('meta', 'secretKeyIndex', next);
+      this.emitSnapshot({ secretKeys: next });
+    }
   }
 
   registerAdapter(adapter: CapabilityAdapter): void {

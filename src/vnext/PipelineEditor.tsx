@@ -35,20 +35,52 @@ const BASE_TOKENS: TokenOption[] = [
 export function PipelineEditor({
   initialFlow,
   capabilities,
+  secretKeys = [],
   onSave,
   onCancel,
   onDryRun,
 }: {
   initialFlow: Flow;
   capabilities: Capability[];
+  secretKeys?: string[];
   onSave: (flow: Flow) => void;
   onCancel: () => void;
   onDryRun: (draft: Flow, mockEvent: Event) => RunTrace;
 }) {
   const [draft, setDraft] = useState<Flow>(initialFlow);
+  const [newInputLabel, setNewInputLabel] = useState('');
   const [mockTrust, setMockTrust] = useState<'trusted' | 'untrusted'>('trusted');
   const [mockPayloadText, setMockPayloadText] = useState('{"level": 0.15, "charging": false, "value": "hello"}');
   const [showDryRun, setShowDryRun] = useState(false);
+
+  const tokenOptions = useMemo<TokenOption[]>(() => {
+    const inputTokens: TokenOption[] = draft.inputs.map((f) => ({
+      label: `inputs.${f.name}`,
+      expr: `{{inputs.${f.name}}}`,
+      trusted: true,
+    }));
+    const secretTokens: TokenOption[] = secretKeys.map((k) => ({
+      label: `secrets.${k}`,
+      expr: `{{secrets.${k}}}`,
+      trusted: true,
+    }));
+    return [...inputTokens, ...secretTokens, ...BASE_TOKENS];
+  }, [draft.inputs, secretKeys]);
+
+  const addPrimitiveInput = () => {
+    const label = newInputLabel.trim();
+    if (!label) return;
+    const name = label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_|_$/g, '');
+    if (!name || draft.inputs.some((f) => f.name === name)) return;
+    setDraft((prev) => ({
+      ...prev,
+      inputs: [...prev.inputs, { name, label, type: 'string', required: true }],
+    }));
+    setNewInputLabel('');
+  };
 
   const allEmits = useMemo(
     () =>
@@ -225,6 +257,48 @@ export function PipelineEditor({
         </select>
       </div>
 
+      {/* App Primitive Inputs */}
+      <div className="space-y-2 rounded-lg border p-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold">App Primitive Inputs (Optional)</span>
+          <span className="text-[11px] text-muted-foreground">Prompted when tapped</span>
+        </div>
+        {draft.inputs.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {draft.inputs.map((inp) => (
+              <span
+                key={inp.name}
+                className="inline-flex items-center gap-1 rounded-full border bg-muted/50 px-2.5 py-0.5 text-xs"
+              >
+                <span>{inp.label}</span>
+                <code className="font-mono text-[10px] text-muted-foreground">({inp.name})</code>
+                <button
+                  type="button"
+                  className="ml-0.5 text-muted-foreground hover:text-foreground"
+                  aria-label={`Remove input ${inp.name}`}
+                  onClick={() =>
+                    setDraft((p) => ({ ...p, inputs: p.inputs.filter((f) => f.name !== inp.name) }))
+                  }
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <Input
+            value={newInputLabel}
+            onChange={(e) => setNewInputLabel(e.target.value)}
+            placeholder="Add input field (e.g. Issue Title)"
+            className="h-8 text-xs"
+          />
+          <Button type="button" size="sm" variant="outline" className="h-8" onClick={addPrimitiveInput}>
+            Add
+          </Button>
+        </div>
+      </div>
+
       {/* Pipeline Steps */}
       <div className="space-y-3">
         {draft.steps.map((step, idx) => {
@@ -358,7 +432,7 @@ export function PipelineEditor({
                 <div className="space-y-2.5">
                   {(schema?.inputs ?? []).map((field) => {
                     const isSensitive = Boolean(field.sensitive || sensitiveSet.has(field.name));
-                    const allowedTokens = BASE_TOKENS.filter((t) => !isSensitive || t.trusted);
+                    const allowedTokens = tokenOptions.filter((t) => !isSensitive || t.trusted);
                     const val = typeof step.input[field.name] === 'string' ? (step.input[field.name] as string) : '';
 
                     return (
